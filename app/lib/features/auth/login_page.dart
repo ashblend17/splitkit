@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
+import '../../core/config.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import 'server_sheet.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -133,6 +135,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           textAlign: TextAlign.center,
                           style: SkText.body(13, 400, color: SkColors.ink3),
                         ),
+                        if (AppConfig.devTools) const ServerLink(),
                       ],
                     ),
                   ),

@@ -24,7 +24,51 @@ class TokenStore {
 }
 
 final tokenStoreProvider = Provider<TokenStore>((_) => TokenStore());
-final apiOriginProvider = Provider<String>((_) => AppConfig.apiOrigin);
+
+/// A server picked in the developer settings. It wins over the build-time API_ORIGIN.
+class ApiOriginStore {
+  static const _key = 'splitkit.apiOrigin';
+
+  Future<String?> read() async => (await SharedPreferences.getInstance()).getString(_key);
+  Future<void> write(String origin) async => (await SharedPreferences.getInstance()).setString(_key, origin);
+  Future<void> clear() async => (await SharedPreferences.getInstance()).remove(_key);
+}
+
+final apiOriginStoreProvider = Provider<ApiOriginStore>((_) => ApiOriginStore());
+
+/// The saved server, read once in main() before the app starts; null means none saved.
+final savedApiOriginProvider = Provider<String?>((_) => null);
+
+/// Trims [input] to scheme://host[:port]. Returns null unless it is an http(s) URL.
+String? normalizeApiOrigin(String input) {
+  final uri = Uri.tryParse(input.trim());
+  if (uri == null || !(uri.isScheme('http') || uri.isScheme('https')) || uri.host.isEmpty) return null;
+  return uri.hasPort ? '${uri.scheme}://${uri.host}:${uri.port}' : '${uri.scheme}://${uri.host}';
+}
+
+class ApiOriginController extends Notifier<String> {
+  @override
+  String build() => ref.watch(savedApiOriginProvider) ?? AppConfig.apiOrigin;
+
+  /// Whether the current server came from the developer settings rather than the build.
+  bool get isOverridden => state != AppConfig.apiOrigin;
+
+  /// Switches servers (null goes back to the build's API_ORIGIN). Logs out first: a token from
+  /// one server means nothing to another.
+  Future<void> set(String? origin) async {
+    await ref.read(sessionProvider.notifier).logout();
+    final store = ref.read(apiOriginStoreProvider);
+    if (origin == null || origin == AppConfig.apiOrigin) {
+      await store.clear();
+      state = AppConfig.apiOrigin;
+    } else {
+      await store.write(origin);
+      state = origin;
+    }
+  }
+}
+
+final apiOriginProvider = NotifierProvider<ApiOriginController, String>(ApiOriginController.new);
 
 /// Replaced with a MockClient in tests.
 final httpClientProvider = Provider<http.Client?>((_) => null);
