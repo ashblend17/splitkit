@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admin/admin_dashboard_page.dart';
+import '../../features/admin/admin_users_page.dart';
+import '../../features/admin/audit_log_page.dart';
 import '../../features/analytics/group_analytics_page.dart';
 import '../../features/analytics/personal_analytics_page.dart';
 import '../../features/auth/login_page.dart';
@@ -56,6 +59,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (path == '/login' || path == '/register' || path == '/splash' || path == '/') {
         return from != null && from.startsWith('/') && !from.startsWith('/splash') ? from : '/home';
       }
+      // The admin area is for admins only (the API refuses everyone else too).
+      if ((path == '/admin' || path.startsWith('/admin/')) && !session.value!.isAdmin) return '/home';
       return null;
     },
     routes: [
@@ -114,6 +119,23 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(path: 'analytics', builder: (_, _) => const PersonalAnalyticsPage()),
                   GoRoute(path: 'categories', builder: (_, _) => const CategoriesPage()),
+                ],
+              ),
+            ],
+          ),
+          // Admin (screens 16 and 17, plus the audit log). Last, so the branch index matches
+          // AppShell's keys; non-admins never see its tab and are redirected away.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin',
+                builder: (_, _) => const AdminDashboardPage(),
+                routes: [
+                  GoRoute(
+                    path: 'users',
+                    builder: (_, s) => AdminUsersPage(initialQuery: s.uri.queryParameters['q'] ?? ''),
+                  ),
+                  GoRoute(path: 'audit', builder: (_, _) => const AuditLogPage()),
                 ],
               ),
             ],

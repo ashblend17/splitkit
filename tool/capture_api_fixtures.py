@@ -57,6 +57,10 @@ def main():
         "analytics_personal": call("/analytics/personal?period=month&on=2026-09-23", token=token),
         "analytics_group": call(f"/analytics/groups/{goa['id']}?on=2026-09-23", token=token),
         "analytics_layout": call("/analytics/layout/personal", token=token),
+        "admin_dashboard": call("/admin/dashboard", token=token),
+        "admin_users": call("/admin/users", token=token),
+        "admin_audit": call("/admin/audit?limit=20", token=token),
+        "admin_sessions": call("/admin/sessions", token=token),
         "error_split_invalid": call(
             f"/groups/{goa['id']}/expenses",
             {
