@@ -73,6 +73,20 @@ file, and confirm with `uv run alembic check`.
   `acting_admin_id` ready for admin impersonation. Every write also lands in the sync change log
   (next section).
 
+## Admin
+
+- `/admin/*` needs an admin signed in as themselves (403 `not_admin` otherwise): `GET /admin/dashboard`,
+  `GET /admin/users` (`q`, `role`, paging), `GET /admin/audit` (filters `actor_id`, `target_user_id`,
+  `entity`, `admin_only`, `start`/`end`; newest first) and `GET /admin/sessions`.
+- View as: `POST /admin/sessions {target_user_id, mode}` (read-only by default) returns a token for
+  the target that carries the admin and session ids. `get_actor` checks the session row on every
+  request, so `PATCH /admin/sessions/{id} {mode}` and `POST /admin/sessions/{id}/end` apply at once
+  (an ended or expired session's token gets 401 `admin_session_ended`). Admins and placeholders
+  can't be viewed as; starting a session ends the admin's previous one.
+- Read-only is enforced on the server: `get_actor` refuses every write route (403 `read_only`),
+  and `require_write()` in the services and in `record()` backs it up. Edit-mode writes store
+  `acting_admin_id` and show `by_admin` in the feed. Session events go to `audit_logs` only.
+
 ## Sync (offline clients)
 
 Writes go through `record()` (`app/core/events.py`), which also queues the full state of what
@@ -110,6 +124,9 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
 - The API client in `app/packages/splitkit_api` is generated: after API changes run
   `(cd api && uv run python -m app.openapi) && tool/gen_api_client.sh` (needs Docker).
   Use `apiDate()` for date fields: the generated client converts dates to UTC.
+- Admin pages (`features/admin/`) read the API directly, not the synced data. Every "View as"
+  button calls `viewAsLauncherProvider` (`features/admin/view_as.dart`); the view-as switch,
+  banner and frame (screen 18) plug in there.
 - Screen tests run against real API responses in `app/test/fixtures/api`. Refresh them with
   `docker compose exec api python -m app.seed --reset && python3 tool/capture_api_fixtures.py`.
 
