@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/local/outbox.dart';
 import 'package:splitkit/core/local/store.dart';
 import 'package:splitkit/core/local/sync_engine.dart';
 
@@ -159,5 +160,27 @@ void main() {
     await sub.cancel();
     expect(notified, 0);
     expect(jsonEncode(store.ledger.overallBalances()), before);
+  });
+
+  test('a write the server keeps failing does not block incoming changes', () async {
+    final (engine, store, be, _) = await _setup();
+    await engine.pull();
+    await store.enqueue(OutboxOp(
+      method: 'POST',
+      path: '/api/v1/personal/transactions',
+      body: {'type': 'expense'},
+      label: 'Stuck',
+      entities: const [],
+      createdAt: '2026-09-25T10:00:00Z',
+    ));
+    be.postResponses['/api/v1/personal/transactions'] = (500, {'error': {'code': 'boom', 'message': 'Server error'}});
+    final stream = _goaStream(be);
+    final group = store.ledger.rawGroup(be.goa['id'])!;
+    be.pendingChanges[stream] = [
+      _change(store.cursors[stream]! + 1, 'group.update', 'group', be.goa['id'], 'upsert', {...group, 'name': 'Goa (renamed)'}),
+    ];
+    await expectLater(engine.pull(), throwsA(isA<ApiException>().having((e) => e.code, 'code', 500)));
+    expect(store.ledger.group(be.goa['id'])['name'], 'Goa (renamed)');
+    expect(store.outbox.single.status, OutboxStatus.pending);
   });
 }

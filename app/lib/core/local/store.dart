@@ -218,6 +218,18 @@ class LocalStore {
     _notify();
   }
 
+  /// Forgets everything that came from the server (keeping this device's unsynced writes), so
+  /// the next sync reloads every stream from a snapshot. The in-app "Reload from server".
+  Future<void> resetServerCopy() async {
+    await _db.transaction((txn) async {
+      await _entities.delete(txn);
+      await _cursors.delete(txn);
+    });
+    _cache.clear();
+    _cursorCache.clear();
+    _notify();
+  }
+
   /// Wipes the device copy (logout). The next sign-in rebuilds it from snapshots.
   Future<void> clear() async {
     await _db.transaction((txn) async {
