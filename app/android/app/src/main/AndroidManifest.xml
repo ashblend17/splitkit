@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The app talks to the Splitkit API; debug builds also get this from src/debug. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="splitkit"
         android:name="${applicationName}"
