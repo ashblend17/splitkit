@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://splitkit:splitkit@localhost:5433/splitkit"
     jwt_secret: str = "dev-only-insecure-secret-change-me-please"
     jwt_ttl_minutes: int = 60 * 24 * 7
+    admin_session_ttl_minutes: int = 60 * 4
+    """How long an admin's view-as token lasts. Ending the session stops it sooner."""
     cors_origins: list[str] = ["http://localhost:8080"]
 
 

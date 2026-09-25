@@ -47,14 +47,13 @@ import 'package:splitkit_api/api.dart';
 // String yourTokenGeneratorFunction() { ... }
 //defaultApiClient.getAuthentication<HttpBearerAuth>('HTTPBearer').setAccessToken(yourTokenGeneratorFunction);
 
-final api_instance = AnalyticsApi();
-final scope = scope_example; // String | 
+final api_instance = AdminApi();
 
 try {
-    final result = api_instance.getLayout(scope);
+    final result = api_instance.adminDashboard();
     print(result);
 } catch (e) {
-    print('Exception when calling AnalyticsApi->getLayout: $e\n');
+    print('Exception when calling AdminApi->adminDashboard: $e\n');
 }
 
 ```
@@ -65,6 +64,13 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*AdminApi* | [**adminDashboard**](doc//AdminApi.md#admindashboard) | **GET** /api/v1/admin/dashboard | Admin Dashboard
+*AdminApi* | [**endAdminSession**](doc//AdminApi.md#endadminsession) | **POST** /api/v1/admin/sessions/{session_id}/end | End Admin Session
+*AdminApi* | [**listAdminSessions**](doc//AdminApi.md#listadminsessions) | **GET** /api/v1/admin/sessions | List Admin Sessions
+*AdminApi* | [**listAdminUsers**](doc//AdminApi.md#listadminusers) | **GET** /api/v1/admin/users | List Admin Users
+*AdminApi* | [**listAuditLog**](doc//AdminApi.md#listauditlog) | **GET** /api/v1/admin/audit | List Audit Log
+*AdminApi* | [**startAdminSession**](doc//AdminApi.md#startadminsession) | **POST** /api/v1/admin/sessions | Start Admin Session
+*AdminApi* | [**updateAdminSession**](doc//AdminApi.md#updateadminsession) | **PATCH** /api/v1/admin/sessions/{session_id} | Update Admin Session
 *AnalyticsApi* | [**getLayout**](doc//AnalyticsApi.md#getlayout) | **GET** /api/v1/analytics/layout/{scope} | Get Layout
 *AnalyticsApi* | [**groupDashboard**](doc//AnalyticsApi.md#groupdashboard) | **GET** /api/v1/analytics/groups/{group_id} | Group Dashboard
 *AnalyticsApi* | [**personalDashboard**](doc//AnalyticsApi.md#personaldashboard) | **GET** /api/v1/analytics/personal | Personal Dashboard
@@ -116,7 +122,17 @@ Class | Method | HTTP request | Description
 ## Documentation For Models
 
  - [AddMemberIn](doc//AddMemberIn.md)
+ - [AdminDashboardOut](doc//AdminDashboardOut.md)
+ - [AdminSessionIn](doc//AdminSessionIn.md)
+ - [AdminSessionOut](doc//AdminSessionOut.md)
+ - [AdminSessionStartOut](doc//AdminSessionStartOut.md)
+ - [AdminSessionUpdate](doc//AdminSessionUpdate.md)
+ - [AdminSessionsPageOut](doc//AdminSessionsPageOut.md)
+ - [AdminUserOut](doc//AdminUserOut.md)
+ - [AdminUsersPageOut](doc//AdminUsersPageOut.md)
  - [AnalyticsCardOut](doc//AnalyticsCardOut.md)
+ - [AuditEntryOut](doc//AuditEntryOut.md)
+ - [AuditPageOut](doc//AuditPageOut.md)
  - [CategoryIn](doc//CategoryIn.md)
  - [CategoryOut](doc//CategoryOut.md)
  - [CategoryTotal](doc//CategoryTotal.md)
@@ -136,6 +152,7 @@ Class | Method | HTTP request | Description
  - [GroupIn](doc//GroupIn.md)
  - [GroupNet](doc//GroupNet.md)
  - [GroupOut](doc//GroupOut.md)
+ - [GroupRef](doc//GroupRef.md)
  - [GroupUpdate](doc//GroupUpdate.md)
  - [HTTPValidationError](doc//HTTPValidationError.md)
  - [HistoryEntry](doc//HistoryEntry.md)
@@ -144,6 +161,7 @@ Class | Method | HTTP request | Description
  - [LayoutOut](doc//LayoutOut.md)
  - [LoginIn](doc//LoginIn.md)
  - [MemberOut](doc//MemberOut.md)
+ - [MoneyTotal](doc//MoneyTotal.md)
  - [OverallBalancesOut](doc//OverallBalancesOut.md)
  - [PersonBalance](doc//PersonBalance.md)
  - [PersonalListOut](doc//PersonalListOut.md)
@@ -170,6 +188,7 @@ Class | Method | HTTP request | Description
  - [SyncOut](doc//SyncOut.md)
  - [SyncSnapshotOut](doc//SyncSnapshotOut.md)
  - [SyncStreamOut](doc//SyncStreamOut.md)
+ - [SystemOut](doc//SystemOut.md)
  - [TokenOut](doc//TokenOut.md)
  - [UserBrief](doc//UserBrief.md)
  - [UserOut](doc//UserOut.md)

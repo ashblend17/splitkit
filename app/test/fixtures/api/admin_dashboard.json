@@ -1,0 +1,197 @@
+{
+  "users": 6,
+  "admins": 1,
+  "placeholders": 0,
+  "groups": 2,
+  "groups_active_week": 2,
+  "expenses": 26,
+  "expenses_imported": 13,
+  "expense_volume": [
+    {
+      "amount_minor": 10974000,
+      "currency": "INR"
+    }
+  ],
+  "settlements": 1,
+  "settlement_volume": [
+    {
+      "amount_minor": 50000,
+      "currency": "INR"
+    }
+  ],
+  "personal_transactions": 53,
+  "personal_users": 1,
+  "open_sessions": 0,
+  "recent": [
+    {
+      "id": "2e451cf3-5be2-43ee-ad34-9861d789abb2",
+      "at": "2026-09-23T16:10:00Z",
+      "action": "expense.create",
+      "entity": "expense",
+      "entity_id": "5764ab9e-66b4-5785-9691-a18ff571a114",
+      "actor": {
+        "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "name": "Rahul Sharma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "acting_as": null,
+      "done_as": "user",
+      "summary": "Added “Dinner at Thalassa” · ₹1,800",
+      "group": {
+        "id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+        "name": "Goa Trip"
+      },
+      "diff": {
+        "amount_minor": 180000
+      }
+    },
+    {
+      "id": "b6de0990-5d45-47e7-9f5e-e0b02152ce53",
+      "at": "2026-09-23T15:45:00Z",
+      "action": "expense.update",
+      "entity": "expense",
+      "entity_id": "ea3b54e6-17ae-59bb-a915-e55a525338cb",
+      "actor": {
+        "id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "name": "John Doe",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "acting_as": {
+        "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "name": "Priya Nair",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "done_as": "admin",
+      "summary": "Changed the category of “Scooter rentals”",
+      "group": {
+        "id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+        "name": "Goa Trip"
+      },
+      "diff": {
+        "category": {
+          "to": "transport",
+          "from": "travel"
+        }
+      }
+    },
+    {
+      "id": "47c07c67-9479-417f-8cf3-d21e47cd1c45",
+      "at": "2026-09-23T12:45:00Z",
+      "action": "expense.create",
+      "entity": "expense",
+      "entity_id": "3fc92d95-c6db-5eb7-a823-3b13c95af0e3",
+      "actor": {
+        "id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "name": "John Doe",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "acting_as": null,
+      "done_as": "user",
+      "summary": "Added “Groceries” · ₹2,340",
+      "group": {
+        "id": "6b800aee-e138-5ea0-aacc-becd1e307d7a",
+        "name": "Flatmates"
+      },
+      "diff": {
+        "amount_minor": 234000
+      }
+    },
+    {
+      "id": "6408f613-d25e-4ed7-b857-d3d5172c12c0",
+      "at": "2026-09-22T04:30:00Z",
+      "action": "import.complete",
+      "entity": "import_batch",
+      "entity_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "actor": null,
+      "acting_as": null,
+      "done_as": "system",
+      "summary": "Import finished · 13 expenses, 3 to review",
+      "group": {
+        "id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+        "name": "Goa Trip"
+      },
+      "diff": {
+        "flagged": 3,
+        "expenses": 13
+      }
+    },
+    {
+      "id": "656b1e4c-fd3a-40e9-8bd2-0d208f944751",
+      "at": "2026-09-22T01:20:00Z",
+      "action": "settlement.create",
+      "entity": "settlement",
+      "entity_id": "4f4828a3-184c-5eb3-a9e0-0238f81c470f",
+      "actor": {
+        "id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "name": "John Doe",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "acting_as": null,
+      "done_as": "user",
+      "summary": "Recorded a payment · John paid Rahul ₹500",
+      "group": {
+        "id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+        "name": "Goa Trip"
+      },
+      "diff": {
+        "amount_minor": 50000
+      }
+    },
+    {
+      "id": "1512abf5-cd29-488d-a025-e576a847ee55",
+      "at": "2026-09-21T13:00:00Z",
+      "action": "expense.delete",
+      "entity": "expense",
+      "entity_id": "ed6497e4-8a22-5d8a-80ae-acdbad8cc8fa",
+      "actor": {
+        "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "name": "Aman Verma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "acting_as": null,
+      "done_as": "user",
+      "summary": "Deleted “Water cans” · restorable",
+      "group": {
+        "id": "6b800aee-e138-5ea0-aacc-becd1e307d7a",
+        "name": "Flatmates"
+      },
+      "diff": {}
+    },
+    {
+      "id": "19881b96-59e8-4f6b-9c63-20bd0099fe2e",
+      "at": "2026-09-21T04:35:00Z",
+      "action": "member.join",
+      "entity": "group",
+      "entity_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "actor": {
+        "id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "name": "Kabir Mehta",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "acting_as": null,
+      "done_as": "user",
+      "summary": "Joined via invite link",
+      "group": {
+        "id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+        "name": "Goa Trip"
+      },
+      "diff": {
+        "via": "invite_link"
+      }
+    }
+  ],
+  "system": {
+    "api_version": "0.1.0",
+    "database": "PostgreSQL 16.14",
+    "database_bytes": 9600023,
+    "last_import_at": "2026-09-22T04:30:00Z",
+    "last_import_source": "tricount"
+  }
+}

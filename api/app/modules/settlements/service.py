@@ -133,6 +133,7 @@ def set_deleted(
     if (settlement.deleted_at is not None) != deleted:
         check_version(settlement, version)
         settlement.deleted_at = datetime.now(UTC) if deleted else None
+        settlement.acting_admin_id = actor.admin_id
         action = "settlement.delete" if deleted else "settlement.restore"
         record(
             session, actor, action, "settlement", settlement.id, settlement.group_id, obj=settlement
