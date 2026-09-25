@@ -62,7 +62,7 @@ void main() {
     expect(find.text('You owe'), findsOneWidget);
     expect(find.text('₹1,250'), findsOneWidget);
     expect(find.text('Import from Tricount'), findsOneWidget);
-    expect(find.text('Soon'), findsOneWidget);
+    expect(find.text('Soon'), findsNothing); // the importer is live (features/import_tricount)
   });
 
   testWidgets('personal analytics renders every configured card by type', (tester) async {

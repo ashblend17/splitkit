@@ -1,0 +1,21 @@
+Title,Amount,Currency,Exchange rate,Amount in default currency,Date & time,Paid by,Transaction type,Category,Impacted to Ansh,Impacted to Rahul S,Impacted to Aman,Impacted to Priya,Impacted to Vivek,Impacted to Kabir M.
+Train to Goa,6680.00,INR,1,6680.00,2026-09-12 07:15:00,Aman,Normal,Transport,1336.00,1336.00,1336.00,1336.00,1336.00,
+Villa in Anjuna,11200.00,INR,1,11200.00,2026-09-12 14:00:00,Rahul S,Normal,Accommodation,2240.00,2240.00,2240.00,2240.00,2240.00,
+Cab from Madgaon station,1280.00,INR,1,1280.00,2026-09-12 16:40:00,Priya,Normal,Transport,256.00,256.00,256.00,256.00,256.00,
+Breakfast at Artjuna,1200.00,INR,1,1200.00,2026-09-13 09:30:00,Rahul S,Normal,Food & drinks,200.00,200.00,200.00,200.00,200.00,200.00
+Parasailing,3500.00,INR,1,3500.00,2026-09-13 11:00:00,Kabir M.,Normal,Entertainment,875.00,875.00,,875.00,,875.00
+Groceries for the villa,2400.00,INR,1,2400.00,2026-09-14 18:20:00,Vivek,Normal,Food & drinks,400.00,400.00,400.00,400.00,400.00,400.00
+Parking at Baga,200.00,INR,1,200.00,2026-09-14 20:05:00,Aman,Normal,Parking,,,100.00,100.00,,
+Fish thali at Ritz Classic,2450.00,INR,1,2450.00,2026-09-15 13:10:00,Priya,Normal,Food & drinks,490.00,490.00,490.00,490.00,490.00,
+Beach chairs,600.00,INR,1,600.00,2026-09-15 15:30:00,Rahul S,Normal,Entertainment,100.00,100.00,100.00,100.00,100.00,100.00
+Chai and bhajiyas,60.00,INR,1,60.00,2026-09-16 17:45:00,Aman,Normal,Food & drinks,10.00,10.00,10.00,10.00,10.00,10.00
+Drinks at Curlies,1650.00,INR,1,1650.00,2026-09-16 22:30:00,Vivek,Normal,Food & drinks,275.00,275.00,275.00,275.00,275.00,275.00
+Late-night pizza,1140.00,INR,1,1140.00,2026-09-17 23:50:00,Ansh,Normal,Food & drinks,203.00,203.00,203.00,203.00,203.00,125.00
+Beach shack lunch,2160.00,INR,1,2160.00,2026-09-18 13:00:00,Aman,Normal,Food & drinks,360.00,360.00,360.00,360.00,360.00,360.00
+Tip for driver,500.00,INR,1,500.00,2026-09-18 19:00:00,Priya,Normal,Tips,100.00,100.00,100.00,100.00,100.00,
+Scooter rentals,2400.00,INR,1,2400.00,2026-09-19 10:00:00,Priya,Normal,Transport,400.00,400.00,400.00,400.00,400.00,400.00
+Dolphin trip,30.00,USD,83.0000,2490.00,2026-09-19 16:00:00,Kabir M.,Normal,Entertainment,10.00,,,10.00,,10.00
+Return tickets,9720.00,INR,1,9720.00,2026-09-20 08:00:00,Ansh,Normal,Transport,3025.00,1377.00,2353.00,2493.00,472.00,
+Souvenirs,1500.00,INR,1,1500.00,2026-09-20 12:00:00,Vivek,Normal,Shopping,,,700.00,,700.00,
+Villa deposit back,3000.00,INR,1,3000.00,2026-09-20 12:30:00,Rahul S,Income,Accommodation,600.00,600.00,600.00,600.00,600.00,
+Aman paid Rahul back,1000.00,INR,1,1000.00,2026-09-20 18:00:00,Aman,Money transfer,,,1000.00,,,,

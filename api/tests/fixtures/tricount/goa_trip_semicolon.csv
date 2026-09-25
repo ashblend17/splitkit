@@ -1,0 +1,21 @@
+﻿TITLE;Amount (INR);currency;Exchange Rate;Amount in default currency (INR);Date;Who paid;Type;Catégorie;Paid for Ansh;Paid for Rahul S;Paid for Aman;Paid for Priya;Paid for Vivek;Paid for Kabir M.
+Train to Goa;6.680,00;INR;1;6.680,00;12/09/2026 07:15;Aman;Normal;Transport;1.336,00;1.336,00;1.336,00;1.336,00;1.336,00;
+Villa in Anjuna;11.200,00;INR;1;11.200,00;12/09/2026 14:00;Rahul S;Normal;Accommodation;2.240,00;2.240,00;2.240,00;2.240,00;2.240,00;
+Cab from Madgaon station;1.280,00;INR;1;1.280,00;12/09/2026 16:40;Priya;Normal;Transport;256,00;256,00;256,00;256,00;256,00;
+Breakfast at Artjuna;1.200,00;INR;1;1.200,00;13/09/2026 09:30;Rahul S;Normal;Food & drinks;200,00;200,00;200,00;200,00;200,00;200,00
+Parasailing;3.500,00;INR;1;3.500,00;13/09/2026 11:00;Kabir M.;Normal;Entertainment;875,00;875,00;;875,00;;875,00
+Groceries for the villa;2.400,00;INR;1;2.400,00;14/09/2026 18:20;Vivek;Normal;Food & drinks;400,00;400,00;400,00;400,00;400,00;400,00
+Parking at Baga;200,00;INR;1;200,00;14/09/2026 20:05;Aman;Normal;Parking;;;100,00;100,00;;
+Fish thali at Ritz Classic;2.450,00;INR;1;2.450,00;15/09/2026 13:10;Priya;Normal;Food & drinks;490,00;490,00;490,00;490,00;490,00;
+Beach chairs;600,00;INR;1;600,00;15/09/2026 15:30;Rahul S;Normal;Entertainment;100,00;100,00;100,00;100,00;100,00;100,00
+Chai and bhajiyas;60,00;INR;1;60,00;16/09/2026 17:45;Aman;Normal;Food & drinks;10,00;10,00;10,00;10,00;10,00;10,00
+Drinks at Curlies;1.650,00;INR;1;1.650,00;16/09/2026 22:30;Vivek;Normal;Food & drinks;275,00;275,00;275,00;275,00;275,00;275,00
+Late-night pizza;1.140,00;INR;1;1.140,00;17/09/2026 23:50;Ansh;Normal;Food & drinks;203,00;203,00;203,00;203,00;203,00;125,00
+Beach shack lunch;2.160,00;INR;1;2.160,00;18/09/2026 13:00;Aman;Normal;Food & drinks;360,00;360,00;360,00;360,00;360,00;360,00
+Tip for driver;500,00;INR;1;500,00;18/09/2026 19:00;Priya;Normal;Tips;100,00;100,00;100,00;100,00;100,00;
+Scooter rentals;2.400,00;INR;1;2.400,00;19/09/2026 10:00;Priya;Normal;Transport;400,00;400,00;400,00;400,00;400,00;400,00
+Dolphin trip;30,00;USD;83.0000;2.490,00;19/09/2026 16:00;Kabir M.;Normal;Entertainment;10,00;;;10,00;;10,00
+Return tickets;9.720,00;INR;1;9.720,00;20/09/2026 08:00;Ansh;Normal;Transport;3.025,00;1.377,00;2.353,00;2.493,00;472,00;
+Souvenirs;1.500,00;INR;1;1.500,00;20/09/2026 12:00;Vivek;Normal;Shopping;;;700,00;;700,00;
+Villa deposit back;3.000,00;INR;1;3.000,00;20/09/2026 12:30;Rahul S;Income;Accommodation;600,00;600,00;600,00;600,00;600,00;
+Aman paid Rahul back;1.000,00;INR;1;1.000,00;20/09/2026 18:00;Aman;Money transfer;;;1.000,00;;;;

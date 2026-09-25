@@ -96,6 +96,11 @@ Class | Method | HTTP request | Description
 *GroupsApi* | [**listGroups**](doc//GroupsApi.md#listgroups) | **GET** /api/v1/groups | List Groups
 *GroupsApi* | [**removeMember**](doc//GroupsApi.md#removemember) | **DELETE** /api/v1/groups/{group_id}/members/{user_id} | Remove Member
 *GroupsApi* | [**updateGroup**](doc//GroupsApi.md#updategroup) | **PATCH** /api/v1/groups/{group_id} | Update Group
+*ImportApi* | [**commitTricount**](doc//ImportApi.md#committricount) | **POST** /api/v1/import/tricount/commit | Commit Tricount
+*ImportApi* | [**getImportBatch**](doc//ImportApi.md#getimportbatch) | **GET** /api/v1/import/batches/{batch_id} | Get Import Batch
+*ImportApi* | [**listImportBatches**](doc//ImportApi.md#listimportbatches) | **GET** /api/v1/import/batches | List Import Batches
+*ImportApi* | [**previewTricount**](doc//ImportApi.md#previewtricount) | **POST** /api/v1/import/tricount/preview | Preview Tricount
+*ImportApi* | [**undoImportBatch**](doc//ImportApi.md#undoimportbatch) | **POST** /api/v1/import/batches/{batch_id}/undo | Undo Import Batch
 *PersonalApi* | [**createPersonal**](doc//PersonalApi.md#createpersonal) | **POST** /api/v1/personal/transactions | Create Personal
 *PersonalApi* | [**deletePersonal**](doc//PersonalApi.md#deletepersonal) | **DELETE** /api/v1/personal/transactions/{txn_id} | Delete Personal
 *PersonalApi* | [**getPersonal**](doc//PersonalApi.md#getpersonal) | **GET** /api/v1/personal/transactions/{txn_id} | Get Personal
@@ -134,6 +139,8 @@ Class | Method | HTTP request | Description
  - [AuditEntryOut](doc//AuditEntryOut.md)
  - [AuditPageOut](doc//AuditPageOut.md)
  - [CategoryIn](doc//CategoryIn.md)
+ - [CategoryMatchOut](doc//CategoryMatchOut.md)
+ - [CategoryOptionOut](doc//CategoryOptionOut.md)
  - [CategoryOut](doc//CategoryOut.md)
  - [CategoryTotal](doc//CategoryTotal.md)
  - [ChartBar](doc//ChartBar.md)
@@ -156,6 +163,11 @@ Class | Method | HTTP request | Description
  - [GroupUpdate](doc//GroupUpdate.md)
  - [HTTPValidationError](doc//HTTPValidationError.md)
  - [HistoryEntry](doc//HistoryEntry.md)
+ - [ImportBatchOut](doc//ImportBatchOut.md)
+ - [ImportPreviewOut](doc//ImportPreviewOut.md)
+ - [ImportRowOut](doc//ImportRowOut.md)
+ - [ImportStatsOut](doc//ImportStatsOut.md)
+ - [ImportTotalsOut](doc//ImportTotalsOut.md)
  - [LayoutCard](doc//LayoutCard.md)
  - [LayoutIn](doc//LayoutIn.md)
  - [LayoutOut](doc//LayoutOut.md)
@@ -164,11 +176,15 @@ Class | Method | HTTP request | Description
  - [MoneyTotal](doc//MoneyTotal.md)
  - [OverallBalancesOut](doc//OverallBalancesOut.md)
  - [PersonBalance](doc//PersonBalance.md)
+ - [PersonOut](doc//PersonOut.md)
  - [PersonalListOut](doc//PersonalListOut.md)
  - [PersonalSummaryOut](doc//PersonalSummaryOut.md)
  - [PersonalTxnIn](doc//PersonalTxnIn.md)
  - [PersonalTxnOut](doc//PersonalTxnOut.md)
  - [RegisterIn](doc//RegisterIn.md)
+ - [ReviewItemOut](doc//ReviewItemOut.md)
+ - [RowIssueOut](doc//RowIssueOut.md)
+ - [RowShareOut](doc//RowShareOut.md)
  - [SettleUpIn](doc//SettleUpIn.md)
  - [SettleUpOut](doc//SettleUpOut.md)
  - [SettleUpPlanOut](doc//SettleUpPlanOut.md)

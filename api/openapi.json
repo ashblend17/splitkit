@@ -617,6 +617,65 @@
         "title": "AuditPageOut",
         "type": "object"
       },
+      "Body_commit_tricount": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "The same file that was previewed",
+            "title": "File",
+            "type": "string"
+          },
+          "options": {
+            "description": "ImportCommitIn as JSON",
+            "title": "Options",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "options"
+        ],
+        "title": "Body_commit_tricount",
+        "type": "object"
+      },
+      "Body_preview_tricount": {
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "Tricount export, CSV or XLSX",
+            "title": "File",
+            "type": "string"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_preview_tricount",
+        "type": "object"
+      },
       "CategoryIn": {
         "properties": {
           "icon": {
@@ -659,6 +718,59 @@
           "label"
         ],
         "title": "CategoryIn",
+        "type": "object"
+      },
+      "CategoryMatchOut": {
+        "properties": {
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "rows",
+          "key"
+        ],
+        "title": "CategoryMatchOut",
+        "type": "object"
+      },
+      "CategoryOptionOut": {
+        "properties": {
+          "icon": {
+            "title": "Icon",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "icon"
+        ],
+        "title": "CategoryOptionOut",
         "type": "object"
       },
       "CategoryOut": {
@@ -1684,6 +1796,376 @@
         "title": "HistoryEntry",
         "type": "object"
       },
+      "ImportBatchOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/ImportStatsOut"
+          },
+          "undone_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Undone At"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "file_name",
+          "group_id",
+          "group_name",
+          "created_at",
+          "undone_at",
+          "stats"
+        ],
+        "title": "ImportBatchOut",
+        "type": "object"
+      },
+      "ImportPreviewOut": {
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/UserBrief"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryMatchOut"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "category_options": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryOptionOut"
+            },
+            "title": "Category Options",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "file_name": {
+            "title": "File Name",
+            "type": "string"
+          },
+          "group_name": {
+            "title": "Group Name",
+            "type": "string"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/PersonOut"
+            },
+            "title": "People",
+            "type": "array"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ImportRowOut"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ImportTotalsOut"
+          }
+        },
+        "required": [
+          "file_name",
+          "group_name",
+          "currency",
+          "people",
+          "candidates",
+          "categories",
+          "category_options",
+          "rows",
+          "totals"
+        ],
+        "title": "ImportPreviewOut",
+        "type": "object"
+      },
+      "ImportRowOut": {
+        "properties": {
+          "amount_minor": {
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/RowIssueOut"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "expense",
+              "transfer",
+              "income"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "line": {
+            "title": "Line",
+            "type": "integer"
+          },
+          "original": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original"
+          },
+          "payer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payer"
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/RowShareOut"
+            },
+            "title": "Shares",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line",
+          "date",
+          "title",
+          "kind",
+          "payer",
+          "amount_minor",
+          "currency",
+          "original",
+          "shares",
+          "category",
+          "issues"
+        ],
+        "title": "ImportRowOut",
+        "type": "object"
+      },
+      "ImportStatsOut": {
+        "properties": {
+          "created_group": {
+            "title": "Created Group",
+            "type": "boolean"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "expense_total_minor": {
+            "title": "Expense Total Minor",
+            "type": "integer"
+          },
+          "expenses": {
+            "title": "Expenses",
+            "type": "integer"
+          },
+          "people": {
+            "title": "People",
+            "type": "integer"
+          },
+          "placeholders": {
+            "title": "Placeholders",
+            "type": "integer"
+          },
+          "review": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewItemOut"
+            },
+            "title": "Review",
+            "type": "array"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "skipped_rows": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skipped Rows",
+            "type": "array"
+          },
+          "transfer_total_minor": {
+            "title": "Transfer Total Minor",
+            "type": "integer"
+          },
+          "transfers": {
+            "title": "Transfers",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expenses",
+          "expense_total_minor",
+          "transfers",
+          "transfer_total_minor",
+          "people",
+          "placeholders",
+          "skipped",
+          "currency",
+          "created_group",
+          "review",
+          "skipped_rows"
+        ],
+        "title": "ImportStatsOut",
+        "type": "object"
+      },
+      "ImportTotalsOut": {
+        "properties": {
+          "expense_total_minor": {
+            "title": "Expense Total Minor",
+            "type": "integer"
+          },
+          "expenses": {
+            "title": "Expenses",
+            "type": "integer"
+          },
+          "first_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Date"
+          },
+          "last_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Date"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "transfer_total_minor": {
+            "title": "Transfer Total Minor",
+            "type": "integer"
+          },
+          "transfers": {
+            "title": "Transfers",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expenses",
+          "expense_total_minor",
+          "transfers",
+          "transfer_total_minor",
+          "skipped",
+          "first_date",
+          "last_date"
+        ],
+        "title": "ImportTotalsOut",
+        "type": "object"
+      },
       "LayoutCard": {
         "properties": {
           "params": {
@@ -1891,6 +2373,46 @@
           "net_minor"
         ],
         "title": "PersonBalance",
+        "type": "object"
+      },
+      "PersonOut": {
+        "properties": {
+          "match": {
+            "enum": [
+              "you",
+              "matched",
+              "suggested",
+              "unmatched"
+            ],
+            "title": "Match",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "rows",
+          "match",
+          "user"
+        ],
+        "title": "PersonOut",
         "type": "object"
       },
       "PersonalListOut": {
@@ -2198,6 +2720,82 @@
           "password"
         ],
         "title": "RegisterIn",
+        "type": "object"
+      },
+      "ReviewItemOut": {
+        "properties": {
+          "expense_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expense Id"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "why",
+          "expense_id"
+        ],
+        "title": "ReviewItemOut",
+        "type": "object"
+      },
+      "RowIssueOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "error",
+              "warning"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "code",
+          "message"
+        ],
+        "title": "RowIssueOut",
+        "type": "object"
+      },
+      "RowShareOut": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "share_minor": {
+            "title": "Share Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "share_minor"
+        ],
+        "title": "RowShareOut",
         "type": "object"
       },
       "SettleUpIn": {
@@ -6987,6 +7585,428 @@
         "summary": "Health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/v1/import/batches": {
+      "get": {
+        "description": "Your imports, newest first.",
+        "operationId": "list_import_batches",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImportBatchOut"
+                  },
+                  "title": "Response List Import Batches",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Import Batches",
+        "tags": [
+          "import"
+        ]
+      }
+    },
+    "/api/v1/import/batches/{batch_id}": {
+      "get": {
+        "operationId": "get_import_batch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Import Batch",
+        "tags": [
+          "import"
+        ]
+      }
+    },
+    "/api/v1/import/batches/{batch_id}/undo": {
+      "post": {
+        "description": "Remove everything this import created (soft deletes, so items can be restored one by\none). Calling it again changes nothing.",
+        "operationId": "undo_import_batch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Undo Import Batch",
+        "tags": [
+          "import"
+        ]
+      }
+    },
+    "/api/v1/import/tricount/commit": {
+      "post": {
+        "description": "Import the file in one go, as one batch that can be undone.\n\n`options` is JSON: `{\"group_id\": …}` or `{\"new_group\": {\"name\", \"currency\", \"icon\"}}`,\nplus `people` (`[{\"name\", \"user_id\"}]`; no `user_id` makes a placeholder member) and\n`categories` (`{\"Tricount category\": \"key\"}`; anything unmapped becomes Other).",
+        "operationId": "commit_tricount",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_commit_tricount"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Commit Tricount",
+        "tags": [
+          "import"
+        ]
+      }
+    },
+    "/api/v1/import/tricount/preview": {
+      "post": {
+        "description": "Read a Tricount export and suggest how to map it. Saves nothing.\n\n`group_id`: import into this group (people are matched against its members).\nOtherwise a new group is assumed; `currency` sets its currency (default: the file's).",
+        "operationId": "preview_tricount",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_preview_tricount"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview Tricount",
+        "tags": [
+          "import"
         ]
       }
     },
