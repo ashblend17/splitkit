@@ -11,6 +11,7 @@ import 'package:sembast/sembast_memory.dart';
 import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/local/providers.dart';
 import 'package:splitkit/core/router/router.dart';
+import 'package:splitkit/features/admin/view_as.dart';
 import 'package:splitkit/core/session/session.dart';
 import 'package:splitkit/core/theme/theme.dart';
 
@@ -58,8 +59,18 @@ class FakeBackend {
 
   /// Every stream the seeded user can see, as captured from the API (tool/capture_api_fixtures.py).
   /// Screens read from the local store, which syncs from these.
-  late final Map<String, dynamic> snapshots =
-      ((jsonDecode(File('test/fixtures/sync/john.json').readAsStringSync()) as Map)['snapshots'] as Map).cast();
+  late final Map<String, dynamic> snapshots = syncFixture('john');
+
+  /// Other users' streams, by bearer token (view-as tests serve Rahul's to the view-as token).
+  final snapshotsByToken = <String, Map<String, dynamic>>{};
+
+  static Map<String, dynamic> syncFixture(String user) =>
+      ((jsonDecode(File('test/fixtures/sync/$user.json').readAsStringSync()) as Map)['snapshots'] as Map).cast();
+
+  Map<String, dynamic> _snapshotsFor(http.Request req) {
+    final token = (req.headers['Authorization'] ?? req.headers['authorization'] ?? '').replaceFirst('Bearer ', '');
+    return snapshotsByToken[token] ?? snapshots;
+  }
 
   /// Changes to hand out on the next POST /sync, per stream (seq must follow the snapshot's head).
   final pendingChanges = <String, List<Map<String, dynamic>>>{};
@@ -73,7 +84,7 @@ class FakeBackend {
     final cursors = ((jsonDecode(req.body) as Map)['cursors'] as Map? ?? {}).cast<String, dynamic>();
     return _json({
       'streams': [
-        for (final s in snapshots.entries)
+        for (final s in _snapshotsFor(req).entries)
           () {
             final head = s.value['head_seq'] as int;
             final changes = pendingChanges[s.key] ?? const [];
@@ -94,7 +105,7 @@ class FakeBackend {
         final path = req.url.path;
         if (path == '/api/v1/sync') return _sync(req);
         if (path.startsWith('/api/v1/sync/snapshot/')) {
-          final snap = snapshots[Uri.decodeComponent(path.substring('/api/v1/sync/snapshot/'.length))];
+          final snap = _snapshotsFor(req)[Uri.decodeComponent(path.substring('/api/v1/sync/snapshot/'.length))];
           return snap == null ? _json({'error': {'code': 'not_found', 'message': 'Not found'}}, 404) : _json(snap);
         }
         if (req.method == 'GET') {
@@ -168,7 +179,11 @@ Future<FakeBackend> pumpApp(
   final router = container.read(routerProvider);
   await tester.pumpWidget(UncontrolledProviderScope(
     container: container,
-    child: MaterialApp.router(theme: buildSplitkitTheme(), routerConfig: router),
+    child: MaterialApp.router(
+      theme: buildSplitkitTheme(),
+      routerConfig: router,
+      builder: (context, child) => ViewAsChrome(child: child!),
+    ),
   ));
   await tester.pumpAndSettle();
   if (location != null) {

@@ -170,10 +170,71 @@ class SessionController extends AsyncNotifier<Session?> {
   }
 
   /// The token stopped working (expired or revoked). Signs out but keeps the device's data,
-  /// so signing in again picks up where it left off.
+  /// so signing in again picks up where it left off. In view-as, it only ends the view-as.
   Future<void> expire() async {
+    if (_admin != null) {
+      state = AsyncData(_admin);
+      _admin = null;
+      return;
+    }
     await _store.clear();
     state = const AsyncData(null);
+  }
+
+  // ---- view-as (screen 18) ----
+
+  /// The admin's own session while they view the app as someone else. Only in memory: the
+  /// saved sign-in stays the admin's, so a restart always comes back as the admin.
+  Session? _admin;
+
+  /// Switches the app to [out]'s user (from `POST /admin/sessions`). Every request then runs as
+  /// them on the view-as token; their data syncs into a throwaway in-memory database.
+  void startViewAs(AdminSessionStartOut out) {
+    final admin = _admin ?? state.value;
+    if (admin == null) return;
+    _admin = admin;
+    state = AsyncData(Session(
+      token: out.accessToken,
+      user: out.user,
+      adminId: admin.user.id,
+      readOnly: out.session.mode == AdminSessionOutModeEnum.readOnly,
+      viewAsSessionId: out.session.id,
+    ));
+  }
+
+  /// "Allow edits" / "Make read-only": the admin's own token changes the session's mode, and
+  /// the same view-as token follows at once (the server reads the mode from the session).
+  Future<void> setViewAsEditing(bool editing) async {
+    final current = state.value;
+    final admin = _admin;
+    if (current?.viewAsSessionId == null || admin == null) return;
+    await AdminApi(_api(admin.token).client).updateAdminSession(
+      current!.viewAsSessionId!,
+      AdminSessionUpdate(mode: editing ? AdminSessionUpdateModeEnum.edit : AdminSessionUpdateModeEnum.readOnly),
+    );
+    state = AsyncData(Session(
+      token: current.token,
+      user: current.user,
+      adminId: current.adminId,
+      readOnly: !editing,
+      viewAsSessionId: current.viewAsSessionId,
+    ));
+  }
+
+  /// Ends the view-as session on the server (best effort) and goes back to the admin.
+  Future<void> exitViewAs() async {
+    final current = state.value;
+    final admin = _admin;
+    if (admin == null) return;
+    if (current?.viewAsSessionId != null) {
+      try {
+        await AdminApi(_api(admin.token).client).endAdminSession(current!.viewAsSessionId!);
+      } on ApiException {
+        // Offline or already ended: it expires on its own.
+      }
+    }
+    _admin = null;
+    state = AsyncData(admin);
   }
 }
 
