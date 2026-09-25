@@ -6,11 +6,13 @@ import 'package:intl/intl.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/providers.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import 'device_card.dart';
 
 /// Screen 13: who you are, this month at a glance, settings.
 class ProfilePage extends ConsumerWidget {
@@ -95,12 +97,16 @@ class ProfilePage extends ConsumerWidget {
                           'Log out',
                           '',
                           () async {
+                            final unsynced = ref.read(outboxProvider).length;
                             final ok = await showConfirmDialog(
                               context,
                               title: 'Log out?',
-                              body: 'You can log back in with your email and password.',
+                              body: unsynced == 0
+                                  ? 'You can log back in with your email and password.'
+                                  : '$unsynced change(s) on this device haven\'t reached the server and will be '
+                                        'deleted. Copy them from "This device" first if you need them.',
                               confirmLabel: 'Log out',
-                              destructive: false,
+                              destructive: unsynced > 0,
                             );
                             if (ok) await ref.read(sessionProvider.notifier).logout();
                           },
@@ -110,6 +116,8 @@ class ProfilePage extends ConsumerWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  const DeviceCard(),
                 ],
               ),
             ),
