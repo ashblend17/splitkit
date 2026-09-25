@@ -89,7 +89,7 @@ class ProfilePage extends ConsumerWidget {
                           categories.hasValue ? '${categories.value!.length}' : '',
                           () => context.go('/profile/categories'),
                         ),
-                        _link('upload', 'Import from Tricount', 'Soon', null),
+                        _link('upload', 'Import from Tricount', '', () => context.go('/profile/import')),
                         _link(
                           'logout',
                           'Log out',

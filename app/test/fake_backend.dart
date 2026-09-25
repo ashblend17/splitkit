@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -145,6 +146,8 @@ Future<FakeBackend> pumpApp(
   Size size = const Size(390, 844),
   String? database,
   TokenStore? tokens,
+  http.Client? client,
+  List<Override> overrides = const [],
 }) async {
   final be = backend ?? FakeBackend();
   tester.view.physicalSize = size;
@@ -152,11 +155,12 @@ Future<FakeBackend> pumpApp(
   addTearDown(tester.view.reset);
   final container = ProviderContainer(
     overrides: [
-      httpClientProvider.overrideWithValue(be.client),
+      httpClientProvider.overrideWithValue(client ?? be.client),
       tokenStoreProvider.overrideWithValue(tokens ?? MemoryTokenStore(token)),
       localDatabaseFactoryProvider.overrideWithValue(databaseFactoryMemory),
       localDatabasePathProvider.overrideWithValue((userId) async => database ?? 'test-${_databases++}-$userId'),
       syncIntervalProvider.overrideWithValue(null),
+      ...overrides,
     ],
     retry: (_, _) => null,
   );

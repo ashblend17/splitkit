@@ -208,6 +208,10 @@ class ApiClient {
           return AuditPageOut.fromJson(value);
         case 'CategoryIn':
           return CategoryIn.fromJson(value);
+        case 'CategoryMatchOut':
+          return CategoryMatchOut.fromJson(value);
+        case 'CategoryOptionOut':
+          return CategoryOptionOut.fromJson(value);
         case 'CategoryOut':
           return CategoryOut.fromJson(value);
         case 'CategoryTotal':
@@ -252,6 +256,16 @@ class ApiClient {
           return HTTPValidationError.fromJson(value);
         case 'HistoryEntry':
           return HistoryEntry.fromJson(value);
+        case 'ImportBatchOut':
+          return ImportBatchOut.fromJson(value);
+        case 'ImportPreviewOut':
+          return ImportPreviewOut.fromJson(value);
+        case 'ImportRowOut':
+          return ImportRowOut.fromJson(value);
+        case 'ImportStatsOut':
+          return ImportStatsOut.fromJson(value);
+        case 'ImportTotalsOut':
+          return ImportTotalsOut.fromJson(value);
         case 'LayoutCard':
           return LayoutCard.fromJson(value);
         case 'LayoutIn':
@@ -268,6 +282,8 @@ class ApiClient {
           return OverallBalancesOut.fromJson(value);
         case 'PersonBalance':
           return PersonBalance.fromJson(value);
+        case 'PersonOut':
+          return PersonOut.fromJson(value);
         case 'PersonalListOut':
           return PersonalListOut.fromJson(value);
         case 'PersonalSummaryOut':
@@ -278,6 +294,12 @@ class ApiClient {
           return PersonalTxnOut.fromJson(value);
         case 'RegisterIn':
           return RegisterIn.fromJson(value);
+        case 'ReviewItemOut':
+          return ReviewItemOut.fromJson(value);
+        case 'RowIssueOut':
+          return RowIssueOut.fromJson(value);
+        case 'RowShareOut':
+          return RowShareOut.fromJson(value);
         case 'SettleUpIn':
           return SettleUpIn.fromJson(value);
         case 'SettleUpOut':

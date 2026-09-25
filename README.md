@@ -162,3 +162,31 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   each has `validate(total_minor, inputs)` and `allocate(total_minor, inputs)`. Rounding uses
   largest remainder, with ties going to the earlier input, so shares always add up to the total.
 - A deferred database trigger rejects any expense whose splits don't add up to its amount.
+
+## Tricount import
+
+A deletable module: `api/app/modules/import_tricount/` and `app/lib/features/import_tricount/`,
+reached from Profile → Import from Tricount (`/profile/import`). Nothing else depends on it except
+the router entry, the Profile link and the `import_batch_id` columns.
+
+- `POST /import/tricount/preview` (multipart `file`, optional `group_id` / `currency`) parses the
+  export and saves nothing: suggested people and category mappings, every row in minor units with
+  its issues, and totals. It is stateless; the client keeps the file.
+- `POST /import/tricount/commit` (the same `file` plus `options` JSON: target, people, categories)
+  imports everything in one transaction as one `import_batches` row. Expenses become exact splits,
+  money transfers become payments (one per recipient), income rows are skipped. The group, the
+  memberships, expenses and payments it creates carry `import_batch_id`, and every write goes
+  through `record()`.
+- `GET /import/batches`, `GET /import/batches/{id}` and `POST /import/batches/{id}/undo`. Undo
+  soft-deletes the batch's expenses and payments (edited ones too), ends the memberships it added
+  for people left in nothing live, and archives a group it created once it's empty. Undoing
+  twice changes nothing.
+- The parser (`parser.py`) matches headers case-insensitively by alias: Tricount's own
+  `Title, Amount, Currency, Exchange rate, Amount in default currency, Date & time, Paid by,
+  Transaction type, Category, Impacted to <name>…`, plus `Paid for`/`Share <name>`, `Paid by <name>`
+  (Sesterce layout), `Who paid`, `Description`, `Total`. It reads CSV (`,` `;` tab `|`, BOM,
+  UTF-8/16 or cp1252) and XLSX, decimal commas and thousands separators, and ISO, d/m/y, m/d/y
+  (decided per file) and text dates. `plan.py` turns rows into minor units: shares that add up are
+  kept; a few paise of Tricount rounding, or a converted row, is re-spread with the split engine's
+  largest remainder; a bigger gap is a row error ("₹100 still needs to be allocated").
+- Sample exports are in `api/tests/fixtures/tricount/` (the mockup's Goa Trip).
