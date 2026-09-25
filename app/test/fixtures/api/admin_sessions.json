@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "id": "c3f199b1-0c41-40c3-b217-3ed044dc9902",
+      "admin": {
+        "id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "name": "Ansh C",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "target": {
+        "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "name": "Priya Nair",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "mode": "edit",
+      "started_at": "2026-09-23T15:40:00Z",
+      "ended_at": "2026-09-23T15:50:00Z",
+      "expires_at": null,
+      "active": false
+    }
+  ],
+  "total": 1,
+  "has_more": false
+}

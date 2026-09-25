@@ -33,8 +33,7 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // The Admin tab arrives with the admin area (build step 8).
-    final destinations = NavDestination.primary();
+    final destinations = NavDestination.primary(admin: ref.watch(meProvider).role == 'admin');
     final current = _keys[shell.currentIndex];
     final body = SyncBanner(child: shell);
     switch (SkLayout.of(context)) {

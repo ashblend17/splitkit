@@ -9,8 +9,14 @@ from app.core.db import Base, now_default, uuid_pk
 
 
 class AdminSession(Base):
+    """An admin viewing the app as another user. Its id is inside the impersonation token, so
+    ending the session (or letting it expire) stops that token working."""
+
     __tablename__ = "admin_sessions"
-    __table_args__ = (CheckConstraint("mode IN ('read_only', 'edit')", name="mode"),)
+    __table_args__ = (
+        CheckConstraint("mode IN ('read_only', 'edit')", name="mode"),
+        Index("ix_admin_sessions_started_at", text("started_at DESC")),
+    )
 
     id: Mapped[uuid.UUID] = uuid_pk()
     admin_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
@@ -18,6 +24,8 @@ class AdminSession(Base):
     mode: Mapped[str] = mapped_column(server_default="read_only")
     started_at: Mapped[datetime] = now_default()
     ended_at: Mapped[datetime | None]
+    expires_at: Mapped[datetime | None]
+    """When the impersonation token runs out. NULL for sessions made before build step 8."""
 
 
 class AuditLog(Base):
@@ -25,6 +33,8 @@ class AuditLog(Base):
     __table_args__ = (
         Index("ix_audit_logs_at", text("at DESC")),
         Index("ix_audit_logs_entity", "entity", "entity_id"),
+        Index("ix_audit_logs_actor_id", "actor_id"),
+        Index("ix_audit_logs_acting_as_id", "acting_as_id"),
     )
 
     id: Mapped[uuid.UUID] = uuid_pk()

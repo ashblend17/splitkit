@@ -3,10 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 import app.models  # noqa: F401  (register every table, so cross-module foreign keys resolve)
+from app import __version__
 from app.core.config import get_settings
 from app.core.db import engine
 from app.core.errors import install_error_handler
 from app.core.schemas import ErrorResponse
+from app.modules.admin.router import router as admin_router
 from app.modules.analytics.router import router as analytics_router
 from app.modules.auth.router import router as auth_router
 from app.modules.balances.router import router as balances_router
@@ -23,7 +25,7 @@ API_PREFIX = "/api/v1"
 
 app = FastAPI(
     title="Splitkit API",
-    version="0.1.0",
+    version=__version__,
     openapi_url=f"{API_PREFIX}/openapi.json",
     docs_url=f"{API_PREFIX}/docs",
     redoc_url=None,
@@ -63,6 +65,7 @@ for module_router in (
     personal_router,
     analytics_router,
     sync_router,
+    admin_router,
 ):
     api.include_router(module_router)
 
