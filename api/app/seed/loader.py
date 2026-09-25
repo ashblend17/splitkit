@@ -167,6 +167,8 @@ def load(session: Session) -> dict[str, int]:
     )
     session.add_all(
         PersonalTransaction(
+            # Deterministic ids, so captured fixtures don't change on every reseed.
+            id=seed_id("personal", f"{p.user}:{i}"),
             user_id=uid[p.user],
             type=p.type,
             amount_minor=rupees(p.amount),
@@ -177,10 +179,11 @@ def load(session: Session) -> dict[str, int]:
             notes=p.notes,
             created_at=p.created or d.at(p.day, 9, 0),
         )
-        for p in d.PERSONAL
+        for i, p in enumerate(d.PERSONAL)
     )
     session.add_all(
         AnalyticsConfiguration(
+            id=seed_id("analytics", f"{a.scope}:{a.position}"),
             scope=a.scope,
             owner_id=None,
             position=a.position,

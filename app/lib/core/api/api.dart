@@ -33,6 +33,7 @@ class Api {
   late final balances = BalancesApi(client);
   late final personal = PersonalApi(client);
   late final analytics = AnalyticsApi(client);
+  late final sync = SyncApi(client);
 }
 
 /// The human message from the API's error body ({"error": {"code", "message"}}), for showing

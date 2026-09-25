@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:sembast/sembast_memory.dart';
+import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/local/providers.dart';
 import 'package:splitkit/core/router/router.dart';
 import 'package:splitkit/core/session/session.dart';
 import 'package:splitkit/core/theme/theme.dart';
@@ -52,8 +55,47 @@ class FakeBackend {
   final gets = <Uri>[];
   Map<String, (int, Object)> postResponses = {};
 
+  /// Every stream the seeded user can see, as captured from the API (tool/capture_api_fixtures.py).
+  /// Screens read from the local store, which syncs from these.
+  late final Map<String, dynamic> snapshots =
+      ((jsonDecode(File('test/fixtures/sync/ansh.json').readAsStringSync()) as Map)['snapshots'] as Map).cast();
+
+  /// Changes to hand out on the next POST /sync, per stream (seq must follow the snapshot's head).
+  final pendingChanges = <String, List<Map<String, dynamic>>>{};
+  int syncCalls = 0;
+
+  http.Response _json(Object body, [int status = 200]) =>
+      http.Response.bytes(utf8.encode(jsonEncode(body)), status, headers: {'content-type': 'application/json'});
+
+  http.Response _sync(http.Request req) {
+    syncCalls++;
+    final cursors = ((jsonDecode(req.body) as Map)['cursors'] as Map? ?? {}).cast<String, dynamic>();
+    return _json({
+      'streams': [
+        for (final s in snapshots.entries)
+          () {
+            final head = s.value['head_seq'] as int;
+            final changes = pendingChanges[s.key] ?? const [];
+            final cursor = cursors[s.key] as int?;
+            if (cursor == null) return {'stream': s.key, 'status': 'snapshot_required', 'head_seq': head, 'changes': [], 'has_more': false};
+            final fresh = [for (final c in changes) if ((c['seq'] as int) > cursor) c];
+            return {'stream': s.key, 'status': 'ok', 'head_seq': head + changes.length, 'changes': fresh, 'has_more': false};
+          }(),
+      ],
+    });
+  }
+
+  /// Every request fails as if there were no network.
+  bool offline = false;
+
   http.Client get client => MockClient((req) async {
+        if (offline) throw http.ClientException('Network is unreachable', req.url);
         final path = req.url.path;
+        if (path == '/api/v1/sync') return _sync(req);
+        if (path.startsWith('/api/v1/sync/snapshot/')) {
+          final snap = snapshots[Uri.decodeComponent(path.substring('/api/v1/sync/snapshot/'.length))];
+          return snap == null ? _json({'error': {'code': 'not_found', 'message': 'Not found'}}, 404) : _json(snap);
+        }
         if (req.method == 'GET') {
           gets.add(req.url);
           final scoped = req.url.queryParameters['scope'];
@@ -68,16 +110,29 @@ class FakeBackend {
       });
 }
 
-class _MemoryTokenStore extends TokenStore {
-  _MemoryTokenStore(this.token);
+var _databases = 0;
+
+/// The token (and saved user) in memory. Pass the same one to two `pumpApp` calls to simulate
+/// a restart.
+class MemoryTokenStore extends TokenStore {
+  MemoryTokenStore(this.token);
   String? token;
+  UserOut? user;
+
+  @override
+  Future<UserOut?> readUser() async => user;
+  @override
+  Future<void> writeUser(UserOut u) async => user = u;
 
   @override
   Future<String?> read() async => token;
   @override
   Future<void> write(String t) async => token = t;
   @override
-  Future<void> clear() async => token = null;
+  Future<void> clear() async {
+    token = null;
+    user = null;
+  }
 }
 
 /// Pumps the whole app (router, shell, theme) at a phone size unless [size] says otherwise,
@@ -88,6 +143,8 @@ Future<FakeBackend> pumpApp(
   String? token = 'test-token',
   FakeBackend? backend,
   Size size = const Size(390, 844),
+  String? database,
+  TokenStore? tokens,
 }) async {
   final be = backend ?? FakeBackend();
   tester.view.physicalSize = size;
@@ -96,7 +153,10 @@ Future<FakeBackend> pumpApp(
   final container = ProviderContainer(
     overrides: [
       httpClientProvider.overrideWithValue(be.client),
-      tokenStoreProvider.overrideWithValue(_MemoryTokenStore(token)),
+      tokenStoreProvider.overrideWithValue(tokens ?? MemoryTokenStore(token)),
+      localDatabaseFactoryProvider.overrideWithValue(databaseFactoryMemory),
+      localDatabasePathProvider.overrideWithValue((userId) async => database ?? 'test-${_databases++}-$userId'),
+      syncIntervalProvider.overrideWithValue(null),
     ],
     retry: (_, _) => null,
   );

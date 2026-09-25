@@ -1,0 +1,1971 @@
+{
+ "about": "Language-neutral test vectors for the balance engine (api/app/modules/balances/engine.py) and the settle-up planner (api/app/modules/settlements/planner.py). Expected values come from the Python code; the Dart port (app/lib/core/local/balance_engine.dart) must match. Amounts are minor units. 'shares' are [person, share_minor]; a settlement 'from' paid 'to'. pairwise: positive means they owe 'me'. simplified: [debtor, creditor, amount]. Settle-up balances are [group, net] in paying-down order (positive: the friend owes you); plan entries are [group, friend_pays, amount]. Expected values are written by the Python code: add a case's inputs, then run `uv run python -m tests.test_balance_vectors --regenerate` in api/.",
+ "cases": [
+  {
+   "name": "mockup: Rahul paid dinner, you settle part",
+   "expenses": [
+    {
+     "payer": "rahul",
+     "shares": [
+      [
+       "you",
+       450
+      ],
+      [
+       "rahul",
+       450
+      ],
+      [
+       "aman",
+       450
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "you",
+     "to": "rahul",
+     "amount": 200
+    }
+   ],
+   "me": "you",
+   "pairwise": {
+    "rahul": -250
+   },
+   "positions": {
+    "aman": -450,
+    "rahul": 700,
+    "you": -250
+   },
+   "simplified": [
+    [
+     "aman",
+     "rahul",
+     450
+    ],
+    [
+     "you",
+     "rahul",
+     250
+    ]
+   ]
+  },
+  {
+   "name": "settlements cancel expenses",
+   "expenses": [
+    {
+     "payer": "rahul",
+     "shares": [
+      [
+       "you",
+       1000
+      ],
+      [
+       "rahul",
+       1000
+      ]
+     ]
+    },
+    {
+     "payer": "you",
+     "shares": [
+      [
+       "you",
+       300
+      ],
+      [
+       "aman",
+       300
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "you",
+     "to": "rahul",
+     "amount": 400
+    }
+   ],
+   "me": "you",
+   "pairwise": {
+    "aman": 300,
+    "rahul": -600
+   },
+   "positions": {
+    "aman": -300,
+    "rahul": 600,
+    "you": -300
+   },
+   "simplified": [
+    [
+     "aman",
+     "rahul",
+     300
+    ],
+    [
+     "you",
+     "rahul",
+     300
+    ]
+   ]
+  },
+  {
+   "name": "chain collapses to one payment",
+   "expenses": [
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "a",
+       100
+      ]
+     ]
+    },
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "b",
+       100
+      ]
+     ]
+    }
+   ],
+   "settlements": [],
+   "me": "a",
+   "pairwise": {
+    "b": -100
+   },
+   "positions": {
+    "a": -100,
+    "b": 0,
+    "c": 100
+   },
+   "simplified": [
+    [
+     "a",
+     "c",
+     100
+    ]
+   ]
+  },
+  {
+   "name": "ties broken by name",
+   "expenses": [
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "a",
+       50
+      ]
+     ]
+    },
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "b",
+       50
+      ]
+     ]
+    }
+   ],
+   "settlements": [],
+   "me": "a",
+   "pairwise": {
+    "c": -50
+   },
+   "positions": {
+    "a": -50,
+    "b": -50,
+    "c": 50,
+    "d": 50
+   },
+   "simplified": [
+    [
+     "a",
+     "c",
+     50
+    ],
+    [
+     "b",
+     "d",
+     50
+    ]
+   ]
+  },
+  {
+   "name": "payer's own share and zero shares make no flow",
+   "expenses": [
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "a",
+       500
+      ],
+      [
+       "b",
+       0
+      ],
+      [
+       "c",
+       250
+      ]
+     ]
+    }
+   ],
+   "settlements": [],
+   "me": "b",
+   "pairwise": {},
+   "positions": {
+    "a": 250,
+    "c": -250
+   },
+   "simplified": [
+    [
+     "c",
+     "a",
+     250
+    ]
+   ]
+  },
+  {
+   "name": "everyone square",
+   "expenses": [
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "b",
+       100
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "b",
+     "to": "a",
+     "amount": 100
+    }
+   ],
+   "me": "a",
+   "pairwise": {
+    "b": 0
+   },
+   "positions": {
+    "a": 0,
+    "b": 0
+   },
+   "simplified": []
+  },
+  {
+   "name": "overpaid settlement flips direction",
+   "expenses": [
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "b",
+       100
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "b",
+     "to": "a",
+     "amount": 150
+    }
+   ],
+   "me": "b",
+   "pairwise": {
+    "a": 50
+   },
+   "positions": {
+    "a": -50,
+    "b": 50
+   },
+   "simplified": [
+    [
+     "a",
+     "b",
+     50
+    ]
+   ]
+  },
+  {
+   "name": "random 0",
+   "expenses": [
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "f",
+       6168
+      ],
+      [
+       "a",
+       23965
+      ],
+      [
+       "e",
+       38193
+      ],
+      [
+       "c",
+       3801
+      ]
+     ]
+    },
+    {
+     "payer": "e",
+     "shares": [
+      [
+       "a",
+       28419
+      ],
+      [
+       "f",
+       27405
+      ]
+     ]
+    },
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "a",
+       27821
+      ],
+      [
+       "e",
+       3873
+      ]
+     ]
+    },
+    {
+     "payer": "e",
+     "shares": [
+      [
+       "b",
+       41328
+      ]
+     ]
+    },
+    {
+     "payer": "f",
+     "shares": [
+      [
+       "a",
+       3052
+      ],
+      [
+       "e",
+       36481
+      ],
+      [
+       "d",
+       8727
+      ],
+      [
+       "f",
+       18979
+      ],
+      [
+       "c",
+       27468
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "a",
+       6753
+      ],
+      [
+       "e",
+       38115
+      ],
+      [
+       "c",
+       37434
+      ],
+      [
+       "d",
+       41871
+      ],
+      [
+       "f",
+       12312
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "a",
+     "to": "e",
+     "amount": 23335
+    },
+    {
+     "from": "a",
+     "to": "e",
+     "amount": 1954
+    }
+   ],
+   "me": "e",
+   "pairwise": {
+    "a": -743,
+    "b": -34980,
+    "f": -9076
+   },
+   "positions": {
+    "a": -33027,
+    "b": 167284,
+    "c": -68703,
+    "d": -50598,
+    "e": -44799,
+    "f": 29843
+   },
+   "simplified": [
+    [
+     "c",
+     "b",
+     68703
+    ],
+    [
+     "d",
+     "b",
+     50598
+    ],
+    [
+     "e",
+     "b",
+     44799
+    ],
+    [
+     "a",
+     "f",
+     29843
+    ],
+    [
+     "a",
+     "b",
+     3184
+    ]
+   ]
+  },
+  {
+   "name": "random 1",
+   "expenses": [
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "d",
+       23696
+      ],
+      [
+       "c",
+       19645
+      ],
+      [
+       "f",
+       16280
+      ],
+      [
+       "e",
+       11781
+      ],
+      [
+       "b",
+       45809
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "e",
+       19677
+      ]
+     ]
+    },
+    {
+     "payer": "e",
+     "shares": [
+      [
+       "c",
+       4797
+      ],
+      [
+       "d",
+       7737
+      ],
+      [
+       "f",
+       33550
+      ],
+      [
+       "e",
+       27402
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "b",
+       2569
+      ],
+      [
+       "d",
+       43792
+      ],
+      [
+       "e",
+       5086
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "c",
+     "to": "f",
+     "amount": 19477
+    },
+    {
+     "from": "d",
+     "to": "e",
+     "amount": 26113
+    }
+   ],
+   "me": "d",
+   "pairwise": {
+    "b": 2017,
+    "c": 19645,
+    "e": 30157,
+    "f": 16280
+   },
+   "positions": {
+    "b": 22746,
+    "c": -4965,
+    "d": 68099,
+    "e": -16573,
+    "f": -69307
+   },
+   "simplified": [
+    [
+     "f",
+     "d",
+     68099
+    ],
+    [
+     "e",
+     "b",
+     16573
+    ],
+    [
+     "c",
+     "b",
+     4965
+    ],
+    [
+     "f",
+     "b",
+     1208
+    ]
+   ]
+  },
+  {
+   "name": "random 2",
+   "expenses": [
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "d",
+       47917
+      ],
+      [
+       "a",
+       45972
+      ],
+      [
+       "e",
+       20290
+      ]
+     ]
+    },
+    {
+     "payer": "f",
+     "shares": [
+      [
+       "f",
+       43820
+      ],
+      [
+       "d",
+       22741
+      ],
+      [
+       "c",
+       1478
+      ],
+      [
+       "e",
+       30257
+      ],
+      [
+       "b",
+       23295
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "e",
+     "to": "a",
+     "amount": 16178
+    }
+   ],
+   "me": "a",
+   "pairwise": {
+    "d": 47917,
+    "e": 4112
+   },
+   "positions": {
+    "a": 52029,
+    "b": -23295,
+    "c": -1478,
+    "d": -70658,
+    "e": -34369,
+    "f": 77771
+   },
+   "simplified": [
+    [
+     "d",
+     "f",
+     70658
+    ],
+    [
+     "e",
+     "a",
+     34369
+    ],
+    [
+     "b",
+     "a",
+     17660
+    ],
+    [
+     "b",
+     "f",
+     5635
+    ],
+    [
+     "c",
+     "f",
+     1478
+    ]
+   ]
+  },
+  {
+   "name": "random 3",
+   "expenses": [
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "f",
+       26076
+      ],
+      [
+       "b",
+       25621
+      ]
+     ]
+    },
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "b",
+       29437
+      ]
+     ]
+    },
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "c",
+       46294
+      ],
+      [
+       "b",
+       27216
+      ],
+      [
+       "d",
+       23512
+      ],
+      [
+       "f",
+       44742
+      ],
+      [
+       "e",
+       24932
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "a",
+       9915
+      ],
+      [
+       "b",
+       15201
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "a",
+     "to": "d",
+     "amount": 27234
+    }
+   ],
+   "me": "e",
+   "pairwise": {
+    "d": -24932
+   },
+   "positions": {
+    "a": 17319,
+    "b": -72359,
+    "c": 5403,
+    "d": 145387,
+    "e": -24932,
+    "f": -70818
+   },
+   "simplified": [
+    [
+     "b",
+     "d",
+     72359
+    ],
+    [
+     "f",
+     "d",
+     70818
+    ],
+    [
+     "e",
+     "a",
+     17319
+    ],
+    [
+     "e",
+     "c",
+     5403
+    ],
+    [
+     "e",
+     "d",
+     2210
+    ]
+   ]
+  },
+  {
+   "name": "random 4",
+   "expenses": [
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "a",
+       35034
+      ],
+      [
+       "b",
+       24199
+      ],
+      [
+       "d",
+       39964
+      ]
+     ]
+    },
+    {
+     "payer": "e",
+     "shares": [
+      [
+       "b",
+       29926
+      ],
+      [
+       "e",
+       44602
+      ],
+      [
+       "a",
+       36652
+      ]
+     ]
+    },
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "d",
+       41568
+      ],
+      [
+       "f",
+       26243
+      ],
+      [
+       "a",
+       4079
+      ],
+      [
+       "b",
+       12491
+      ]
+     ]
+    }
+   ],
+   "settlements": [],
+   "me": "b",
+   "pairwise": {
+    "c": -24199,
+    "d": -12491,
+    "e": -29926
+   },
+   "positions": {
+    "a": -75765,
+    "b": -66616,
+    "c": 99197,
+    "d": 2849,
+    "e": 66578,
+    "f": -26243
+   },
+   "simplified": [
+    [
+     "a",
+     "c",
+     75765
+    ],
+    [
+     "b",
+     "e",
+     66578
+    ],
+    [
+     "f",
+     "c",
+     23432
+    ],
+    [
+     "f",
+     "d",
+     2811
+    ],
+    [
+     "b",
+     "d",
+     38
+    ]
+   ]
+  },
+  {
+   "name": "random 5",
+   "expenses": [
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "c",
+       39369
+      ]
+     ]
+    },
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "a",
+       37144
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "a",
+       40243
+      ],
+      [
+       "c",
+       24656
+      ],
+      [
+       "f",
+       9735
+      ],
+      [
+       "d",
+       41576
+      ],
+      [
+       "e",
+       16531
+      ]
+     ]
+    },
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "c",
+       30539
+      ],
+      [
+       "d",
+       31483
+      ],
+      [
+       "a",
+       31708
+      ],
+      [
+       "e",
+       20437
+      ],
+      [
+       "b",
+       5628
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "f",
+       22454
+      ]
+     ]
+    },
+    {
+     "payer": "f",
+     "shares": [
+      [
+       "d",
+       13448
+      ],
+      [
+       "b",
+       34619
+      ],
+      [
+       "a",
+       23707
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "a",
+       45625
+      ],
+      [
+       "e",
+       17112
+      ],
+      [
+       "c",
+       33973
+      ],
+      [
+       "d",
+       24032
+      ],
+      [
+       "f",
+       10947
+      ]
+     ]
+    },
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "e",
+       32944
+      ],
+      [
+       "f",
+       21604
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "e",
+     "to": "b",
+     "amount": 26414
+    }
+   ],
+   "me": "b",
+   "pairwise": {
+    "a": 85868,
+    "c": 92370,
+    "d": 65608,
+    "e": 7229,
+    "f": 8517
+   },
+   "positions": {
+    "a": -141283,
+    "b": 259592,
+    "c": 45806,
+    "d": -110539,
+    "e": -60610,
+    "f": 7034
+   },
+   "simplified": [
+    [
+     "a",
+     "b",
+     141283
+    ],
+    [
+     "d",
+     "b",
+     110539
+    ],
+    [
+     "e",
+     "c",
+     45806
+    ],
+    [
+     "e",
+     "b",
+     7770
+    ],
+    [
+     "e",
+     "f",
+     7034
+    ]
+   ]
+  },
+  {
+   "name": "random 6",
+   "expenses": [
+    {
+     "payer": "f",
+     "shares": [
+      [
+       "b",
+       32294
+      ],
+      [
+       "e",
+       23302
+      ]
+     ]
+    },
+    {
+     "payer": "f",
+     "shares": [
+      [
+       "a",
+       18311
+      ]
+     ]
+    },
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "b",
+       29309
+      ],
+      [
+       "e",
+       47390
+      ],
+      [
+       "c",
+       22906
+      ]
+     ]
+    },
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "b",
+       6694
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "b",
+       40898
+      ],
+      [
+       "c",
+       39994
+      ],
+      [
+       "f",
+       125
+      ],
+      [
+       "d",
+       31422
+      ]
+     ]
+    },
+    {
+     "payer": "f",
+     "shares": [
+      [
+       "f",
+       25463
+      ],
+      [
+       "a",
+       46628
+      ],
+      [
+       "e",
+       49161
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "b",
+       47305
+      ],
+      [
+       "d",
+       25941
+      ],
+      [
+       "c",
+       30353
+      ],
+      [
+       "a",
+       26305
+      ]
+     ]
+    }
+   ],
+   "settlements": [],
+   "me": "f",
+   "pairwise": {
+    "a": 64939,
+    "b": 32169,
+    "e": 72463
+   },
+   "positions": {
+    "a": -91244,
+    "b": 85843,
+    "c": -86559,
+    "d": 42242,
+    "e": -119853,
+    "f": 169571
+   },
+   "simplified": [
+    [
+     "e",
+     "f",
+     119853
+    ],
+    [
+     "a",
+     "b",
+     85843
+    ],
+    [
+     "c",
+     "f",
+     49718
+    ],
+    [
+     "c",
+     "d",
+     36841
+    ],
+    [
+     "a",
+     "d",
+     5401
+    ]
+   ]
+  },
+  {
+   "name": "random 7",
+   "expenses": [
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "a",
+       38719
+      ],
+      [
+       "b",
+       30497
+      ]
+     ]
+    },
+    {
+     "payer": "f",
+     "shares": [
+      [
+       "e",
+       31087
+      ],
+      [
+       "f",
+       43074
+      ]
+     ]
+    },
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "e",
+       8584
+      ],
+      [
+       "f",
+       1402
+      ]
+     ]
+    }
+   ],
+   "settlements": [],
+   "me": "f",
+   "pairwise": {
+    "c": -1402,
+    "e": 31087
+   },
+   "positions": {
+    "a": -38719,
+    "b": 38719,
+    "c": 9986,
+    "e": -39671,
+    "f": 29685
+   },
+   "simplified": [
+    [
+     "e",
+     "b",
+     38719
+    ],
+    [
+     "a",
+     "f",
+     29685
+    ],
+    [
+     "a",
+     "c",
+     9034
+    ],
+    [
+     "e",
+     "c",
+     952
+    ]
+   ]
+  },
+  {
+   "name": "random 8",
+   "expenses": [
+    {
+     "payer": "e",
+     "shares": [
+      [
+       "d",
+       13830
+      ],
+      [
+       "b",
+       1834
+      ]
+     ]
+    },
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "c",
+       15763
+      ],
+      [
+       "e",
+       38432
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "c",
+     "to": "e",
+     "amount": 13731
+    },
+    {
+     "from": "b",
+     "to": "a",
+     "amount": 29820
+    }
+   ],
+   "me": "f",
+   "pairwise": {},
+   "positions": {
+    "a": -29820,
+    "b": 27986,
+    "c": 52163,
+    "d": -13830,
+    "e": -36499
+   },
+   "simplified": [
+    [
+     "e",
+     "c",
+     36499
+    ],
+    [
+     "a",
+     "b",
+     27986
+    ],
+    [
+     "d",
+     "c",
+     13830
+    ],
+    [
+     "a",
+     "c",
+     1834
+    ]
+   ]
+  },
+  {
+   "name": "random 9",
+   "expenses": [
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "e",
+       34308
+      ],
+      [
+       "d",
+       33459
+      ],
+      [
+       "b",
+       1225
+      ],
+      [
+       "c",
+       28844
+      ],
+      [
+       "a",
+       12000
+      ]
+     ]
+    },
+    {
+     "payer": "e",
+     "shares": [
+      [
+       "b",
+       11294
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "e",
+       44717
+      ],
+      [
+       "a",
+       33970
+      ],
+      [
+       "f",
+       34781
+      ],
+      [
+       "b",
+       36401
+      ]
+     ]
+    },
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "e",
+       3723
+      ]
+     ]
+    },
+    {
+     "payer": "b",
+     "shares": [
+      [
+       "c",
+       6405
+      ],
+      [
+       "a",
+       33273
+      ]
+     ]
+    },
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "a",
+       45398
+      ],
+      [
+       "f",
+       18165
+      ],
+      [
+       "d",
+       29644
+      ],
+      [
+       "b",
+       33302
+      ],
+      [
+       "e",
+       34949
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "e",
+     "to": "b",
+     "amount": 22912
+    },
+    {
+     "from": "e",
+     "to": "c",
+     "amount": 18335
+    },
+    {
+     "from": "b",
+     "to": "d",
+     "amount": 4494
+    }
+   ],
+   "me": "d",
+   "pairwise": {
+    "a": 57398,
+    "b": 30033,
+    "c": 28844,
+    "e": 72980,
+    "f": 18165
+   },
+   "positions": {
+    "a": -124641,
+    "b": 88907,
+    "c": -53584,
+    "d": 207420,
+    "e": -65156,
+    "f": -52946
+   },
+   "simplified": [
+    [
+     "a",
+     "d",
+     124641
+    ],
+    [
+     "e",
+     "b",
+     65156
+    ],
+    [
+     "c",
+     "d",
+     53584
+    ],
+    [
+     "f",
+     "d",
+     29195
+    ],
+    [
+     "f",
+     "b",
+     23751
+    ]
+   ]
+  },
+  {
+   "name": "random 10",
+   "expenses": [
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "c",
+       4792
+      ],
+      [
+       "a",
+       13938
+      ],
+      [
+       "b",
+       43874
+      ],
+      [
+       "d",
+       19842
+      ]
+     ]
+    },
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "f",
+       9370
+      ],
+      [
+       "c",
+       16587
+      ]
+     ]
+    }
+   ],
+   "settlements": [
+    {
+     "from": "d",
+     "to": "b",
+     "amount": 24468
+    }
+   ],
+   "me": "a",
+   "pairwise": {
+    "c": 16587,
+    "d": -13938,
+    "f": 9370
+   },
+   "positions": {
+    "a": 12019,
+    "b": -68342,
+    "c": -21379,
+    "d": 87072,
+    "f": -9370
+   },
+   "simplified": [
+    [
+     "b",
+     "d",
+     68342
+    ],
+    [
+     "c",
+     "d",
+     18730
+    ],
+    [
+     "f",
+     "a",
+     9370
+    ],
+    [
+     "c",
+     "a",
+     2649
+    ]
+   ]
+  },
+  {
+   "name": "random 11",
+   "expenses": [
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "f",
+       10581
+      ],
+      [
+       "b",
+       46289
+      ]
+     ]
+    },
+    {
+     "payer": "d",
+     "shares": [
+      [
+       "d",
+       20874
+      ],
+      [
+       "c",
+       6042
+      ],
+      [
+       "f",
+       47326
+      ],
+      [
+       "a",
+       23983
+      ],
+      [
+       "b",
+       1276
+      ]
+     ]
+    },
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "d",
+       33910
+      ],
+      [
+       "f",
+       40889
+      ],
+      [
+       "a",
+       19362
+      ],
+      [
+       "b",
+       33571
+      ],
+      [
+       "c",
+       4213
+      ]
+     ]
+    },
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "a",
+       17404
+      ],
+      [
+       "f",
+       17820
+      ]
+     ]
+    },
+    {
+     "payer": "a",
+     "shares": [
+      [
+       "c",
+       27672
+      ],
+      [
+       "b",
+       44300
+      ]
+     ]
+    },
+    {
+     "payer": "c",
+     "shares": [
+      [
+       "b",
+       21433
+      ],
+      [
+       "e",
+       5862
+      ],
+      [
+       "d",
+       18288
+      ],
+      [
+       "c",
+       3770
+      ]
+     ]
+    },
+    {
+     "payer": "f",
+     "shares": [
+      [
+       "d",
+       17624
+      ],
+      [
+       "a",
+       1103
+      ]
+     ]
+    }
+   ],
+   "settlements": [],
+   "me": "c",
+   "pairwise": {
+    "a": -8310,
+    "b": 55004,
+    "d": 46156,
+    "e": 5862,
+    "f": 40889
+   },
+   "positions": {
+    "a": 45344,
+    "b": -146869,
+    "c": 139601,
+    "d": 65675,
+    "e": -5862,
+    "f": -97889
+   },
+   "simplified": [
+    [
+     "b",
+     "c",
+     139601
+    ],
+    [
+     "f",
+     "d",
+     65675
+    ],
+    [
+     "f",
+     "a",
+     32214
+    ],
+    [
+     "b",
+     "a",
+     7268
+    ],
+    [
+     "e",
+     "a",
+     5862
+    ]
+   ]
+  }
+ ],
+ "settle_up": [
+  {
+   "name": "full settle, both directions",
+   "balances": [
+    [
+     "g1",
+     500
+    ],
+    [
+     "g2",
+     -200
+    ]
+   ],
+   "amount_minor": null,
+   "plan": [
+    [
+     "g1",
+     true,
+     500
+    ],
+    [
+     "g2",
+     false,
+     200
+    ]
+   ]
+  },
+  {
+   "name": "full amount given equals net",
+   "balances": [
+    [
+     "g1",
+     500
+    ],
+    [
+     "g2",
+     -200
+    ]
+   ],
+   "amount_minor": 300,
+   "plan": [
+    [
+     "g1",
+     true,
+     500
+    ],
+    [
+     "g2",
+     false,
+     200
+    ]
+   ]
+  },
+  {
+   "name": "part payment pays oldest first",
+   "balances": [
+    [
+     "g1",
+     500
+    ],
+    [
+     "g2",
+     400
+    ],
+    [
+     "g3",
+     -100
+    ]
+   ],
+   "amount_minor": 600,
+   "plan": [
+    [
+     "g1",
+     true,
+     500
+    ],
+    [
+     "g2",
+     true,
+     100
+    ]
+   ]
+  },
+  {
+   "name": "part payment when you owe",
+   "balances": [
+    [
+     "g1",
+     -300
+    ],
+    [
+     "g2",
+     -300
+    ]
+   ],
+   "amount_minor": 400,
+   "plan": [
+    [
+     "g1",
+     false,
+     300
+    ],
+    [
+     "g2",
+     false,
+     100
+    ]
+   ]
+  },
+  {
+   "name": "already square",
+   "balances": [
+    [
+     "g1",
+     0
+    ]
+   ],
+   "amount_minor": null,
+   "error": "You're already all square"
+  },
+  {
+   "name": "cancelling balances need full settle",
+   "balances": [
+    [
+     "g1",
+     200
+    ],
+    [
+     "g2",
+     -200
+    ]
+   ],
+   "amount_minor": 100,
+   "error": "Your balances cancel out; settle the full amount to clear them"
+  },
+  {
+   "name": "amount above balance",
+   "balances": [
+    [
+     "g1",
+     200
+    ]
+   ],
+   "amount_minor": 300,
+   "error": "That's more than the balance between you"
+  },
+  {
+   "name": "zero amount",
+   "balances": [
+    [
+     "g1",
+     200
+    ]
+   ],
+   "amount_minor": 0,
+   "error": "Enter an amount above zero"
+  }
+ ]
+}

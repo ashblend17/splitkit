@@ -22,7 +22,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import event, inspect, select, text
+from sqlalchemy import event, func, inspect, select, text
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
@@ -89,7 +89,16 @@ def _category(session: Session, category_id: uuid.UUID | None) -> dict[str, Any]
     if category_id is None:
         return None
     c = session.get(Category, category_id)
-    return {"id": str(c.id), "key": c.key, "label": c.label, "icon": c.icon} if c else None
+    if c is None:
+        return None
+    return {
+        "id": str(c.id),
+        "key": c.key,
+        "label": c.label,
+        "icon": c.icon,
+        "scope": c.scope,
+        "owner_id": _json(c.owner_id),
+    }
 
 
 def _member_entries(session: Session, m: Any) -> list[Entry]:
@@ -120,7 +129,7 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
     from app.modules.analytics.models import AnalyticsConfiguration
     from app.modules.categories.models import Category
     from app.modules.expenses.models import Expense
-    from app.modules.groups.models import Group, GroupMember
+    from app.modules.groups.models import ActivityEvent, Group, GroupMember
     from app.modules.personal.models import PersonalTransaction
     from app.modules.settlements.models import Settlement
     from app.modules.users.models import User
@@ -154,9 +163,12 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
                 )
             ]
         case Group():
-            return [
-                Entry(group_stream(obj.id), "group", obj.id, "upsert", _columns(obj), obj.version)
-            ]
+            # Clients keep it current from the `at` of later group-stream changes.
+            last = session.scalar(
+                select(func.max(ActivityEvent.at)).where(ActivityEvent.group_id == obj.id)
+            )
+            data = {**_columns(obj), "last_activity_at": _json(last)}
+            return [Entry(group_stream(obj.id), "group", obj.id, "upsert", data, obj.version)]
         case GroupMember():
             return _member_entries(session, obj)
         case PersonalTransaction():
