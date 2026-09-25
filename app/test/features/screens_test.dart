@@ -78,7 +78,6 @@ void main() {
 
   testWidgets('settle up with a friend across groups', (tester) async {
     final be = FakeBackend();
-    be.postResponses['/api/v1/friends/${be.amanId}/settle-up'] = (201, {'settlements': <dynamic>[], 'remaining_net_minor': 0});
     await pumpApp(tester, backend: be);
 
     await tester.dragUntilVisible(find.text('Aman'), find.byType(SingleChildScrollView).first, const Offset(-200, 0));
@@ -100,15 +99,23 @@ void main() {
 
     await tester.tap(find.text('Record ₹500 payment'));
     await tester.pumpAndSettle();
-    final (method, path, body) = be.writes.single;
-    expect((method, path), ('POST', '/api/v1/friends/${be.amanId}/settle-up'));
-    expect((body['amount_minor'], body['method'], body['currency']), (50000, 'upi', 'INR'));
-    expect(find.text('Payment recorded'), findsOneWidget);
+    // Planned on the device, oldest group first, one payment per group (each with its own id,
+    // so a retry can't record it twice).
+    final groups = {for (final g in fixture('groups') as List) g['name']: g['id']};
+    expect([for (final (m, p, _) in be.writes) (m, p)], [
+      ('POST', '/api/v1/groups/${groups['Flatmates']}/settlements'),
+      ('POST', '/api/v1/groups/${groups['Goa Trip']}/settlements'),
+    ]);
+    expect([for (final w in be.writes) (w.$3['from_user'], w.$3['amount_minor'], w.$3['method'])], [
+      (be.amanId, 32000, 'upi'),
+      (be.amanId, 18000, 'upi'),
+    ]);
+    expect(be.writes.every((w) => w.$3['id'] != null), isTrue);
+    expect(find.text('Payment recorded in 2 groups'), findsOneWidget);
   });
 
   testWidgets('add split: amount, description, equal split, save', (tester) async {
     final be = FakeBackend();
-    be.postResponses['/api/v1/groups/${be.goa['id']}/expenses'] = (201, fixture('expense'));
     await pumpApp(tester, backend: be, location: '/expenses/new?group=${be.goa['id']}');
 
     expect(find.text('Enter an amount'), findsOneWidget);
@@ -128,7 +135,10 @@ void main() {
     expect((body['amount_minor'], body['description'], (body['split'] as Map)['method']), (180000, 'Dinner at Thalassa', 'equal'));
     expect(((body['split'] as Map)['inputs'] as List).length, 6);
     expect(body['category_id'], isNotNull);
-    // Lands on the saved expense.
-    expect(find.text('You owe Rahul'), findsOneWidget);
+    expect(body['id'], isNotNull); // made on the device, so a retry can't add it twice
+    // Lands on the saved expense, shown from the device before the server has confirmed it.
+    expect(find.text('Dinner at Thalassa'), findsOneWidget);
+    expect(find.text('Split equally between 6'), findsOneWidget);
+    expect(find.text('Paid'), findsOneWidget);
   });
 }

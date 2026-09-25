@@ -9,13 +9,18 @@ import '../config.dart';
 import '../local/providers.dart';
 import '../local/sync_engine.dart';
 
-/// A logged-in user and their token.
+/// A logged-in user and their token. In view-as (an admin acting as [user]), [adminId] is the
+/// admin and [readOnly] blocks writes; the server enforces both again.
 class Session {
-  const Session({required this.token, required this.user});
+  const Session({required this.token, required this.user, this.adminId, this.readOnly = false, this.viewAsSessionId});
   final String token;
   final UserOut user;
+  final String? adminId;
+  final bool readOnly;
+  final String? viewAsSessionId;
 
   bool get isAdmin => user.role == 'admin';
+  bool get isViewAs => adminId != null;
 }
 
 /// Where the token lives between launches (localStorage on web), with the signed-in user so

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
@@ -578,16 +579,19 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       ),
     );
     try {
-      final api = ref.read(apiProvider);
-      final saved = _editing
-          ? await api.expenses.updateExpense(widget.editExpenseId!, body)
-          : await api.expenses.createExpense(group.id, body);
-      refreshLedger(ref.invalidate);
+      final writes = ref.read(writesProvider);
+      final String id;
+      if (_editing) {
+        id = widget.editExpenseId!;
+        await writes.updateExpense(id, body);
+      } else {
+        id = await writes.createExpense(group.id, body);
+      }
       if (!mounted) return;
       if (_editing) {
         context.pop();
       } else {
-        context.pushReplacement('/expenses/${saved!.id}');
+        context.pushReplacement('/expenses/$id');
       }
     } catch (e) {
       if (mounted) {

@@ -247,3 +247,24 @@ def test_categories_come_from_the_table(client, seeded):
         c["key"] for c in client.get(f"{API}/categories?scope=personal", headers=headers).json()
     ]
     assert "income" in personal and "travel" not in personal
+
+
+def test_splits_keep_the_order_they_were_entered(client, seeded):
+    """Every read, and the sync log, lists splits in input order, also after an edit."""
+    h = login(client, "ansh")
+    people = ["vivek", "ansh", "aman", "rahul"]
+    split = {"method": "equal", "inputs": [{"user_id": uid(p)} for p in people]}
+    e = client.post(f"{API}/groups/{gid('goa')}/expenses", headers=h, json=dinner(split=split))
+    assert [s["user"]["id"] for s in e.json()["splits"]] == [uid(p) for p in people]
+
+    edited = ["rahul", "vivek", "ansh"]
+    body = dinner(split={"method": "equal", "inputs": [{"user_id": uid(p)} for p in edited]})
+    r = client.put(f"{API}/expenses/{e.json()['id']}", headers=h, json=body)
+    assert r.status_code == 200, r.text
+    for _ in range(3):
+        again = client.get(f"{API}/expenses/{e.json()['id']}", headers=h).json()
+        assert [s["user"]["id"] for s in again["splits"]] == [uid(p) for p in edited]
+    stream = f"group:{gid('goa')}"
+    snap = client.get(f"{API}/sync/snapshot/{stream}", headers=h).json()
+    entity = next(x for x in snap["entities"] if x["entity_id"] == e.json()["id"])
+    assert [s["user_id"] for s in entity["data"]["splits"]] == [uid(p) for p in edited]

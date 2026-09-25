@@ -16,8 +16,9 @@ def get(session: Session, expense_id: uuid.UUID) -> Expense | None:
 def replace_splits(session: Session, expense: Expense, splits: list[ExpenseSplit]) -> None:
     session.execute(delete(ExpenseSplit).where(ExpenseSplit.expense_id == expense.id))
     session.expire(expense, ["splits"])
-    for s in splits:
+    for i, s in enumerate(splits):
         s.expense_id = expense.id
+        s.position = i
         session.add(s)
 
 

@@ -124,6 +124,14 @@ file on Android/iOS, IndexedDB on web; one database per user) and reads every sc
   still come from the network.
 - Offline, screens keep showing the device copy with a "You're offline" line, and the app opens
   with the saved sign-in. A 401 signs you out but keeps the data; logging out deletes it.
+- Writes work offline (`core/local/writes.dart`): expenses, payments (including settle-up with a
+  friend, planned on the device and queued as one payment per group), personal entries, new
+  groups and archiving. Each is queued in the outbox with its client id or base `version` and the
+  full state it leaves behind, which every screen shows at once. The next sync sends the queue in
+  order before pulling. A queued write stops being shown once the server's copy arrives.
+  Refusals (409 conflicts, checks only the server can make) move to "Needs your attention" in the
+  shell: Keep mine re-sends on top of the other change, Keep theirs / Discard drops it. Adding
+  members, profile, categories and analytics layouts still need a connection.
 - Checks: `app/test/core/local_parity_test.dart` compares every local answer with the API's for
   two seeded users (`app/test/fixtures/sync/`), and `app/test/live/` does the same against a
   running server after real writes (see the file for how to point it at a throwaway database).

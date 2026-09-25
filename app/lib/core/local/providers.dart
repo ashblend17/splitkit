@@ -7,6 +7,7 @@ import 'package:sembast/sembast.dart';
 import '../session/session.dart';
 import 'db_factory.dart';
 import 'ledger.dart';
+import 'outbox.dart';
 import 'store.dart';
 import 'sync_engine.dart';
 
@@ -18,6 +19,10 @@ final localDatabasePathProvider = Provider<Future<String> Function(String userId
 /// How often to sync while the app is open (besides on start, on resume and after writes).
 /// Null turns the timer off (tests).
 final syncIntervalProvider = Provider<Duration?>((_) => const Duration(seconds: 45));
+
+/// Sync when the app comes back to the foreground. Off only where there is no Flutter binding
+/// (the live tests against a real server).
+final syncOnResumeProvider = Provider<bool>((_) => true);
 
 /// The signed-in user's local database.
 final localStoreProvider = FutureProvider<LocalStore>((ref) async {
@@ -38,10 +43,10 @@ final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
   );
   final interval = ref.watch(syncIntervalProvider);
   final timer = interval == null ? null : Timer.periodic(interval, (_) => engine.pull().ignore());
-  final lifecycle = AppLifecycleListener(onResume: () => engine.pull().ignore());
+  final lifecycle = ref.watch(syncOnResumeProvider) ? AppLifecycleListener(onResume: () => engine.pull().ignore()) : null;
   ref.onDispose(() {
     timer?.cancel();
-    lifecycle.dispose();
+    lifecycle?.dispose();
     engine.dispose();
   });
   return engine;
@@ -73,3 +78,9 @@ Future<void> deleteLocalData(Ref ref, String userId) async {
   final path = await ref.read(localDatabasePathProvider)(userId);
   await LocalStore.delete(ref.read(localDatabaseFactoryProvider), path);
 }
+
+/// Writes made on this device that the server hasn't confirmed or has refused, oldest first.
+final outboxProvider = Provider<List<OutboxOp>>((ref) {
+  ref.watch(ledgerProvider);
+  return ref.watch(localStoreProvider).value?.outbox ?? const [];
+});

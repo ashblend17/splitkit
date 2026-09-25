@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
@@ -562,36 +563,34 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     SettleUpPlanOut? friendPlan,
   }) async {
     setState(() => _busy = true);
-    final api = ref.read(apiProvider);
+    final writes = ref.read(writesProvider);
     final note = _note.text.trim().isEmpty ? null : _note.text.trim();
     final amount = _amountMinor ?? 0;
     try {
       final List<String> createdIds;
       if (friendPlan != null) {
-        final out = await api.settlements.settleUp(
+        createdIds = await writes.settleUp(
           widget.friend!.id,
-          SettleUpIn(
-            amountMinor: amount == fullMinor ? null : amount,
-            date: apiDate(_date),
-            method: SettleUpInMethodEnum.fromJson(_method)!,
-            note: note,
-            currency: friendPlan.currency,
-          ),
+          amountMinor: amount == fullMinor ? null : amount,
+          date: _date,
+          method: _method,
+          note: note,
+          currency: friendPlan.currency,
         );
-        createdIds = [for (final s in out!.settlements) s.id];
       } else {
-        final out = await api.settlements.createSettlement(
-          _target!.group.id,
-          SettlementIn(
-            fromUser: from.id,
-            toUser: to.id,
-            amountMinor: amount,
-            date: apiDate(_date),
-            method: SettlementInMethodEnum.fromJson(_method)!,
-            note: note,
+        createdIds = [
+          await writes.createSettlement(
+            _target!.group.id,
+            SettlementIn(
+              fromUser: from.id,
+              toUser: to.id,
+              amountMinor: amount,
+              date: apiDate(_date),
+              method: SettlementInMethodEnum.fromJson(_method)!,
+              note: note,
+            ),
           ),
-        );
-        createdIds = [out!.id];
+        ];
       }
       refreshLedger(ref.invalidate);
       if (!mounted) return;
@@ -611,7 +610,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
               textColor: SkColors.brandSoft,
               onPressed: () async {
                 for (final id in createdIds) {
-                  await api.settlements.deleteSettlement(id);
+                  await writes.deleteSettlement(id);
                 }
                 refreshLedger(container.invalidate);
               },
