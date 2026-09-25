@@ -184,8 +184,28 @@ class ApiClient {
           return value is DateTime ? value : DateTime.tryParse(value);
         case 'AddMemberIn':
           return AddMemberIn.fromJson(value);
+        case 'AdminDashboardOut':
+          return AdminDashboardOut.fromJson(value);
+        case 'AdminSessionIn':
+          return AdminSessionIn.fromJson(value);
+        case 'AdminSessionOut':
+          return AdminSessionOut.fromJson(value);
+        case 'AdminSessionStartOut':
+          return AdminSessionStartOut.fromJson(value);
+        case 'AdminSessionUpdate':
+          return AdminSessionUpdate.fromJson(value);
+        case 'AdminSessionsPageOut':
+          return AdminSessionsPageOut.fromJson(value);
+        case 'AdminUserOut':
+          return AdminUserOut.fromJson(value);
+        case 'AdminUsersPageOut':
+          return AdminUsersPageOut.fromJson(value);
         case 'AnalyticsCardOut':
           return AnalyticsCardOut.fromJson(value);
+        case 'AuditEntryOut':
+          return AuditEntryOut.fromJson(value);
+        case 'AuditPageOut':
+          return AuditPageOut.fromJson(value);
         case 'CategoryIn':
           return CategoryIn.fromJson(value);
         case 'CategoryOut':
@@ -224,6 +244,8 @@ class ApiClient {
           return GroupNet.fromJson(value);
         case 'GroupOut':
           return GroupOut.fromJson(value);
+        case 'GroupRef':
+          return GroupRef.fromJson(value);
         case 'GroupUpdate':
           return GroupUpdate.fromJson(value);
         case 'HTTPValidationError':
@@ -240,6 +262,8 @@ class ApiClient {
           return LoginIn.fromJson(value);
         case 'MemberOut':
           return MemberOut.fromJson(value);
+        case 'MoneyTotal':
+          return MoneyTotal.fromJson(value);
         case 'OverallBalancesOut':
           return OverallBalancesOut.fromJson(value);
         case 'PersonBalance':
@@ -292,6 +316,8 @@ class ApiClient {
           return SyncSnapshotOut.fromJson(value);
         case 'SyncStreamOut':
           return SyncStreamOut.fromJson(value);
+        case 'SystemOut':
+          return SystemOut.fromJson(value);
         case 'TokenOut':
           return TokenOut.fromJson(value);
         case 'UserBrief':

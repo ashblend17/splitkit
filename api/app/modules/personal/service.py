@@ -207,6 +207,7 @@ def set_deleted(
     if (t.deleted_at is not None) != deleted:
         check_version(t, version)
         t.deleted_at = datetime.now(UTC) if deleted else None
+        t.acting_admin_id = actor.admin_id
         record(
             session,
             actor,
