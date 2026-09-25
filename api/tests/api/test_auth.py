@@ -1,4 +1,4 @@
-from tests.api.conftest import login, register
+from tests.api.conftest import login, register, uid
 
 API = "/api/v1"
 
@@ -57,3 +57,24 @@ def test_update_me(client):
 def test_seeded_admin_can_log_in(client, seeded):
     me = client.get(f"{API}/me", headers=login(client, "john")).json()
     assert (me["name"], me["role"]) == ("John Doe", "admin")
+
+
+def test_refresh_gives_a_fresh_token(client, seeded):
+    h = login(client, "john")
+    r = client.post("/api/v1/auth/refresh", headers=h)
+    assert r.status_code == 200, r.text
+    fresh = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    assert client.get("/api/v1/me", headers=fresh).json()["email"] == "admin@example.com"
+    assert client.post("/api/v1/auth/refresh").status_code == 401
+
+
+def test_view_as_tokens_cannot_be_refreshed(client, seeded):
+    admin = login(client, "john")
+    start = client.post(
+        "/api/v1/admin/sessions",
+        headers=admin,
+        json={"target_user_id": uid("rahul"), "mode": "edit"},
+    ).json()
+    view_as = {"Authorization": f"Bearer {start['access_token']}"}
+    r = client.post("/api/v1/auth/refresh", headers=view_as)
+    assert r.status_code == 403 and r.json()["error"]["code"] == "cannot_refresh"

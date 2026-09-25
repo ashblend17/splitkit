@@ -100,10 +100,17 @@ class FakeBackend {
   /// Every request fails as if there were no network.
   bool offline = false;
 
+  /// What POST /auth/refresh hands out (by default the same token back).
+  String? refreshTo;
+
   http.Client get client => MockClient((req) async {
         if (offline) throw http.ClientException('Network is unreachable', req.url);
         final path = req.url.path;
         if (path == '/api/v1/sync') return _sync(req);
+        if (path == '/api/v1/auth/refresh') {
+          final token = (req.headers['Authorization'] ?? '').replaceFirst('Bearer ', '');
+          return _json({...fixture('login') as Map, 'access_token': refreshTo ?? token});
+        }
         if (path.startsWith('/api/v1/sync/snapshot/')) {
           final snap = _snapshotsFor(req)[Uri.decodeComponent(path.substring('/api/v1/sync/snapshot/'.length))];
           return snap == null ? _json({'error': {'code': 'not_found', 'message': 'Not found'}}, 404) : _json(snap);

@@ -77,6 +77,7 @@ Class | Method | HTTP request | Description
 *AnalyticsApi* | [**resetLayout**](doc//AnalyticsApi.md#resetlayout) | **DELETE** /api/v1/analytics/layout/{scope} | Reset Layout
 *AnalyticsApi* | [**saveLayout**](doc//AnalyticsApi.md#savelayout) | **PUT** /api/v1/analytics/layout/{scope} | Save Layout
 *AuthApi* | [**login**](doc//AuthApi.md#login) | **POST** /api/v1/auth/login | Login
+*AuthApi* | [**refresh**](doc//AuthApi.md#refresh) | **POST** /api/v1/auth/refresh | Refresh
 *AuthApi* | [**register**](doc//AuthApi.md#register) | **POST** /api/v1/auth/register | Register
 *BalancesApi* | [**feed**](doc//BalancesApi.md#feed) | **GET** /api/v1/feed | Feed
 *BalancesApi* | [**groupBalances**](doc//BalancesApi.md#groupbalances) | **GET** /api/v1/groups/{group_id}/balances | Group Balances

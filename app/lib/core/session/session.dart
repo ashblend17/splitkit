@@ -119,7 +119,7 @@ class SessionController extends AsyncNotifier<Session?> {
       final user = await _api(token).users.getMe();
       if (user == null) return null;
       await _store.writeUser(user);
-      return Session(token: token, user: user);
+      return Session(token: await _refreshed(token), user: user);
     } on ApiException catch (e) {
       if (e.code == 401) {
         await _store.clear();
@@ -129,6 +129,19 @@ class SessionController extends AsyncNotifier<Session?> {
       final saved = isOfflineError(e) ? await _store.readUser() : null;
       if (saved != null) return Session(token: token, user: saved);
       rethrow;
+    }
+  }
+
+  /// Swaps a working token for a fresh one (tokens last 7 days), so opening the app at least
+  /// once a week keeps you signed in. Best effort: on any error the old token stays.
+  Future<String> _refreshed(String token) async {
+    try {
+      final out = await _api(token).auth.refresh();
+      if (out == null) return token;
+      await _store.write(out.accessToken);
+      return out.accessToken;
+    } catch (_) {
+      return token;
     }
   }
 
