@@ -5,6 +5,7 @@ README.md
 analysis_options.yaml
 git_push.sh
 lib/api.dart
+lib/api/admin_api.dart
 lib/api/analytics_api.dart
 lib/api/auth_api.dart
 lib/api/balances_api.dart
@@ -26,7 +27,17 @@ lib/auth/http_basic_auth.dart
 lib/auth/http_bearer_auth.dart
 lib/auth/oauth.dart
 lib/model/add_member_in.dart
+lib/model/admin_dashboard_out.dart
+lib/model/admin_session_in.dart
+lib/model/admin_session_out.dart
+lib/model/admin_session_start_out.dart
+lib/model/admin_session_update.dart
+lib/model/admin_sessions_page_out.dart
+lib/model/admin_user_out.dart
+lib/model/admin_users_page_out.dart
 lib/model/analytics_card_out.dart
+lib/model/audit_entry_out.dart
+lib/model/audit_page_out.dart
 lib/model/category_in.dart
 lib/model/category_out.dart
 lib/model/category_total.dart
@@ -46,6 +57,7 @@ lib/model/group_balances_out.dart
 lib/model/group_in.dart
 lib/model/group_net.dart
 lib/model/group_out.dart
+lib/model/group_ref.dart
 lib/model/group_update.dart
 lib/model/history_entry.dart
 lib/model/http_validation_error.dart
@@ -54,6 +66,7 @@ lib/model/layout_in.dart
 lib/model/layout_out.dart
 lib/model/login_in.dart
 lib/model/member_out.dart
+lib/model/money_total.dart
 lib/model/overall_balances_out.dart
 lib/model/person_balance.dart
 lib/model/personal_list_out.dart
@@ -80,6 +93,7 @@ lib/model/sync_in.dart
 lib/model/sync_out.dart
 lib/model/sync_snapshot_out.dart
 lib/model/sync_stream_out.dart
+lib/model/system_out.dart
 lib/model/token_out.dart
 lib/model/user_brief.dart
 lib/model/user_out.dart
