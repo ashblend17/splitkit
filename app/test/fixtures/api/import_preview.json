@@ -1,0 +1,875 @@
+{
+  "file_name": "tricount-goa-trip.csv",
+  "group_name": "Goa Trip",
+  "currency": "INR",
+  "people": [
+    {
+      "name": "Ansh",
+      "rows": 17,
+      "match": "you",
+      "user": {
+        "id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "name": "Ansh C",
+        "avatar_url": null,
+        "is_placeholder": false
+      }
+    },
+    {
+      "name": "Rahul S",
+      "rows": 17,
+      "match": "suggested",
+      "user": {
+        "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "name": "Rahul Sharma",
+        "avatar_url": null,
+        "is_placeholder": false
+      }
+    },
+    {
+      "name": "Aman",
+      "rows": 18,
+      "match": "suggested",
+      "user": {
+        "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "name": "Aman Verma",
+        "avatar_url": null,
+        "is_placeholder": false
+      }
+    },
+    {
+      "name": "Priya",
+      "rows": 18,
+      "match": "suggested",
+      "user": {
+        "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "name": "Priya Nair",
+        "avatar_url": null,
+        "is_placeholder": false
+      }
+    },
+    {
+      "name": "Vivek",
+      "rows": 16,
+      "match": "suggested",
+      "user": {
+        "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "name": "Vivek Iyer",
+        "avatar_url": null,
+        "is_placeholder": false
+      }
+    },
+    {
+      "name": "Kabir M.",
+      "rows": 10,
+      "match": "suggested",
+      "user": {
+        "id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "name": "Kabir Mehta",
+        "avatar_url": null,
+        "is_placeholder": false
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "Ansh C",
+      "avatar_url": null,
+      "is_placeholder": false
+    },
+    {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+    },
+    {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+    },
+    {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+    },
+    {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+    },
+    {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+    }
+  ],
+  "categories": [
+    {
+      "name": "Transport",
+      "rows": 4,
+      "key": "transport"
+    },
+    {
+      "name": "Accommodation",
+      "rows": 2,
+      "key": "stay"
+    },
+    {
+      "name": "Food & drinks",
+      "rows": 7,
+      "key": "food"
+    },
+    {
+      "name": "Entertainment",
+      "rows": 3,
+      "key": "entertainment"
+    },
+    {
+      "name": "Parking",
+      "rows": 1,
+      "key": null
+    },
+    {
+      "name": "Tips",
+      "rows": 1,
+      "key": null
+    },
+    {
+      "name": "Shopping",
+      "rows": 1,
+      "key": "shopping"
+    }
+  ],
+  "category_options": [
+    {
+      "key": "food",
+      "label": "Food",
+      "icon": "food"
+    },
+    {
+      "key": "transport",
+      "label": "Transport",
+      "icon": "transport"
+    },
+    {
+      "key": "shopping",
+      "label": "Shopping",
+      "icon": "shopping"
+    },
+    {
+      "key": "entertainment",
+      "label": "Fun",
+      "icon": "entertainment"
+    },
+    {
+      "key": "travel",
+      "label": "Travel",
+      "icon": "travel"
+    },
+    {
+      "key": "stay",
+      "label": "Stay",
+      "icon": "rent"
+    },
+    {
+      "key": "rent",
+      "label": "Rent",
+      "icon": "rent"
+    },
+    {
+      "key": "bills",
+      "label": "Bills",
+      "icon": "bills"
+    },
+    {
+      "key": "other",
+      "label": "Other",
+      "icon": "other"
+    }
+  ],
+  "rows": [
+    {
+      "line": 2,
+      "date": "2026-09-12",
+      "title": "Train to Goa",
+      "kind": "expense",
+      "payer": "Aman",
+      "amount_minor": 668000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 133600
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 133600
+        },
+        {
+          "name": "Aman",
+          "share_minor": 133600
+        },
+        {
+          "name": "Priya",
+          "share_minor": 133600
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 133600
+        }
+      ],
+      "category": "Transport",
+      "issues": []
+    },
+    {
+      "line": 3,
+      "date": "2026-09-12",
+      "title": "Villa in Anjuna",
+      "kind": "expense",
+      "payer": "Rahul S",
+      "amount_minor": 1120000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 224000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 224000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 224000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 224000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 224000
+        }
+      ],
+      "category": "Accommodation",
+      "issues": []
+    },
+    {
+      "line": 4,
+      "date": "2026-09-12",
+      "title": "Cab from Madgaon station",
+      "kind": "expense",
+      "payer": "Priya",
+      "amount_minor": 128000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 25600
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 25600
+        },
+        {
+          "name": "Aman",
+          "share_minor": 25600
+        },
+        {
+          "name": "Priya",
+          "share_minor": 25600
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 25600
+        }
+      ],
+      "category": "Transport",
+      "issues": []
+    },
+    {
+      "line": 5,
+      "date": "2026-09-13",
+      "title": "Breakfast at Artjuna",
+      "kind": "expense",
+      "payer": "Rahul S",
+      "amount_minor": 120000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 20000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 20000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 20000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 20000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 20000
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 20000
+        }
+      ],
+      "category": "Food & drinks",
+      "issues": []
+    },
+    {
+      "line": 6,
+      "date": "2026-09-13",
+      "title": "Parasailing",
+      "kind": "expense",
+      "payer": "Kabir M.",
+      "amount_minor": 350000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 87500
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 87500
+        },
+        {
+          "name": "Priya",
+          "share_minor": 87500
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 87500
+        }
+      ],
+      "category": "Entertainment",
+      "issues": []
+    },
+    {
+      "line": 7,
+      "date": "2026-09-14",
+      "title": "Groceries for the villa",
+      "kind": "expense",
+      "payer": "Vivek",
+      "amount_minor": 240000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 40000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 40000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 40000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 40000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 40000
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 40000
+        }
+      ],
+      "category": "Food & drinks",
+      "issues": []
+    },
+    {
+      "line": 8,
+      "date": "2026-09-14",
+      "title": "Parking at Baga",
+      "kind": "expense",
+      "payer": "Aman",
+      "amount_minor": 20000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Aman",
+          "share_minor": 10000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 10000
+        }
+      ],
+      "category": "Parking",
+      "issues": []
+    },
+    {
+      "line": 9,
+      "date": "2026-09-15",
+      "title": "Fish thali at Ritz Classic",
+      "kind": "expense",
+      "payer": "Priya",
+      "amount_minor": 245000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 49000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 49000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 49000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 49000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 49000
+        }
+      ],
+      "category": "Food & drinks",
+      "issues": []
+    },
+    {
+      "line": 10,
+      "date": "2026-09-15",
+      "title": "Beach chairs",
+      "kind": "expense",
+      "payer": "Rahul S",
+      "amount_minor": 60000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 10000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 10000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 10000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 10000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 10000
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 10000
+        }
+      ],
+      "category": "Entertainment",
+      "issues": []
+    },
+    {
+      "line": 11,
+      "date": "2026-09-16",
+      "title": "Chai and bhajiyas",
+      "kind": "expense",
+      "payer": "Aman",
+      "amount_minor": 6000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 1000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 1000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 1000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 1000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 1000
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 1000
+        }
+      ],
+      "category": "Food & drinks",
+      "issues": []
+    },
+    {
+      "line": 12,
+      "date": "2026-09-16",
+      "title": "Drinks at Curlies",
+      "kind": "expense",
+      "payer": "Vivek",
+      "amount_minor": 165000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 27500
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 27500
+        },
+        {
+          "name": "Aman",
+          "share_minor": 27500
+        },
+        {
+          "name": "Priya",
+          "share_minor": 27500
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 27500
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 27500
+        }
+      ],
+      "category": "Food & drinks",
+      "issues": []
+    },
+    {
+      "line": 13,
+      "date": "2026-09-17",
+      "title": "Late-night pizza",
+      "kind": "expense",
+      "payer": "Ansh",
+      "amount_minor": 114000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 20300
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 20300
+        },
+        {
+          "name": "Aman",
+          "share_minor": 20300
+        },
+        {
+          "name": "Priya",
+          "share_minor": 20300
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 20300
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 12500
+        }
+      ],
+      "category": "Food & drinks",
+      "issues": []
+    },
+    {
+      "line": 14,
+      "date": "2026-09-18",
+      "title": "Beach shack lunch",
+      "kind": "expense",
+      "payer": "Aman",
+      "amount_minor": 216000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 36000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 36000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 36000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 36000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 36000
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 36000
+        }
+      ],
+      "category": "Food & drinks",
+      "issues": []
+    },
+    {
+      "line": 15,
+      "date": "2026-09-18",
+      "title": "Tip for driver",
+      "kind": "expense",
+      "payer": "Priya",
+      "amount_minor": 50000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 10000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 10000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 10000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 10000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 10000
+        }
+      ],
+      "category": "Tips",
+      "issues": []
+    },
+    {
+      "line": 16,
+      "date": "2026-09-19",
+      "title": "Scooter rentals",
+      "kind": "expense",
+      "payer": "Priya",
+      "amount_minor": 240000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 40000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 40000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 40000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 40000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 40000
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 40000
+        }
+      ],
+      "category": "Transport",
+      "issues": []
+    },
+    {
+      "line": 17,
+      "date": "2026-09-19",
+      "title": "Dolphin trip",
+      "kind": "expense",
+      "payer": "Kabir M.",
+      "amount_minor": 249000,
+      "currency": "INR",
+      "original": "$30",
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 83000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 83000
+        },
+        {
+          "name": "Kabir M.",
+          "share_minor": 83000
+        }
+      ],
+      "category": "Entertainment",
+      "issues": [
+        {
+          "level": "warning",
+          "code": "converted",
+          "message": "Converted from $30 at Tricount's rate"
+        }
+      ]
+    },
+    {
+      "line": 18,
+      "date": "2026-09-20",
+      "title": "Return tickets",
+      "kind": "expense",
+      "payer": "Ansh",
+      "amount_minor": 972000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 302500
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 137700
+        },
+        {
+          "name": "Aman",
+          "share_minor": 235300
+        },
+        {
+          "name": "Priya",
+          "share_minor": 249300
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 47200
+        }
+      ],
+      "category": "Transport",
+      "issues": []
+    },
+    {
+      "line": 19,
+      "date": "2026-09-20",
+      "title": "Souvenirs",
+      "kind": "expense",
+      "payer": "Vivek",
+      "amount_minor": 150000,
+      "currency": "INR",
+      "original": null,
+      "shares": [],
+      "category": "Shopping",
+      "issues": [
+        {
+          "level": "error",
+          "code": "split_mismatch",
+          "message": "₹100 still needs to be allocated"
+        }
+      ]
+    },
+    {
+      "line": 20,
+      "date": "2026-09-20",
+      "title": "Villa deposit back",
+      "kind": "income",
+      "payer": "Rahul S",
+      "amount_minor": 300000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Ansh",
+          "share_minor": 60000
+        },
+        {
+          "name": "Rahul S",
+          "share_minor": 60000
+        },
+        {
+          "name": "Aman",
+          "share_minor": 60000
+        },
+        {
+          "name": "Priya",
+          "share_minor": 60000
+        },
+        {
+          "name": "Vivek",
+          "share_minor": 60000
+        }
+      ],
+      "category": "Accommodation",
+      "issues": [
+        {
+          "level": "error",
+          "code": "income",
+          "message": "Income isn't supported yet, so this row is skipped"
+        }
+      ]
+    },
+    {
+      "line": 21,
+      "date": "2026-09-20",
+      "title": "Aman paid Rahul back",
+      "kind": "transfer",
+      "payer": "Aman",
+      "amount_minor": 100000,
+      "currency": "INR",
+      "original": null,
+      "shares": [
+        {
+          "name": "Rahul S",
+          "share_minor": 100000
+        }
+      ],
+      "category": null,
+      "issues": []
+    }
+  ],
+  "totals": {
+    "expenses": 17,
+    "expense_total_minor": 4963000,
+    "transfers": 1,
+    "transfer_total_minor": 100000,
+    "skipped": 2,
+    "first_date": "2026-09-12",
+    "last_date": "2026-09-20"
+  }
+}

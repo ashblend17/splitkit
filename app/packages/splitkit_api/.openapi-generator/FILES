@@ -11,6 +11,7 @@ lib/api/balances_api.dart
 lib/api/categories_api.dart
 lib/api/expenses_api.dart
 lib/api/groups_api.dart
+lib/api/import_api.dart
 lib/api/personal_api.dart
 lib/api/settlements_api.dart
 lib/api/splits_api.dart
@@ -28,6 +29,8 @@ lib/auth/oauth.dart
 lib/model/add_member_in.dart
 lib/model/analytics_card_out.dart
 lib/model/category_in.dart
+lib/model/category_match_out.dart
+lib/model/category_option_out.dart
 lib/model/category_out.dart
 lib/model/category_total.dart
 lib/model/chart_bar.dart
@@ -49,6 +52,11 @@ lib/model/group_out.dart
 lib/model/group_update.dart
 lib/model/history_entry.dart
 lib/model/http_validation_error.dart
+lib/model/import_batch_out.dart
+lib/model/import_preview_out.dart
+lib/model/import_row_out.dart
+lib/model/import_stats_out.dart
+lib/model/import_totals_out.dart
 lib/model/layout_card.dart
 lib/model/layout_in.dart
 lib/model/layout_out.dart
@@ -56,11 +64,15 @@ lib/model/login_in.dart
 lib/model/member_out.dart
 lib/model/overall_balances_out.dart
 lib/model/person_balance.dart
+lib/model/person_out.dart
 lib/model/personal_list_out.dart
 lib/model/personal_summary_out.dart
 lib/model/personal_txn_in.dart
 lib/model/personal_txn_out.dart
 lib/model/register_in.dart
+lib/model/review_item_out.dart
+lib/model/row_issue_out.dart
+lib/model/row_share_out.dart
 lib/model/settle_up_in.dart
 lib/model/settle_up_out.dart
 lib/model/settle_up_plan_out.dart
