@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sembast/sembast.dart';
+import 'package:sembast/sembast_memory.dart';
 
 import '../session/session.dart';
 import 'db_factory.dart';
@@ -26,8 +26,15 @@ final syncOnResumeProvider = Provider<bool>((_) => true);
 
 /// The signed-in user's local database.
 final localStoreProvider = FutureProvider<LocalStore>((ref) async {
-  final userId = ref.watch(sessionProvider.select((s) => s.value?.user.id));
+  final (userId, viewAs) = ref.watch(sessionProvider.select((s) => (s.value?.user.id, s.value?.viewAsSessionId)));
   if (userId == null) throw const LocalNotFound('Session');
+  if (viewAs != null) {
+    // View-as: someone else's data never touches this device's disk, and is gone on exit.
+    final path = 'view-as-$viewAs';
+    final store = await LocalStore.open(databaseFactoryMemory, path);
+    ref.onDispose(() => LocalStore.delete(databaseFactoryMemory, path));
+    return store;
+  }
   final path = await ref.watch(localDatabasePathProvider)(userId);
   final store = await LocalStore.open(ref.watch(localDatabaseFactoryProvider), path);
   ref.onDispose(store.close);

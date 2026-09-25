@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -21,13 +23,11 @@ import 'providers.dart';
 /// profile, categories and analytics layouts still go straight to the API.
 final writesProvider = Provider<LocalWrites>((ref) => LocalWrites(ref));
 
-/// The write was refused before it was queued (e.g. a read-only view-as session).
-class WriteRefused implements Exception {
-  const WriteRefused(this.message);
-  final String message;
-
-  @override
-  String toString() => message;
+/// The write was refused before it was queued (a read-only view-as session). An ApiException
+/// with the API's error body, so screens show its message like any other refusal.
+class WriteRefused extends ApiException {
+  WriteRefused(String message)
+    : super(403, jsonEncode({'error': {'code': 'read_only', 'message': message}}));
 }
 
 class LocalWrites {
@@ -36,14 +36,18 @@ class LocalWrites {
 
   static const _uuid = Uuid();
 
-  Future<Ledger> _ledger() async => (await _ref.read(localStoreProvider.future)).ledger;
+  /// Every write starts here, so a read-only view-as is refused before anything is queued.
+  Future<Ledger> _ledger() async {
+    if (_ref.read(sessionProvider).value?.readOnly ?? false) {
+      throw WriteRefused('You are viewing as this user in read-only mode');
+    }
+    return (await _ref.read(localStoreProvider.future)).ledger;
+  }
 
   String _now() => DateTime.now().toUtc().toIso8601String();
   static String _day(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
   Future<void> _queue(OutboxOp op) async {
-    final session = _ref.read(sessionProvider).value;
-    if (session?.readOnly ?? false) throw const WriteRefused('You are viewing as this user in read-only mode');
     final store = await _ref.read(localStoreProvider.future);
     await store.enqueue(op);
     final engine = await _ref.read(syncEngineProvider.future);

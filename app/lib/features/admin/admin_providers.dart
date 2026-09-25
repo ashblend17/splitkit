@@ -16,7 +16,7 @@ Future<T> _fetch<T>(Ref ref, Future<T?> request) async {
     if (result == null) throw ApiException(500, 'Empty response');
     return result;
   } on ApiException catch (e) {
-    if (e.code == 401) await ref.read(sessionProvider.notifier).logout();
+    if (e.code == 401) await ref.read(sessionProvider.notifier).expire();
     rethrow;
   }
 }

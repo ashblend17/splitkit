@@ -14,6 +14,8 @@ class AdminBanner extends StatelessWidget {
     this.wide = false,
     this.modeNote = 'Read-only · any change is logged as Admin',
     this.onSwitchUser,
+    this.modeAction,
+    this.onModeAction,
   });
 
   final String viewingAs;
@@ -23,6 +25,10 @@ class AdminBanner extends StatelessWidget {
   final bool wide;
   final String modeNote;
   final VoidCallback? onSwitchUser;
+
+  /// "Allow edits" or "Make read-only", when the mode can be changed from here.
+  final String? modeAction;
+  final VoidCallback? onModeAction;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +95,16 @@ class AdminBanner extends StatelessWidget {
                     label: 'Switch user',
                     icon: 'swap',
                     onTap: onSwitchUser!,
+                    background: const Color(0x141B1403),
+                    foreground: SkColors.adminInk,
+                    weight: 600,
+                  ),
+                ],
+                if (modeAction != null && onModeAction != null) ...[
+                  const SizedBox(width: 10),
+                  _BannerButton(
+                    label: modeAction!,
+                    onTap: onModeAction!,
                     background: const Color(0x141B1403),
                     foreground: SkColors.adminInk,
                     weight: 600,

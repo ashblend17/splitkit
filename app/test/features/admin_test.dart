@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/local/writes.dart';
 import 'package:splitkit/design_system/design_system.dart';
 import 'package:splitkit/features/admin/admin_dashboard_page.dart';
 import 'package:splitkit/features/admin/admin_users_page.dart';
@@ -106,7 +108,7 @@ void main() {
     expect((method, path, body['mode']), ('POST', '/api/v1/admin/sessions', 'read_only'));
     final aman = (fixture('admin_users')['items'] as List).firstWhere((u) => u['name'] == 'Aman Verma');
     expect(body['target_user_id'], aman['id']);
-    expect(find.text('View-as will open here'), findsOneWidget);
+    expect(find.text('Viewing as Rahul Sharma'), findsOneWidget); // the fake server always answers with Rahul
   });
 
   testWidgets('users table: counts, balances in words, selected user panel', (tester) async {
@@ -127,14 +129,51 @@ void main() {
     expect(find.text('owed ₹4,518'), findsNWidgets(2));
   });
 
-  testWidgets('View as on a row goes through the seam and says so', (tester) async {
+  testWidgets('view as: banner and frame, their data, read-only, allow edits, exit', (tester) async {
     final be = adminBackend();
+    final start = fixture('admin_session_start') as Map;
+    final sid = start['session']['id'];
+    be.snapshotsByToken[start['access_token']] = FakeBackend.syncFixture('rahul');
+    be.postResponses['/api/v1/admin/sessions/$sid/end'] = (200, start['session']);
+    be.postResponses['/api/v1/admin/sessions/$sid'] = (200, {...start['session'], 'mode': 'edit'});
     await pumpApp(tester, backend: be, size: desktop, location: '/admin/users');
     await tester.tap(viewAsFor('Rahul Sharma'));
     await tester.pumpAndSettle();
+
     final rahul = (fixture('admin_users')['items'] as List).firstWhere((u) => u['name'] == 'Rahul Sharma');
-    expect(be.writes.single.$3, {'target_user_id': rahul['id'], 'mode': 'read_only'});
-    expect(find.text('View-as will open here'), findsOneWidget);
+    expect(be.writes.first.$3, {'target_user_id': rahul['id'], 'mode': 'read_only'});
+    // Every screen is framed, the admin area is gone, and it's Rahul's own data.
+    expect(find.byType(AdminBanner), findsOneWidget);
+    expect(find.text('Viewing as Rahul Sharma'), findsOneWidget);
+    expect(find.text('Read-only · any change is logged as Admin'), findsOneWidget);
+    expect(find.byType(AdminDashboardPage), findsNothing);
+    expect(find.text('Hi, Rahul'), findsOneWidget);
+    expect(find.text('Flatmates'), findsNothing); // Rahul isn't in Flatmates
+
+    // Read-only: writes are refused on the device, before anything is queued or sent.
+    final container = ProviderScope.containerOf(tester.element(find.byType(AdminBanner)));
+    await expectLater(
+      container.read(writesProvider).createPersonal(
+        PersonalTxnIn(type: PersonalTxnInTypeEnum.expense, amountMinor: 100, description: 'x', date: DateTime.utc(2026, 9, 25)),
+      ),
+      throwsA(isA<WriteRefused>().having(apiErrorMessage, 'message', 'You are viewing as this user in read-only mode')),
+    );
+
+    // Allow edits: the admin's own token changes the session's mode.
+    await tester.tap(find.text('Allow edits'));
+    await tester.pumpAndSettle();
+    expect(be.writes.last.$1, 'PATCH');
+    expect(be.writes.last.$2, '/api/v1/admin/sessions/$sid');
+    expect(be.writes.last.$3, {'mode': 'edit'});
+    expect(find.text('Editing · every change is logged as Admin'), findsOneWidget);
+    expect(find.text('Make read-only'), findsOneWidget);
+
+    // Exit ends the session and goes back to the admin.
+    await tester.tap(find.text('Exit'));
+    await tester.pumpAndSettle();
+    expect(be.writes.last.$2, '/api/v1/admin/sessions/$sid/end');
+    expect(find.byType(AdminBanner), findsNothing);
+    expect(find.text('Hi, Ansh'), findsOneWidget);
   });
 
   testWidgets('user search and role filter go to the API', (tester) async {
