@@ -13,6 +13,8 @@ Group expense splitting with a personal-finance area. The spec is in
 | `tool/` | `gen_tokens.py` (tokens.json → Dart), `gen_api_client.sh` (OpenAPI → Dart client), `capture_api_fixtures.py` |
 | `splitkit-design/` | Design handoff: mockups, tokens |
 
+Checking the data and recovering from problems (server, devices, backups): [validation.md](validation.md).
+
 ## Run everything
 
 ```sh
