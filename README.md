@@ -92,6 +92,27 @@ its stream, in the same transaction as the write.
   already made.
 - Rows written outside `record()` (the seed, migrations) have no log entries. Clients get them
   from snapshots.
+- Group entries carry `last_activity_at`; clients move it forward with the `at` of later
+  group-stream changes (except `user.*`, which only re-sends member names). Expense entries embed
+  their category with `scope` and `owner_id`.
+
+### On the device
+
+The app keeps every stream it can see in a local database (`app/lib/core/local/`, sembast: a
+file on Android/iOS, IndexedDB on web; one database per user) and reads every screen from it.
+
+- `SyncEngine` runs on sign-in, every 45 s while the app is open, on resume and after every write
+  (`refreshLedger`). A batch and its cursor are stored in one transaction.
+- `Ledger` rebuilds each API answer (groups, balances, feed, expense detail, settle-up plan,
+  personal list and summary, categories) from the entities, following the server code line by
+  line; `balance_engine.dart` ports the balance engine and settle-up planner (both pass
+  `shared/balance_vectors.json`, like the split engine). Analytics, layouts and expense history
+  still come from the network.
+- Offline, screens keep showing the device copy with a "You're offline" line, and the app opens
+  with the saved sign-in. A 401 signs you out but keeps the data; logging out deletes it.
+- Checks: `app/test/core/local_parity_test.dart` compares every local answer with the API's for
+  two seeded users (`app/test/fixtures/sync/`), and `app/test/live/` does the same against a
+  running server after real writes (see the file for how to point it at a throwaway database).
 
 ## App development
 
@@ -110,8 +131,11 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
 - The API client in `app/packages/splitkit_api` is generated: after API changes run
   `(cd api && uv run python -m app.openapi) && tool/gen_api_client.sh` (needs Docker).
   Use `apiDate()` for date fields: the generated client converts dates to UTC.
-- Screen tests run against real API responses in `app/test/fixtures/api`. Refresh them with
-  `docker compose exec api python -m app.seed --reset && python3 tool/capture_api_fixtures.py`.
+- Screen tests run against real API responses in `app/test/fixtures/api`, and screens read from a
+  local store synced from the snapshots in `app/test/fixtures/sync`. Refresh both with
+  `docker compose exec api python -m app.seed --reset && python3 tool/capture_api_fixtures.py`
+  (this resets the dev database; `API=http://localhost:8001` points it at another instance).
+- On a machine with little free memory, run `flutter test --concurrency=1`.
 
 ## Money and splits
 

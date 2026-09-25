@@ -40,18 +40,17 @@ void main() {
     expect(body['category_id'], isNotNull);
   });
 
-  testWidgets('history sends date, type and category filters', (tester) async {
-    final be = FakeBackend();
-    await pumpApp(tester, backend: be, location: '/personal/history');
+  testWidgets('history filters by type and category on the device', (tester) async {
+    await pumpApp(tester, location: '/personal/history');
     expect(find.text('Spending history'), findsOneWidget);
     expect(find.text('Expenses only'), findsOneWidget);
     expect(find.text('Transactions'), findsOneWidget);
+    expect(find.text('Rapido ride'), findsOneWidget);
     await tester.tap(find.text('Food').first);
     await tester.pumpAndSettle();
-    final last = be.gets.lastWhere((u) => u.path == '/api/v1/personal/transactions');
-    expect(last.queryParameters['type'], 'expense');
-    expect(last.queryParametersAll['category'], ['food']);
-    expect(last.queryParameters['start'], endsWith('T00:00:00.000Z'));
+    expect(find.text('Swiggy order'), findsOneWidget);
+    expect(find.text('Rapido ride'), findsNothing);
+    expect(find.text('Blue Tokai coffee'), findsOneWidget);
   });
 
   testWidgets('profile overview', (tester) async {

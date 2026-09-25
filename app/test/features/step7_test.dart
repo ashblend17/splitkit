@@ -71,32 +71,28 @@ void main() {
     expect(find.text('+₹1,150'), findsOneWidget); // Goa Trip in the groups card
   });
 
-  testWidgets('desktop filters and search go to the feed query', (tester) async {
-    final be = FakeBackend();
-    await pumpApp(tester, backend: be, size: desktop);
-    Map<String, String> lastFeed() => be.gets.lastWhere((u) => u.path == '/api/v1/feed').queryParameters;
+  testWidgets('desktop filters and search narrow the activity table', (tester) async {
+    await pumpApp(tester, size: desktop);
+    expect(find.text('Electricity bill'), findsOneWidget);
 
     await tester.tap(find.text('Unsettled only'));
     await tester.pumpAndSettle();
-    expect(lastFeed()['unsettled'], 'true');
+    expect(find.text('Electricity bill'), findsNothing); // you're square with the payer
+    expect(find.text('Groceries'), findsOneWidget);
 
     await tester.tap(find.text('Any category'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Food').last);
     await tester.pumpAndSettle();
-    expect(lastFeed()['category'], 'food');
-
-    await tester.tap(find.text('Any time'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('This month').last);
-    await tester.pumpAndSettle();
-    expect(lastFeed()['start'], isNotNull);
+    expect(find.text('Groceries'), findsNothing);
+    expect(find.text('Dinner at Thalassa'), findsOneWidget);
+    expect(find.text('Late-night pizza'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'thal');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
-    expect(lastFeed()['q'], 'thal');
-    expect(lastFeed()['unsettled'], 'true'); // filters stay while searching
+    expect(find.text('Dinner at Thalassa'), findsOneWidget);
+    expect(find.text('Late-night pizza'), findsNothing);
   });
 
   testWidgets('desktop table drops columns rather than overflowing at 1280px', (tester) async {

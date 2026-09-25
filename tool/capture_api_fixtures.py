@@ -4,6 +4,10 @@
 Needs the API running with freshly seeded data:
   docker compose exec api python -m app.seed --reset && python3 tool/capture_api_fixtures.py
 Read-only except for one rejected (422) request.
+
+Also writes app/test/fixtures/sync/<user>.json: every sync snapshot a seeded user can see plus the
+API's own answers (groups, balances, feed, expenses, settle-up plans, personal) for the same data.
+The app's parity test rebuilds each answer from the snapshots alone and compares.
 """
 
 import json
@@ -14,6 +18,8 @@ from pathlib import Path
 
 BASE = os.environ.get("API", "http://localhost:8000") + "/api/v1"
 OUT = Path(__file__).resolve().parents[1] / "app" / "test" / "fixtures" / "api"
+SYNC_OUT = OUT.parent / "sync"
+PARITY_USERS = {"john": "admin@example.com", "rahul": "rahul.sharma@example.com"}
 
 
 def call(path, body=None, token=None):
@@ -69,7 +75,53 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, data in fixtures.items():
         (OUT / f"{name}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    capture_sync()
     print(f"Wrote {len(fixtures)} fixtures to {OUT.relative_to(Path.cwd()) if OUT.is_relative_to(Path.cwd()) else OUT}")
+
+
+def capture_sync():
+    SYNC_OUT.mkdir(parents=True, exist_ok=True)
+    for key, email in PARITY_USERS.items():
+        login = call("/auth/login", {"email": email, "password": "dev-password"})
+        if "access_token" not in login:
+            raise SystemExit(f"Can't log in as {email}: {login}")
+        token = login["access_token"]
+        streams = [s["stream"] for s in call("/sync", {"cursors": {}}, token)["streams"]]
+        snapshots = {s: call(f"/sync/snapshot/{s}", token=token) for s in streams}
+        groups = call("/groups", token=token)
+        archived = call("/groups?archived=true", token=token)
+        answers = {
+            "me": call("/me", token=token),
+            "groups": groups,
+            "groups_archived": archived,
+            "balances": call("/balances", token=token),
+            "feed": call("/feed?limit=100", token=token),
+            "feed_deleted": call("/feed?deleted=true&limit=100", token=token),
+            "categories": call("/categories", token=token),
+            "categories_group": call("/categories?scope=group", token=token),
+            "categories_personal": call("/categories?scope=personal", token=token),
+        }
+        for g in groups + archived:
+            gid = g["id"]
+            answers[f"group:{gid}"] = call(f"/groups/{gid}", token=token)
+            answers[f"group_balances:{gid}"] = call(f"/groups/{gid}/balances", token=token)
+            answers[f"feed:{gid}"] = call(f"/feed?group_id={gid}&limit=100", token=token)
+            for item in answers[f"feed:{gid}"]:
+                if item["kind"] == "expense":
+                    answers[f"expense:{item['id']}"] = call(f"/expenses/{item['id']}", token=token)
+        for f in answers["balances"]["friends"]:
+            answers[f"settle_up:{f['user']['id']}:{f['currency']}"] = call(
+                f"/friends/{f['user']['id']}/settle-up?currency={f['currency']}", token=token
+            )
+        for month in ("2026-07-01", "2026-08-01", "2026-09-01"):
+            answers[f"personal_summary:{month}"] = call(f"/personal/summary?month={month}", token=token)
+        answers["personal_list"] = call("/personal/transactions?limit=500", token=token)
+        answers["personal_list:sep_expense"] = call(
+            "/personal/transactions?start=2026-09-01&end=2026-09-30&type=expense&limit=500", token=token
+        )
+        answers["personal_deleted"] = call("/personal/transactions?deleted=true&limit=500", token=token)
+        out = {"user": key, "email": email, "snapshots": snapshots, "answers": answers}
+        (SYNC_OUT / f"{key}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

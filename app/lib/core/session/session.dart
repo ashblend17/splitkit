@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/api.dart';
 import '../config.dart';
+import '../local/providers.dart';
+import '../local/sync_engine.dart';
 
 /// A logged-in user and their token.
 class Session {
@@ -14,13 +18,27 @@ class Session {
   bool get isAdmin => user.role == 'admin';
 }
 
-/// Where the token lives between launches (localStorage on web).
+/// Where the token lives between launches (localStorage on web), with the signed-in user so
+/// the app can open without a connection.
 class TokenStore {
   static const _key = 'splitkit.token';
+  static const _userKey = 'splitkit.user';
 
   Future<String?> read() async => (await SharedPreferences.getInstance()).getString(_key);
   Future<void> write(String token) async => (await SharedPreferences.getInstance()).setString(_key, token);
-  Future<void> clear() async => (await SharedPreferences.getInstance()).remove(_key);
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key);
+    await prefs.remove(_userKey);
+  }
+
+  Future<UserOut?> readUser() async {
+    final raw = (await SharedPreferences.getInstance()).getString(_userKey);
+    return raw == null ? null : UserOut.fromJson(jsonDecode(raw));
+  }
+
+  Future<void> writeUser(UserOut user) async =>
+      (await SharedPreferences.getInstance()).setString(_userKey, jsonEncode(user));
 }
 
 final tokenStoreProvider = Provider<TokenStore>((_) => TokenStore());
@@ -94,12 +112,17 @@ class SessionController extends AsyncNotifier<Session?> {
     if (token == null) return null;
     try {
       final user = await _api(token).users.getMe();
-      return user == null ? null : Session(token: token, user: user);
+      if (user == null) return null;
+      await _store.writeUser(user);
+      return Session(token: token, user: user);
     } on ApiException catch (e) {
       if (e.code == 401) {
         await _store.clear();
         return null;
       }
+      // Offline: open with the saved sign-in; screens read from the device.
+      final saved = isOfflineError(e) ? await _store.readUser() : null;
+      if (saved != null) return Session(token: token, user: saved);
       rethrow;
     }
   }
@@ -129,10 +152,21 @@ class SessionController extends AsyncNotifier<Session?> {
 
   Future<void> _start(TokenOut out) async {
     await _store.write(out.accessToken);
+    await _store.writeUser(out.user);
     state = AsyncData(Session(token: out.accessToken, user: out.user));
   }
 
+  /// Signs out and deletes this user's data from the device.
   Future<void> logout() async {
+    final userId = state.value?.user.id;
+    await _store.clear();
+    state = const AsyncData(null);
+    if (userId != null) await deleteLocalData(ref, userId);
+  }
+
+  /// The token stopped working (expired or revoked). Signs out but keeps the device's data,
+  /// so signing in again picks up where it left off.
+  Future<void> expire() async {
     await _store.clear();
     state = const AsyncData(null);
   }
@@ -142,7 +176,7 @@ final sessionProvider = AsyncNotifierProvider<SessionController, Session?>(Sessi
 
 /// The authenticated API client. Only read it where a session exists.
 final apiProvider = Provider<Api>((ref) {
-  final token = ref.watch(sessionProvider).value?.token;
+  final token = ref.watch(sessionProvider.select((s) => s.value?.token));
   return ref.watch(apiFactoryProvider)(token);
 });
 

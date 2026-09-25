@@ -4,7 +4,7 @@
   "subtitle": null,
   "cards": [
     {
-      "id": "c29205e6-cfa6-4d95-811a-725f0a7d7111",
+      "id": "dad804e4-4c60-5f17-8e33-94c13c550cb3",
       "type": "spending_trend",
       "title": "Monthly spending",
       "period_label": "Last 6 months",
@@ -46,7 +46,7 @@
       "stat": null
     },
     {
-      "id": "770fa246-88ff-4fce-9d58-358078e26dea",
+      "id": "c0408923-233c-5c4b-b5be-9370591d0c29",
       "type": "spending_by_category",
       "title": "Spending by category",
       "period_label": "September",
@@ -86,7 +86,7 @@
       "stat": null
     },
     {
-      "id": "f93e3db0-7d8e-4861-9505-0ecd0102178b",
+      "id": "4801303e-4440-5e34-b4b1-5072e1f77110",
       "type": "personal_vs_group",
       "title": "Personal vs group",
       "period_label": "September",
@@ -106,7 +106,7 @@
       "stat": null
     },
     {
-      "id": "b7e7155b-983c-4e1f-908b-71d21ccae814",
+      "id": "1228e1ee-6276-58cd-9a76-c6453c445acc",
       "type": "average_daily",
       "title": "Average per day",
       "period_label": "1 – 23 Sep",
