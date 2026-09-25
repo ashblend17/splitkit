@@ -89,7 +89,11 @@ class _Tab extends StatelessWidget {
                 child: SkIcon(d.glyph, size: 22, color: _fg(on)),
               ),
               const SizedBox(height: 4),
-              Text(d.label, style: SkText.body(11, on ? 700 : 500, color: _fg(on))),
+              // One line, shrunk rather than wrapped when five tabs share a narrow phone.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(d.label, maxLines: 1, softWrap: false, style: SkText.body(11, on ? 700 : 500, color: _fg(on))),
+              ),
             ],
           ),
         ),
