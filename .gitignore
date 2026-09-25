@@ -1,0 +1,8 @@
+.env
+.DS_Store
+.idea/
+.vscode/
+
+splitkit-design/*
+CLAUDE.md
+ISSUES.md

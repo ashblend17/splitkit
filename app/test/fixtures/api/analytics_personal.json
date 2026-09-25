@@ -1,0 +1,123 @@
+{
+  "scope": "personal",
+  "currency": "INR",
+  "subtitle": null,
+  "cards": [
+    {
+      "id": "c29205e6-cfa6-4d95-811a-725f0a7d7111",
+      "type": "spending_trend",
+      "title": "Monthly spending",
+      "period_label": "Last 6 months",
+      "source": "personal_monthly",
+      "headline": "₹32,450",
+      "bars": [
+        {
+          "label": "Apr",
+          "value_minor": 2418000,
+          "highlight": false
+        },
+        {
+          "label": "May",
+          "value_minor": 2964000,
+          "highlight": false
+        },
+        {
+          "label": "Jun",
+          "value_minor": 2731000,
+          "highlight": false
+        },
+        {
+          "label": "Jul",
+          "value_minor": 3592000,
+          "highlight": false
+        },
+        {
+          "label": "Aug",
+          "value_minor": 3077500,
+          "highlight": false
+        },
+        {
+          "label": "Sep",
+          "value_minor": 3245000,
+          "highlight": true
+        }
+      ],
+      "rows": [],
+      "stat": null
+    },
+    {
+      "id": "770fa246-88ff-4fce-9d58-358078e26dea",
+      "type": "spending_by_category",
+      "title": "Spending by category",
+      "period_label": "September",
+      "source": "personal_by_category",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Rent",
+          "value_minor": 1800000
+        },
+        {
+          "label": "Food",
+          "value_minor": 582000
+        },
+        {
+          "label": "Transport",
+          "value_minor": 294000
+        },
+        {
+          "label": "Shopping",
+          "value_minor": 231000
+        },
+        {
+          "label": "Fun",
+          "value_minor": 164900
+        },
+        {
+          "label": "Bills",
+          "value_minor": 112000
+        },
+        {
+          "label": "Health",
+          "value_minor": 61100
+        }
+      ],
+      "stat": null
+    },
+    {
+      "id": "f93e3db0-7d8e-4861-9505-0ecd0102178b",
+      "type": "personal_vs_group",
+      "title": "Personal vs group",
+      "period_label": "September",
+      "source": "scope_split",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Personal",
+          "value_minor": 3245000
+        },
+        {
+          "label": "Group share",
+          "value_minor": 1821000
+        }
+      ],
+      "stat": null
+    },
+    {
+      "id": "b7e7155b-983c-4e1f-908b-71d21ccae814",
+      "type": "average_daily",
+      "title": "Average per day",
+      "period_label": "1 – 23 Sep",
+      "source": "personal_daily_avg",
+      "headline": null,
+      "bars": [],
+      "rows": [],
+      "stat": {
+        "value_minor": 141100,
+        "note": "August averaged ₹993 per day"
+      }
+    }
+  ]
+}

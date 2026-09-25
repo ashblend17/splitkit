@@ -1,0 +1,71 @@
+{
+  "cards": [
+    {
+      "type": "spending_trend",
+      "title": "Monthly spending",
+      "period": "last_6_months",
+      "source": "personal_monthly",
+      "params": {
+        "bucket": "month"
+      }
+    },
+    {
+      "type": "spending_by_category",
+      "title": "Spending by category",
+      "period": "this_month",
+      "source": "personal_by_category",
+      "params": {}
+    },
+    {
+      "type": "personal_vs_group",
+      "title": "Personal vs group",
+      "period": "this_month",
+      "source": "scope_split",
+      "params": {}
+    },
+    {
+      "type": "average_daily",
+      "title": "Average per day",
+      "period": "this_month",
+      "source": "personal_daily_avg",
+      "params": {
+        "compare": "previous_month"
+      }
+    }
+  ],
+  "available": [
+    {
+      "type": "spending_trend",
+      "title": "Monthly spending",
+      "period": "last_6_months",
+      "source": "personal_monthly",
+      "params": {
+        "bucket": "month"
+      }
+    },
+    {
+      "type": "spending_by_category",
+      "title": "Spending by category",
+      "period": "this_month",
+      "source": "personal_by_category",
+      "params": {}
+    },
+    {
+      "type": "personal_vs_group",
+      "title": "Personal vs group",
+      "period": "this_month",
+      "source": "scope_split",
+      "params": {}
+    },
+    {
+      "type": "average_daily",
+      "title": "Average per day",
+      "period": "this_month",
+      "source": "personal_daily_avg",
+      "params": {
+        "compare": "previous_month"
+      }
+    }
+  ],
+  "customised": false
+}

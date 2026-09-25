@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "split_invalid",
+    "message": "₹100 still needs to be allocated",
+    "remaining_minor": 10000
+  }
+}

@@ -1,0 +1,406 @@
+{
+  "items": [
+    {
+      "id": "36bcb91f-4d89-4fb3-a843-3224a40d7808",
+      "type": "expense",
+      "amount_minor": 48600,
+      "currency": "INR",
+      "description": "Swiggy order",
+      "date": "2026-09-23",
+      "category": {
+        "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+        "key": "food",
+        "label": "Food",
+        "icon": "food",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": "UPI",
+      "acting_admin_id": null,
+      "created_at": "2026-09-23T07:40:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "5af5161c-b298-4388-8756-da78fa90663b",
+      "type": "expense",
+      "amount_minor": 40000,
+      "currency": "INR",
+      "description": "Rapido ride",
+      "date": "2026-09-21",
+      "category": {
+        "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+        "key": "transport",
+        "label": "Transport",
+        "icon": "transport",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": "UPI",
+      "acting_admin_id": null,
+      "created_at": "2026-09-21T13:35:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "39199b0f-2ccb-4da4-80ac-9c21dbc3795e",
+      "type": "expense",
+      "amount_minor": 34000,
+      "currency": "INR",
+      "description": "Blue Tokai coffee",
+      "date": "2026-09-21",
+      "category": {
+        "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+        "key": "food",
+        "label": "Food",
+        "icon": "food",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": "UPI",
+      "acting_admin_id": null,
+      "created_at": "2026-09-21T05:15:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "5dff03bb-6b14-4d29-8934-cf6ab337ab20",
+      "type": "expense",
+      "amount_minor": 50000,
+      "currency": "INR",
+      "description": "Metro card top-up",
+      "date": "2026-09-21",
+      "category": {
+        "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+        "key": "transport",
+        "label": "Transport",
+        "icon": "transport",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-21T03:40:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "77f27973-ee14-4132-aff4-4fae62a67c7b",
+      "type": "expense",
+      "amount_minor": 186000,
+      "currency": "INR",
+      "description": "Weekend groceries",
+      "date": "2026-09-19",
+      "category": {
+        "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+        "key": "food",
+        "label": "Food",
+        "icon": "food",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": "UPI",
+      "acting_admin_id": null,
+      "created_at": "2026-09-19T06:00:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "02f650e5-a8f2-4a28-a0ef-b1ca63f41ab7",
+      "type": "expense",
+      "amount_minor": 100000,
+      "currency": "INR",
+      "description": "Bowling",
+      "date": "2026-09-11",
+      "category": {
+        "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+        "key": "entertainment",
+        "label": "Fun",
+        "icon": "entertainment",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-11T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "33204803-0cdd-44ec-96f3-27de4812a16e",
+      "type": "expense",
+      "amount_minor": 128000,
+      "currency": "INR",
+      "description": "Office lunch",
+      "date": "2026-09-10",
+      "category": {
+        "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+        "key": "food",
+        "label": "Food",
+        "icon": "food",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-10T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "df19757b-1a0f-4987-a00e-f228defdd892",
+      "type": "expense",
+      "amount_minor": 40100,
+      "currency": "INR",
+      "description": "Netflix",
+      "date": "2026-09-09",
+      "category": {
+        "id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+        "key": "bills",
+        "label": "Bills",
+        "icon": "bills",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-09T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "255db91a-7541-449d-a6b0-6a9f4e17dcf4",
+      "type": "expense",
+      "amount_minor": 161100,
+      "currency": "INR",
+      "description": "Decathlon shorts",
+      "date": "2026-09-08",
+      "category": {
+        "id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+        "key": "shopping",
+        "label": "Shopping",
+        "icon": "shopping",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-08T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "af70e1fe-ae88-45f3-8d3f-6ff5907e8d3e",
+      "type": "expense",
+      "amount_minor": 166000,
+      "currency": "INR",
+      "description": "Petrol",
+      "date": "2026-09-07",
+      "category": {
+        "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+        "key": "transport",
+        "label": "Transport",
+        "icon": "transport",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-07T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "8a58a7ea-8d4b-4abc-9783-ef3339e1ccce",
+      "type": "expense",
+      "amount_minor": 121200,
+      "currency": "INR",
+      "description": "Vegetables and fruit",
+      "date": "2026-09-06",
+      "category": {
+        "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+        "key": "food",
+        "label": "Food",
+        "icon": "food",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-06T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "11b6f8aa-e99e-4a4f-a672-344e1c35ff3d",
+      "type": "expense",
+      "amount_minor": 61100,
+      "currency": "INR",
+      "description": "Pharmacy",
+      "date": "2026-09-06",
+      "category": {
+        "id": "42220069-ff05-57ab-8292-dc10b4f2ce83",
+        "key": "health",
+        "label": "Health",
+        "icon": "health",
+        "scope": "personal",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-06T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "4a46391f-5d52-4dad-9312-94dd4f0513aa",
+      "type": "expense",
+      "amount_minor": 64900,
+      "currency": "INR",
+      "description": "Movie tickets",
+      "date": "2026-09-05",
+      "category": {
+        "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+        "key": "entertainment",
+        "label": "Fun",
+        "icon": "entertainment",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-05T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "3926def4-1166-462e-a70a-090de78c7546",
+      "type": "expense",
+      "amount_minor": 69900,
+      "currency": "INR",
+      "description": "Phone case",
+      "date": "2026-09-04",
+      "category": {
+        "id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+        "key": "shopping",
+        "label": "Shopping",
+        "icon": "shopping",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-04T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "e98d1716-0edb-430a-ba3b-892ac30139de",
+      "type": "expense",
+      "amount_minor": 64200,
+      "currency": "INR",
+      "description": "Zomato order",
+      "date": "2026-09-03",
+      "category": {
+        "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+        "key": "food",
+        "label": "Food",
+        "icon": "food",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-03T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "fc0bbeda-0064-4c22-a342-bf41cb459797",
+      "type": "expense",
+      "amount_minor": 38000,
+      "currency": "INR",
+      "description": "Uber to office",
+      "date": "2026-09-02",
+      "category": {
+        "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+        "key": "transport",
+        "label": "Transport",
+        "icon": "transport",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-02T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "7e1a0f7d-e80a-40d7-8803-784982d11514",
+      "type": "expense",
+      "amount_minor": 71900,
+      "currency": "INR",
+      "description": "Mobile recharge",
+      "date": "2026-09-02",
+      "category": {
+        "id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+        "key": "bills",
+        "label": "Bills",
+        "icon": "bills",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": null,
+      "acting_admin_id": null,
+      "created_at": "2026-09-02T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "b0a293f8-7b7b-4a66-acec-c39a1c774a6b",
+      "type": "expense",
+      "amount_minor": 1800000,
+      "currency": "INR",
+      "description": "House rent",
+      "date": "2026-09-01",
+      "category": {
+        "id": "81c9635a-b258-5ac2-bce7-a3619e4ebc93",
+        "key": "rent",
+        "label": "Rent",
+        "icon": "rent",
+        "scope": "all",
+        "owner_id": null
+      },
+      "notes": "Bank transfer",
+      "acting_admin_id": null,
+      "created_at": "2026-09-01T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    },
+    {
+      "id": "3ba10df8-26a4-4be6-817b-4268a9f340e5",
+      "type": "income",
+      "amount_minor": 8500000,
+      "currency": "INR",
+      "description": "Salary",
+      "date": "2026-09-01",
+      "category": {
+        "id": "6614cb5e-301f-57f1-85d4-ae8a8838fe7c",
+        "key": "income",
+        "label": "Income",
+        "icon": "income",
+        "scope": "personal",
+        "owner_id": null
+      },
+      "notes": "Bank transfer",
+      "acting_admin_id": null,
+      "created_at": "2026-09-01T03:30:00Z",
+      "deleted_at": null,
+      "version": 1
+    }
+  ],
+  "spent_minor": 3245000,
+  "income_minor": 8500000,
+  "count": 19
+}

@@ -1,0 +1,76 @@
+{
+  "totals": [
+    {
+      "currency": "INR",
+      "net_minor": 147000,
+      "you_owe_minor": 125000,
+      "you_are_owed_minor": 272000
+    }
+  ],
+  "friends": [
+    {
+      "user": {
+        "id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "name": "Kabir Mehta",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "currency": "INR",
+      "net_minor": -75000
+    },
+    {
+      "user": {
+        "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "name": "Rahul Sharma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "currency": "INR",
+      "net_minor": -50000
+    },
+    {
+      "user": {
+        "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "name": "Priya Nair",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "currency": "INR",
+      "net_minor": 155000
+    },
+    {
+      "user": {
+        "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "name": "Aman Verma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "currency": "INR",
+      "net_minor": 117000
+    },
+    {
+      "user": {
+        "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "name": "Vivek Iyer",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "currency": "INR",
+      "net_minor": 0
+    }
+  ],
+  "groups": [
+    {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "name": "Goa Trip",
+      "currency": "INR",
+      "net_minor": 115000
+    },
+    {
+      "group_id": "6b800aee-e138-5ea0-aacc-becd1e307d7a",
+      "name": "Flatmates",
+      "currency": "INR",
+      "net_minor": 32000
+    }
+  ]
+}
