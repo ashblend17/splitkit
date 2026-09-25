@@ -13,6 +13,7 @@ from app.modules.balances.router import router as balances_router
 from app.modules.categories.router import router as categories_router
 from app.modules.expenses.router import router as expenses_router
 from app.modules.groups.router import router as groups_router
+from app.modules.import_tricount.router import router as import_router
 from app.modules.personal.router import router as personal_router
 from app.modules.settlements.router import router as settlements_router
 from app.modules.splits.router import router as splits_router
@@ -63,6 +64,7 @@ for module_router in (
     personal_router,
     analytics_router,
     sync_router,
+    import_router,  # removable with the import_tricount module
 ):
     api.include_router(module_router)
 
