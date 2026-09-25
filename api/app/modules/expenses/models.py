@@ -2,7 +2,8 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import CHAR, BigInteger, CheckConstraint, ForeignKey, Index, text
+from sqlalchemy import CHAR, BigInteger, CheckConstraint, ForeignKey, Index, SmallInteger, text
+from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base, now_default, uuid_pk
@@ -46,7 +47,11 @@ class Expense(Base):
     __mapper_args__ = {"version_id_col": version}
 
     splits: Mapped[list["ExpenseSplit"]] = relationship(
-        back_populates="expense", cascade="all, delete-orphan"
+        back_populates="expense",
+        cascade="all, delete-orphan",
+        # In the order they were entered, so every read (and the sync log) lists them the same way.
+        order_by="ExpenseSplit.position",
+        collection_class=ordering_list("position"),
     )
 
 
@@ -62,5 +67,6 @@ class ExpenseSplit(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True, index=True)
     share_minor: Mapped[int] = mapped_column(BigInteger)
     input_value: Mapped[Decimal | None]
+    position: Mapped[int] = mapped_column(SmallInteger, server_default="0")
 
     expense: Mapped[Expense] = relationship(back_populates="splits")

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:sembast/sembast.dart';
 
 import 'ledger.dart';
+import 'outbox.dart';
 
 /// This device's copy of the synced streams: entities (full state from snapshots and changes)
 /// and, per stream, the last seq applied. One database per signed-in user.
@@ -20,8 +21,10 @@ class LocalStore {
   final _entities = stringMapStoreFactory.store('entities');
   final _cursors = StoreRef<String, int>('cursors');
   final _meta = StoreRef<String, Object?>('meta');
+  final _outbox = intMapStoreFactory.store('outbox');
 
   final _cache = <String, LocalEntity>{};
+  final _ops = <OutboxOp>[];
   final _cursorCache = <String, int>{};
   final _changed = StreamController<Ledger>.broadcast();
   Ledger? _ledger;
@@ -58,6 +61,9 @@ class LocalStore {
     for (final r in await _cursors.find(_db)) {
       _cursorCache[r.key] = r.value;
     }
+    for (final r in await _outbox.find(_db, finder: Finder(sortOrders: [SortOrder(Field.key)]))) {
+      _ops.add(OutboxOp.fromJson(r.key, r.value.cast()));
+    }
   }
 
   bool _closed = false;
@@ -77,7 +83,23 @@ class LocalStore {
 
   Iterable<LocalEntity> get entities => _cache.values;
 
-  Ledger get ledger => _ledger ??= Ledger(_cache.values);
+  /// What the screens show: the server's state with writes not confirmed yet laid over it.
+  Ledger get ledger => _ledger ??= _build();
+
+  Ledger _build() {
+    if (_ops.isEmpty) return Ledger(_cache.values);
+    final view = Map.of(_cache);
+    for (final op in _ops) {
+      if (op.status == OutboxStatus.rejected) continue;
+      for (final e in op.entities) {
+        view[e.key] = e;
+      }
+    }
+    return Ledger(view.values);
+  }
+
+  /// The server's own copy of an entity (without this device's unconfirmed writes).
+  LocalEntity? serverEntity(String key) => _cache[key];
 
   /// The ledger now and after every change.
   Stream<Ledger> watch() async* {
@@ -86,7 +108,7 @@ class LocalStore {
   }
 
   void _notify() {
-    _ledger = Ledger(_cache.values);
+    _ledger = _build();
     if (!_changed.isClosed) _changed.add(_ledger!);
   }
 
@@ -165,6 +187,34 @@ class LocalStore {
     });
     keys.forEach(_cache.remove);
     _cursorCache.remove(stream);
+    _notify();
+  }
+
+  // ---- outbox (writes made on this device) ----
+
+  /// Queued writes, oldest first.
+  List<OutboxOp> get outbox => List.unmodifiable(_ops);
+
+  Future<OutboxOp> enqueue(OutboxOp op) async {
+    final id = await _outbox.add(_db, op.toJson());
+    final saved = op.copyWith(id: id);
+    _ops.add(saved);
+    _notify();
+    return saved;
+  }
+
+  Future<void> updateOp(OutboxOp op) async {
+    await _outbox.record(op.id!).put(_db, op.toJson());
+    final i = _ops.indexWhere((o) => o.id == op.id);
+    if (i >= 0) _ops[i] = op;
+    _notify();
+  }
+
+  Future<void> removeOps(Iterable<int> ids) async {
+    final drop = ids.toSet();
+    if (drop.isEmpty) return;
+    await _outbox.records(drop.toList()).delete(_db);
+    _ops.removeWhere((o) => drop.contains(o.id));
     _notify();
   }
 

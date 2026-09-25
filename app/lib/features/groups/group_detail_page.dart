@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/layout/layout.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
@@ -500,8 +501,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
       case 'deleted':
         context.go('/groups/${g.id}/deleted');
       case 'archive':
-        await ref.read(apiProvider).groups.updateGroup(g.id, GroupUpdate(archived: g.archivedAt == null));
-        refreshLedger(ref.invalidate);
+        await ref.read(writesProvider).setGroupArchived(g.id, g.archivedAt == null);
         if (mounted) {
           showMessage(context, g.archivedAt == null ? '${g.name} archived' : '${g.name} is back');
           if (g.archivedAt == null) context.go('/groups');

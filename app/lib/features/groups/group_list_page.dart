@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
@@ -205,9 +206,8 @@ class _NewGroupFormState extends ConsumerState<_NewGroupForm> {
     }
     setState(() => _busy = true);
     try {
-      final g = await ref
-          .read(apiProvider)
-          .groups
+      final id = await ref
+          .read(writesProvider)
           .createGroup(
             GroupIn(
               name: _name.text.trim(),
@@ -215,7 +215,7 @@ class _NewGroupFormState extends ConsumerState<_NewGroupForm> {
               currency: GroupInCurrencyEnum.fromJson(_currency)!,
             ),
           );
-      refreshLedger(ref.invalidate);
+      final g = await ref.read(groupProvider(id).future);
       if (mounted) Navigator.of(context).pop(g);
     } catch (e) {
       if (mounted) {

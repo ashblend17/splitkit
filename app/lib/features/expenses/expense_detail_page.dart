@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
@@ -83,9 +84,9 @@ class ExpenseDetailPage extends ConsumerWidget {
       confirmLabel: 'Delete',
     );
     if (!ok || !context.mounted) return;
-    final api = ref.read(apiProvider);
+    final writes = ref.read(writesProvider);
     try {
-      await api.expenses.deleteExpense(e.id);
+      await writes.deleteExpense(e.id);
       refreshLedger(ref.invalidate);
       if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -98,7 +99,7 @@ class ExpenseDetailPage extends ConsumerWidget {
             label: 'Undo',
             textColor: SkColors.brandSoft,
             onPressed: () async {
-              await api.expenses.restoreExpense(e.id);
+              await writes.restoreExpense(e.id);
               refreshLedger(container.invalidate);
             },
           ),
@@ -213,7 +214,7 @@ class _Body extends ConsumerWidget {
           variant: SkButtonVariant.secondary,
           size: SkButtonSize.small,
           onPressed: () async {
-            await ref.read(apiProvider).expenses.restoreExpense(expense.id);
+            await ref.read(writesProvider).restoreExpense(expense.id);
             refreshLedger(ref.invalidate);
           },
         ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
@@ -292,7 +293,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
     );
     try {
-      final api = ref.read(apiProvider).personal;
+      final api = ref.read(writesProvider);
       _editing ? await api.updatePersonal(widget.existing!.id, body) : await api.createPersonal(body);
       refreshPersonal(ref.invalidate);
       if (mounted) Navigator.of(context).pop();
@@ -306,7 +307,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
 
   Future<void> _delete() async {
     final t = widget.existing!;
-    final api = ref.read(apiProvider).personal;
+    final api = ref.read(writesProvider);
     final container = ProviderScope.containerOf(context, listen: false);
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);

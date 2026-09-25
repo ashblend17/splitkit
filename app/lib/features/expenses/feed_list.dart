@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
@@ -103,9 +104,9 @@ Future<void> showSettlementDetails(BuildContext context, WidgetRef ref, FeedItem
     confirmLabel: 'Delete',
   );
   if (!ok) return;
-  final api = ref.read(apiProvider);
+  final writes = ref.read(writesProvider);
   try {
-    await api.settlements.deleteSettlement(i.id);
+    await writes.deleteSettlement(i.id);
     refreshLedger(ref.invalidate);
     if (context.mounted) {
       showMessage(
@@ -113,7 +114,7 @@ Future<void> showSettlementDetails(BuildContext context, WidgetRef ref, FeedItem
         'Payment deleted',
         actionLabel: 'Undo',
         onAction: () async {
-          await api.settlements.restoreSettlement(i.id);
+          await writes.restoreSettlement(i.id);
           refreshLedger(ref.invalidate);
         },
       );

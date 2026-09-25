@@ -5,6 +5,7 @@ import 'package:http/http.dart' show Response;
 import 'package:splitkit_api/api.dart';
 
 import 'ledger.dart';
+import 'outbox.dart';
 import 'store.dart';
 
 /// Where syncing stands, for the "offline" line and the pull-to-refresh spinner.
@@ -32,8 +33,10 @@ class SyncStatus {
 bool isOfflineError(Object error) =>
     error is ApiException && (error.code == 0 || error.innerException != null || '${error.message}'.contains('Socket'));
 
-/// Brings the local store up to date: one `POST /sync` carrying every cursor, then snapshots for
-/// streams that need one, repeated while any stream has more.
+/// Brings the local store up to date. Each pass first replays writes made on this device (the
+/// outbox, oldest first), then sends one `POST /sync` carrying every cursor, loads snapshots for
+/// streams that need one and repeats while any stream has more, then settles the outbox: writes
+/// whose result has arrived stop being overlaid.
 class SyncEngine {
   SyncEngine({required this.api, required this.store, this.onUnauthorized});
 
@@ -75,7 +78,9 @@ class SyncEngine {
     try {
       do {
         _again = false;
+        await _push();
         await _catchUp();
+        await _settle();
       } while (_again);
       _set(SyncStatus(lastSyncedAt: DateTime.now()));
     } catch (e) {
@@ -83,6 +88,75 @@ class SyncEngine {
       _set(SyncStatus(offline: offline, lastSyncedAt: _current.lastSyncedAt, error: offline ? null : e));
       if (e is ApiException && e.code == 401) await onUnauthorized?.call();
       rethrow;
+    }
+  }
+
+  /// Sends pending writes in order. No connection (or a server error) stops here and leaves
+  /// them queued; a refusal marks that write rejected and moves on.
+  Future<void> _push() async {
+    for (final op in store.outbox) {
+      if (op.status != OutboxStatus.pending) continue;
+      final r = await api.apiClient.invokeAPI(
+        op.path,
+        op.method,
+        [for (final q in op.query.entries) QueryParam(q.key, q.value)],
+        op.body,
+        {},
+        {},
+        'application/json',
+      );
+      if (r.statusCode < 300) {
+        await store.updateOp(op.copyWith(status: OutboxStatus.sent));
+        continue;
+      }
+      final text = utf8.decode(r.bodyBytes);
+      if (r.statusCode == 401 || r.statusCode == 408 || r.statusCode == 429 || r.statusCode >= 500) {
+        throw ApiException(r.statusCode, text);
+      }
+      final (code, message) = _error(text);
+      await store.updateOp(op.copyWith(status: OutboxStatus.rejected, code: code, error: message));
+    }
+  }
+
+  /// After a sync: a sent write is done once the server's copy of everything it touched has
+  /// arrived (at its version or later), or after a few syncs regardless. A conflict on a write
+  /// the server already has (its reply was lost and the retry looked stale) is done too.
+  Future<void> _settle() async {
+    final done = <int>[];
+    for (final op in store.outbox) {
+      if (op.status == OutboxStatus.sent) {
+        if (_confirmed(op) || op.syncsSinceSent >= 2) {
+          done.add(op.id!);
+        } else {
+          await store.updateOp(op.copyWith(syncsSinceSent: op.syncsSinceSent + 1));
+        }
+      } else if (op.status == OutboxStatus.rejected && op.isConflict && _alreadyOnServer(op)) {
+        done.add(op.id!);
+      }
+    }
+    await store.removeOps(done);
+  }
+
+  bool _confirmed(OutboxOp op) => op.entities.every((e) {
+    final server = store.serverEntity(e.key);
+    return server != null && (e.version == null || (server.version ?? 0) >= e.version!);
+  });
+
+  static const _volatile = {'version', 'created_at', 'updated_at', 'deleted_at', 'last_activity_at', 'category'};
+
+  bool _alreadyOnServer(OutboxOp op) => op.entities.every((e) {
+    final server = store.serverEntity(e.key)?.data;
+    if (server == null) return false;
+    if ((server['deleted_at'] == null) != (e.data['deleted_at'] == null)) return false;
+    return e.data.keys.where((k) => !_volatile.contains(k)).every((k) => jsonEncode(server[k]) == jsonEncode(e.data[k]));
+  });
+
+  static (String?, String) _error(String text) {
+    try {
+      final error = (jsonDecode(text) as Map)['error'] as Map;
+      return (error['code'] as String?, error['message'] as String? ?? 'The server refused this change');
+    } catch (_) {
+      return (null, 'The server refused this change');
     }
   }
 
