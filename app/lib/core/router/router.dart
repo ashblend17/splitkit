@@ -14,6 +14,9 @@ import '../../features/groups/group_detail_page.dart';
 import '../../features/groups/group_list_page.dart';
 import '../../features/groups/group_trash_page.dart';
 import '../../features/home/home_page.dart';
+import '../../features/import_tricount/import_done_page.dart';
+import '../../features/import_tricount/import_review_page.dart';
+import '../../features/import_tricount/import_upload_page.dart';
 import '../../features/personal/personal_history_page.dart';
 import '../../features/personal/personal_page.dart';
 import '../../features/profile/categories_page.dart';
@@ -114,6 +117,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(path: 'analytics', builder: (_, _) => const PersonalAnalyticsPage()),
                   GoRoute(path: 'categories', builder: (_, _) => const CategoriesPage()),
+                  // Tricount import (deletable module: features/import_tricount).
+                  GoRoute(
+                    path: 'import',
+                    builder: (_, _) => const ImportUploadPage(),
+                    routes: [
+                      GoRoute(path: 'review', builder: (_, _) => const ImportReviewPage()),
+                      GoRoute(
+                        path: 'done/:bid',
+                        builder: (_, s) => ImportDonePage(batchId: s.pathParameters['bid']!),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ],
