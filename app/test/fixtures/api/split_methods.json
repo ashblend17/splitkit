@@ -1,0 +1,26 @@
+[
+  {
+    "key": "equal",
+    "label": "Equal",
+    "symbol": "=",
+    "hint": "Everyone ticked pays the same. Untick anyone who is not involved."
+  },
+  {
+    "key": "exact",
+    "label": "Exact",
+    "symbol": "₹",
+    "hint": "Enter exactly what each person owes. It must add up to the total."
+  },
+  {
+    "key": "percent",
+    "label": "Percent",
+    "symbol": "%",
+    "hint": "Give each person a percentage. It must add up to 100%."
+  },
+  {
+    "key": "shares",
+    "label": "Shares",
+    "symbol": "×",
+    "hint": "Give each person shares, e.g. 2 for a couple. The total is divided by shares."
+  }
+]

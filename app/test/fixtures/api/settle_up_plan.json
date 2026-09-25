@@ -1,0 +1,22 @@
+{
+  "friend": {
+    "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+    "name": "Aman Verma",
+    "avatar_url": null,
+    "is_placeholder": false
+  },
+  "currency": "INR",
+  "net_minor": 117000,
+  "groups": [
+    {
+      "group_id": "6b800aee-e138-5ea0-aacc-becd1e307d7a",
+      "name": "Flatmates",
+      "net_minor": 32000
+    },
+    {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "name": "Goa Trip",
+      "net_minor": 85000
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "scope": "group",
+  "currency": "INR",
+  "subtitle": "12 – 23 Sep · 6 members",
+  "cards": [
+    {
+      "id": "2d762d8f-9b16-4cb3-a8da-06cb06c2177f",
+      "type": "total_spend",
+      "title": "Total group spending",
+      "period_label": "All time",
+      "source": "group_total",
+      "headline": null,
+      "bars": [],
+      "rows": [],
+      "stat": {
+        "value_minor": 4826000,
+        "note": "₹8,043 per person · your share ₹10,830"
+      }
+    },
+    {
+      "id": "e67c7786-6c29-481d-b288-4e77636beea1",
+      "type": "spending_trend",
+      "title": "Spending per day",
+      "period_label": "12 – 23 Sep",
+      "source": "group_daily",
+      "headline": "Peak ₹19,160 on 12 Sep",
+      "bars": [
+        {
+          "label": "12",
+          "value_minor": 1916000,
+          "highlight": true
+        },
+        {
+          "label": "13",
+          "value_minor": 470000,
+          "highlight": false
+        },
+        {
+          "label": "14",
+          "value_minor": 240000,
+          "highlight": false
+        },
+        {
+          "label": "15",
+          "value_minor": 245000,
+          "highlight": false
+        },
+        {
+          "label": "16",
+          "value_minor": 171000,
+          "highlight": false
+        },
+        {
+          "label": "17",
+          "value_minor": 114000,
+          "highlight": false
+        },
+        {
+          "label": "18",
+          "value_minor": 216000,
+          "highlight": false
+        },
+        {
+          "label": "19",
+          "value_minor": 240000,
+          "highlight": false
+        },
+        {
+          "label": "20",
+          "value_minor": 972000,
+          "highlight": false
+        },
+        {
+          "label": "21",
+          "value_minor": 0,
+          "highlight": false
+        },
+        {
+          "label": "22",
+          "value_minor": 62000,
+          "highlight": false
+        },
+        {
+          "label": "23",
+          "value_minor": 180000,
+          "highlight": false
+        }
+      ],
+      "rows": [],
+      "stat": null
+    },
+    {
+      "id": "3e57c717-9bce-4711-a431-1ef01e073f8f",
+      "type": "spending_by_category",
+      "title": "By category",
+      "period_label": "All time",
+      "source": "group_by_category",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Travel",
+          "value_minor": 1640000
+        },
+        {
+          "label": "Food",
+          "value_minor": 1286000
+        },
+        {
+          "label": "Stay",
+          "value_minor": 1120000
+        },
+        {
+          "label": "Transport",
+          "value_minor": 430000
+        },
+        {
+          "label": "Fun",
+          "value_minor": 350000
+        }
+      ],
+      "stat": null
+    },
+    {
+      "id": "e30038bf-d51c-461c-a8e9-223be70374a0",
+      "type": "paid_by_member",
+      "title": "Who paid",
+      "period_label": "All time",
+      "source": "group_paid_by",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Rahul",
+          "value_minor": 1420000
+        },
+        {
+          "label": "You",
+          "value_minor": 1148000
+        },
+        {
+          "label": "Aman",
+          "value_minor": 890000
+        },
+        {
+          "label": "Priya",
+          "value_minor": 613000
+        },
+        {
+          "label": "Vivek",
+          "value_minor": 405000
+        },
+        {
+          "label": "Kabir",
+          "value_minor": 350000
+        }
+      ],
+      "stat": null
+    }
+  ]
+}

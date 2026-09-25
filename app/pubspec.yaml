@@ -1,0 +1,41 @@
+name: splitkit
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  decimal: ^3.2.6
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  go_router: ^17.0.0
+  intl: ^0.20.2
+  path_drawing: ^1.0.1
+  splitkit_api:
+    path: packages/splitkit_api
+  rational: ^2.2.3
+  flutter_riverpod: ^3.3.2
+  shared_preferences: ^2.5.3
+  http: ^1.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Variable fonts (SIL OFL, licences next to the files). Weights and optical size are set
+  # with FontVariation in lib/core/theme/typography.dart.
+  fonts:
+    - family: BricolageGrotesque
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque.ttf
+    - family: InstrumentSans
+      fonts:
+        - asset: assets/fonts/InstrumentSans.ttf

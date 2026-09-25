@@ -1,0 +1,74 @@
+[
+  {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+  },
+  {
+    "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+    "key": "transport",
+    "label": "Transport",
+    "icon": "transport",
+    "scope": "all",
+    "owner_id": null
+  },
+  {
+    "id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+    "key": "shopping",
+    "label": "Shopping",
+    "icon": "shopping",
+    "scope": "all",
+    "owner_id": null
+  },
+  {
+    "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+    "key": "entertainment",
+    "label": "Fun",
+    "icon": "entertainment",
+    "scope": "all",
+    "owner_id": null
+  },
+  {
+    "id": "81c9635a-b258-5ac2-bce7-a3619e4ebc93",
+    "key": "rent",
+    "label": "Rent",
+    "icon": "rent",
+    "scope": "all",
+    "owner_id": null
+  },
+  {
+    "id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+    "key": "bills",
+    "label": "Bills",
+    "icon": "bills",
+    "scope": "all",
+    "owner_id": null
+  },
+  {
+    "id": "42220069-ff05-57ab-8292-dc10b4f2ce83",
+    "key": "health",
+    "label": "Health",
+    "icon": "health",
+    "scope": "personal",
+    "owner_id": null
+  },
+  {
+    "id": "6614cb5e-301f-57f1-85d4-ae8a8838fe7c",
+    "key": "income",
+    "label": "Income",
+    "icon": "income",
+    "scope": "personal",
+    "owner_id": null
+  },
+  {
+    "id": "45e00ef2-b34a-56d4-9d3a-4ad2456709aa",
+    "key": "other",
+    "label": "Other",
+    "icon": "other",
+    "scope": "all",
+    "owner_id": null
+  }
+]

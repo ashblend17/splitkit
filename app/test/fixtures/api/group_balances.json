@@ -1,0 +1,187 @@
+{
+  "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+  "currency": "INR",
+  "net_minor": 115000,
+  "you_owe_minor": 125000,
+  "you_are_owed_minor": 240000,
+  "people": [
+    {
+      "user": {
+        "id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "name": "Kabir Mehta",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": -75000
+    },
+    {
+      "user": {
+        "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "name": "Rahul Sharma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": -50000
+    },
+    {
+      "user": {
+        "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "name": "Priya Nair",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": 155000
+    },
+    {
+      "user": {
+        "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "name": "Aman Verma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": 85000
+    },
+    {
+      "user": {
+        "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "name": "Vivek Iyer",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": 0
+    }
+  ],
+  "members": [
+    {
+      "user": {
+        "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "name": "Priya Nair",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": -340800
+    },
+    {
+      "user": {
+        "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "name": "Vivek Iyer",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": -304200
+    },
+    {
+      "user": {
+        "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "name": "Aman Verma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": -7300
+    },
+    {
+      "user": {
+        "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "name": "Rahul Sharma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": 451800
+    },
+    {
+      "user": {
+        "id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "name": "Ansh C",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": 115000
+    },
+    {
+      "user": {
+        "id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "name": "Kabir Mehta",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "net_minor": 85500
+    }
+  ],
+  "suggested": [
+    {
+      "from_user": {
+        "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "name": "Priya Nair",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "to_user": {
+        "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "name": "Rahul Sharma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "amount_minor": 340800
+    },
+    {
+      "from_user": {
+        "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "name": "Vivek Iyer",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "to_user": {
+        "id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "name": "Ansh C",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "amount_minor": 115000
+    },
+    {
+      "from_user": {
+        "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "name": "Vivek Iyer",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "to_user": {
+        "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "name": "Rahul Sharma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "amount_minor": 111000
+    },
+    {
+      "from_user": {
+        "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "name": "Vivek Iyer",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "to_user": {
+        "id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "name": "Kabir Mehta",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "amount_minor": 78200
+    },
+    {
+      "from_user": {
+        "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "name": "Aman Verma",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "to_user": {
+        "id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "name": "Kabir Mehta",
+        "avatar_url": null,
+        "is_placeholder": false
+      },
+      "amount_minor": 7300
+    }
+  ]
+}

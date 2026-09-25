@@ -1,0 +1,95 @@
+{
+  "month": "2026-09",
+  "month_label": "September",
+  "currency": "INR",
+  "spent_minor": 3245000,
+  "income_minor": 8500000,
+  "left_over_minor": 5255000,
+  "group_share_minor": 1821000,
+  "by_category": [
+    {
+      "category": {
+        "id": "81c9635a-b258-5ac2-bce7-a3619e4ebc93",
+        "key": "rent",
+        "label": "Rent",
+        "icon": "rent",
+        "scope": "all",
+        "owner_id": null
+      },
+      "label": "Rent",
+      "amount_minor": 1800000
+    },
+    {
+      "category": {
+        "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+        "key": "food",
+        "label": "Food",
+        "icon": "food",
+        "scope": "all",
+        "owner_id": null
+      },
+      "label": "Food",
+      "amount_minor": 582000
+    },
+    {
+      "category": {
+        "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+        "key": "transport",
+        "label": "Transport",
+        "icon": "transport",
+        "scope": "all",
+        "owner_id": null
+      },
+      "label": "Transport",
+      "amount_minor": 294000
+    },
+    {
+      "category": {
+        "id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+        "key": "shopping",
+        "label": "Shopping",
+        "icon": "shopping",
+        "scope": "all",
+        "owner_id": null
+      },
+      "label": "Shopping",
+      "amount_minor": 231000
+    },
+    {
+      "category": {
+        "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+        "key": "entertainment",
+        "label": "Fun",
+        "icon": "entertainment",
+        "scope": "all",
+        "owner_id": null
+      },
+      "label": "Fun",
+      "amount_minor": 164900
+    },
+    {
+      "category": {
+        "id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+        "key": "bills",
+        "label": "Bills",
+        "icon": "bills",
+        "scope": "all",
+        "owner_id": null
+      },
+      "label": "Bills",
+      "amount_minor": 112000
+    },
+    {
+      "category": {
+        "id": "42220069-ff05-57ab-8292-dc10b4f2ce83",
+        "key": "health",
+        "label": "Health",
+        "icon": "health",
+        "scope": "personal",
+        "owner_id": null
+      },
+      "label": "Health",
+      "amount_minor": 61100
+    }
+  ]
+}

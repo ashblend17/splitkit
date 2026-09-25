@@ -1,0 +1,24 @@
+[
+  {
+    "action": "expense.update",
+    "person": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+    },
+    "admin": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "Ansh C",
+      "avatar_url": null,
+      "is_placeholder": false
+    },
+    "at": "2026-09-23T15:45:00Z",
+    "diff": {
+      "category": {
+        "to": "transport",
+        "from": "travel"
+      }
+    }
+  }
+]
