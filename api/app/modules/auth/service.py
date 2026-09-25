@@ -11,7 +11,7 @@ from app.modules.users.models import User
 from app.modules.users.schemas import UserOut
 
 
-def _token_for(user: User) -> TokenOut:
+def token_for(user: User) -> TokenOut:
     token, expires_in = create_access_token(user.id)
     return TokenOut(access_token=token, expires_in=expires_in, user=UserOut.model_validate(user))
 
@@ -30,7 +30,7 @@ def register(session: Session, body: RegisterIn) -> TokenOut:
     session.flush()
     record(session, Actor(user=user), "user.register", "user", user.id, obj=user)
     session.commit()
-    return _token_for(user)
+    return token_for(user)
 
 
 def login(session: Session, body: LoginIn) -> TokenOut:
@@ -41,4 +41,4 @@ def login(session: Session, body: LoginIn) -> TokenOut:
         or not verify_password(user.password_hash, body.password)
     ):
         raise ApiError(401, "bad_credentials", "That email and password don't match")
-    return _token_for(user)
+    return token_for(user)

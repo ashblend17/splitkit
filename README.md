@@ -49,6 +49,8 @@ file, and confirm with `uv run alembic check`.
 ## API conventions
 
 - JSON under `/api/v1`, `Authorization: Bearer <token>` from `POST /auth/login` or `/auth/register`.
+  Tokens last 7 days; `POST /auth/refresh` swaps a working one for a fresh one (the app does
+  this on every online launch). View-as tokens can't be refreshed.
 - Errors always look like `{"error": {"code": "split_invalid", "message": "₹100 still needs to be allocated", ...}}`.
   `message` is human copy the app can show as-is.
 - Balances are pairwise and per group ("You owe Rahul ₹500"). `GET /groups/{id}/balances` also

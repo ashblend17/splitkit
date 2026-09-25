@@ -41,4 +41,11 @@ void main() {
     expect(find.text('₹1,470'), findsOneWidget);
     expect(find.text("You're offline. Showing what's on this device."), findsOneWidget);
   });
+
+  testWidgets('opening the app online swaps the token for a fresh one', (tester) async {
+    final tokens = MemoryTokenStore('old-token');
+    await pumpApp(tester, tokens: tokens, backend: FakeBackend()..refreshTo = 'fresh-token');
+    expect(tokens.token, 'fresh-token');
+    expect(find.text('₹1,470'), findsOneWidget);
+  });
 }
