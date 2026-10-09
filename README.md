@@ -166,6 +166,22 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   (this resets the dev database; `API=http://localhost:8001` points it at another instance).
 - On a machine with little free memory, run `flutter test --concurrency=1`.
 
+### iOS
+
+iOS builds need macOS and Xcode. On a Mac: `cd app && flutter build ios --release
+--dart-define=API_ORIGIN=https://…` (signing needs a team set in Xcode), or `flutter run` on a simulator.
+
+Without a Mac, `.github/workflows/ios.yml` builds on a GitHub macOS runner. It runs on pushes that
+touch `app/`, or by hand from Actions → iOS build (inputs: `api_origin`, `dev_tools`). It uploads
+nothing signed:
+
+- `splitkit-simulator.zip`: a debug `Runner.app` for the iOS Simulator (`xcrun simctl install booted Runner.app`).
+- `splitkit-unsigned.ipa`: a release build. Re-sign it with your Apple ID (Sideloadly, AltStore) to put it on a phone.
+
+With no `api_origin`, choose the server under "Server" on the login screen. Use an HTTPS server:
+`Info.plist` allows plain `http://` only for local-network hosts (`NSAllowsLocalNetworking`), and
+that hasn't been tried on a device yet.
+
 ## Money and splits
 
 - Amounts are integer minor units (paise) plus a currency code. `app/core/money.py` formats and
