@@ -1,0 +1,60 @@
+# Builds the iOS app on a macOS runner (iOS builds need Xcode). Nothing is signed:
+# - splitkit-simulator.zip: Runner.app for the iOS Simulator (debug)
+# - splitkit-unsigned.ipa: release build for a device; re-sign it (Xcode, Sideloadly, AltStore) to install
+name: iOS build
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_origin:
+        description: API origin baked into the build, e.g. https://splitkit.example.com (empty = pick one in the app)
+        required: false
+        default: ''
+      dev_tools:
+        description: Show the "Server" link on the login screen in the release build
+        type: boolean
+        default: true
+  push:
+    branches: [main, build/complete-app]
+    paths: ['app/**', '.github/workflows/ios.yml']
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    env:
+      DEFINES: >-
+        --dart-define=API_ORIGIN=${{ inputs.api_origin || '' }}
+        --dart-define=DEV_TOOLS=${{ github.event_name == 'push' || inputs.dev_tools }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.32.1
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Simulator build
+        run: |
+          flutter build ios --simulator --debug $DEFINES
+          cd build/ios/iphonesimulator && zip -qry "$GITHUB_WORKSPACE/splitkit-simulator.zip" Runner.app
+
+      - name: Device build (unsigned)
+        run: |
+          flutter build ios --release --no-codesign $DEFINES
+          mkdir -p Payload && cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry "$GITHUB_WORKSPACE/splitkit-unsigned.ipa" Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: splitkit-ios
+          path: |
+            splitkit-simulator.zip
+            splitkit-unsigned.ipa
+          retention-days: 14
