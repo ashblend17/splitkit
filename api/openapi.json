@@ -2254,6 +2254,21 @@
         "title": "LayoutOut",
         "type": "object"
       },
+      "LinkMemberIn": {
+        "description": "The account a placeholder member is linked to.",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "LinkMemberIn",
+        "type": "object"
+      },
       "LoginIn": {
         "properties": {
           "email": {
@@ -2275,6 +2290,17 @@
       },
       "MemberOut": {
         "properties": {
+          "invite_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invite Email"
+          },
           "joined_at": {
             "format": "date-time",
             "title": "Joined At",
@@ -2303,7 +2329,8 @@
           "user",
           "role",
           "joined_at",
-          "placeholder_name"
+          "placeholder_name",
+          "invite_email"
         ],
         "title": "MemberOut",
         "type": "object"
@@ -7396,6 +7423,115 @@
           }
         ],
         "summary": "Remove Member",
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}/members/{user_id}/link": {
+      "post": {
+        "description": "Link a placeholder member (no account) to the account with this email.\n\nIf the account exists, the placeholder's expenses, shares and payments in its groups move to\nit now. If not, the email is saved as an invite (`invite_email`) and whoever signs up with it\ntakes the placeholder's place. Everyone's balance stays the same either way.",
+        "operationId": "link_member",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkMemberIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Link Member",
         "tags": [
           "groups"
         ]

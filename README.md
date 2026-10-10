@@ -58,6 +58,13 @@ file, and confirm with `uv run alembic check`.
 - Balances are pairwise and per group ("You owe Rahul ₹500"). `GET /groups/{id}/balances` also
   returns `suggested`, the fewest payments that would settle the whole group. Home adds the
   groups up per friend.
+- Placeholder members (people with no account, e.g. from a Tricount import) are linked with
+  `POST /groups/{id}/members/{user_id}/link {email}` (`groups/linking.py`). If that email has an
+  account, the placeholder's membership, expenses, shares and payments in all its groups move to
+  it; where both were in one split the shares add up and the split becomes exact, and payments
+  between the two are deleted. Otherwise the email is saved as the member's `invite_email`, and
+  signing up with it turns the placeholder into the new account. Balances never move. The
+  placeholder is kept with its memberships ended; the account's membership says `placeholder_name`.
 - Settling with a friend across groups (`POST /friends/{id}/settle-up`) records one settlement
   per group, so every group's own balance stays right. With no amount every shared group ends
   at zero; a part payment pays down the oldest group first.

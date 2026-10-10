@@ -30,7 +30,14 @@ class Group(Base):
 
 class GroupMember(Base):
     __tablename__ = "group_members"
-    __table_args__ = (CheckConstraint("role IN ('owner', 'member')", name="role"),)
+    __table_args__ = (
+        CheckConstraint("role IN ('owner', 'member')", name="role"),
+        Index(
+            "ix_group_members_invite_email",
+            "invite_email",
+            postgresql_where=text("invite_email IS NOT NULL"),
+        ),
+    )
 
     group_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("groups.id"), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True, index=True)
@@ -39,6 +46,8 @@ class GroupMember(Base):
     left_at: Mapped[datetime | None]
     placeholder_name: Mapped[str | None]
     """The name this person had before being linked to an account, e.g. "Kabir M." from Tricount."""
+    invite_email: Mapped[str | None]
+    """Placeholders only: signing up with this email takes over the placeholder (lowercase)."""
     import_batch_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_batches.id"))
     """Set when a Tricount import added this membership, so undoing the batch can end it."""
 

@@ -6,6 +6,7 @@ from app.core.security import hash_password, verify_password
 from app.modules.auth.deps import Actor
 from app.modules.auth.schemas import LoginIn, RegisterIn, TokenOut
 from app.modules.auth.tokens import create_access_token
+from app.modules.groups import linking
 from app.modules.users import repository as users
 from app.modules.users.models import User
 from app.modules.users.schemas import UserOut
@@ -20,15 +21,24 @@ def register(session: Session, body: RegisterIn) -> TokenOut:
     email = body.email.lower()
     if users.get_by_email(session, email):
         raise ApiError(409, "email_taken", "An account with this email already exists")
-    user = User(
-        name=body.name.strip(),
-        email=email,
-        password_hash=hash_password(body.password),
-        currency=body.currency,
-    )
-    session.add(user)
-    session.flush()
-    record(session, Actor(user=user), "user.register", "user", user.id, obj=user)
+    details = {
+        "name": body.name.strip(),
+        "email": email,
+        "password_hash": hash_password(body.password),
+        "currency": body.currency,
+    }
+    # Someone linked a placeholder member to this email: the new account takes its place.
+    waiting = linking.invited(session, email)
+    if waiting:
+        user = session.get(User, waiting[0].user_id)
+        for key, value in details.items():
+            setattr(user, key, value)
+        linking.claim(session, user, waiting)
+    else:
+        user = User(**details)
+        session.add(user)
+        session.flush()
+        record(session, Actor(user=user), "user.register", "user", user.id, obj=user)
     session.commit()
     return token_for(user)
 

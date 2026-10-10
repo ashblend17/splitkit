@@ -94,6 +94,7 @@ Class | Method | HTTP request | Description
 *GroupsApi* | [**addMember**](doc//GroupsApi.md#addmember) | **POST** /api/v1/groups/{group_id}/members | Add Member
 *GroupsApi* | [**createGroup**](doc//GroupsApi.md#creategroup) | **POST** /api/v1/groups | Create Group
 *GroupsApi* | [**getGroup**](doc//GroupsApi.md#getgroup) | **GET** /api/v1/groups/{group_id} | Get Group
+*GroupsApi* | [**linkMember**](doc//GroupsApi.md#linkmember) | **POST** /api/v1/groups/{group_id}/members/{user_id}/link | Link Member
 *GroupsApi* | [**listGroups**](doc//GroupsApi.md#listgroups) | **GET** /api/v1/groups | List Groups
 *GroupsApi* | [**removeMember**](doc//GroupsApi.md#removemember) | **DELETE** /api/v1/groups/{group_id}/members/{user_id} | Remove Member
 *GroupsApi* | [**updateGroup**](doc//GroupsApi.md#updategroup) | **PATCH** /api/v1/groups/{group_id} | Update Group
@@ -172,6 +173,7 @@ Class | Method | HTTP request | Description
  - [LayoutCard](doc//LayoutCard.md)
  - [LayoutIn](doc//LayoutIn.md)
  - [LayoutOut](doc//LayoutOut.md)
+ - [LinkMemberIn](doc//LinkMemberIn.md)
  - [LoginIn](doc//LoginIn.md)
  - [MemberOut](doc//MemberOut.md)
  - [MoneyTotal](doc//MoneyTotal.md)

@@ -360,6 +360,7 @@ class LocalWrites {
           'joined_at': now,
           'left_at': null,
           'placeholder_name': null,
+          'invite_email': null,
           'user': l.brief(me),
         }),
         _entity('user:$me', 'membership', id, null, {'group_id': id, 'active': true}),

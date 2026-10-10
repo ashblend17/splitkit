@@ -72,6 +72,7 @@ lib/model/import_totals_out.dart
 lib/model/layout_card.dart
 lib/model/layout_in.dart
 lib/model/layout_out.dart
+lib/model/link_member_in.dart
 lib/model/login_in.dart
 lib/model/member_out.dart
 lib/model/money_total.dart

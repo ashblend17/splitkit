@@ -153,6 +153,24 @@ CHECKS: list[Check] = [
         """),
     ),
     Check(
+        "invites_are_open",
+        "warning",
+        "Invite emails sit only on current placeholder members, in lowercase, and no account "
+        "has that email yet (signing up with it would have taken the placeholder's place).",
+        "Link the member again in the app (POST /groups/{id}/members/{user_id}/link): with an "
+        "account it merges, otherwise it re-saves the invite.",
+        _sql("""
+            SELECT 'invite_on_account' AS problem, m.group_id, m.user_id FROM group_members m
+                JOIN users u ON u.id = m.user_id
+                WHERE m.invite_email IS NOT NULL AND u.email IS NOT NULL
+            UNION ALL SELECT 'invite_not_lowercase', m.group_id, m.user_id FROM group_members m
+                WHERE m.invite_email <> lower(m.invite_email)
+            UNION ALL SELECT 'invite_has_account', m.group_id, m.user_id FROM group_members m
+                JOIN users a ON lower(a.email) = m.invite_email
+                WHERE m.left_at IS NULL
+        """),
+    ),
+    Check(
         "groups_have_members",
         "warning",
         "Every group that isn't archived has at least one current member.",

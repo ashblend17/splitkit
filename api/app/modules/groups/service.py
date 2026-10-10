@@ -9,9 +9,17 @@ from app.core.versioning import check_version, client_id, replayed_create
 from app.modules.auth.deps import Actor
 from app.modules.balances import repository as ledger
 from app.modules.balances.engine import positions
+from app.modules.groups import linking
 from app.modules.groups import repository as repo
 from app.modules.groups.models import Group, GroupMember
-from app.modules.groups.schemas import AddMemberIn, GroupIn, GroupOut, GroupUpdate, MemberOut
+from app.modules.groups.schemas import (
+    AddMemberIn,
+    GroupIn,
+    GroupOut,
+    GroupUpdate,
+    LinkMemberIn,
+    MemberOut,
+)
 from app.modules.users import repository as users
 from app.modules.users.models import User
 from app.modules.users.schemas import brief
@@ -48,6 +56,7 @@ def _to_out(session: Session, groups: list[Group], me: uuid.UUID) -> list[GroupO
                     role=m.role,
                     joined_at=m.joined_at,
                     placeholder_name=m.placeholder_name,
+                    invite_email=m.invite_email,
                 )
                 for m, u in repo.active_members(session, g.id)
             ],
@@ -159,6 +168,38 @@ def add_member(session: Session, actor: Actor, group_id: uuid.UUID, body: AddMem
         {"user_id": str(user.id)},
         obj=member,
     )
+    session.commit()
+    return get_group(session, actor, group_id)
+
+
+def link_member(
+    session: Session, actor: Actor, group_id: uuid.UUID, user_id: uuid.UUID, body: LinkMemberIn
+) -> GroupOut:
+    """Link a placeholder to the account with this email, or invite the email if there's none."""
+    actor.require_write()
+    require_member(session, group_id, actor.user_id)
+    member = repo.membership(session, group_id, user_id)
+    if member is None or member.left_at is not None:
+        raise not_found("Member")
+    placeholder = session.get(User, user_id)
+    if placeholder.email is not None:
+        raise ApiError(409, "not_placeholder", f"{placeholder.name} already has an account")
+    email = body.email.lower()
+    account = users.get_by_email(session, email)
+    if account is None:
+        member.invite_email = email
+        record(
+            session,
+            actor,
+            "member.invite",
+            "group",
+            group_id,
+            group_id,
+            {"user_id": str(user_id), "email": email},
+            obj=member,
+        )
+    else:
+        linking.merge(session, actor, placeholder, account)
     session.commit()
     return get_group(session, actor, group_id)
 

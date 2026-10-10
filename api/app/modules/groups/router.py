@@ -4,7 +4,7 @@ from fastapi import APIRouter, Response
 
 from app.modules.auth.deps import CurrentActor, DbSession
 from app.modules.groups import service
-from app.modules.groups.schemas import AddMemberIn, GroupIn, GroupOut, GroupUpdate
+from app.modules.groups.schemas import AddMemberIn, GroupIn, GroupOut, GroupUpdate, LinkMemberIn
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -32,6 +32,23 @@ def update_group(group_id: uuid.UUID, body: GroupUpdate, actor: CurrentActor, se
 @router.post("/{group_id}/members", response_model=GroupOut, status_code=201)
 def add_member(group_id: uuid.UUID, body: AddMemberIn, actor: CurrentActor, session: DbSession):
     return service.add_member(session, actor, group_id, body)
+
+
+@router.post("/{group_id}/members/{user_id}/link", response_model=GroupOut)
+def link_member(
+    group_id: uuid.UUID,
+    user_id: uuid.UUID,
+    body: LinkMemberIn,
+    actor: CurrentActor,
+    session: DbSession,
+):
+    """Link a placeholder member (no account) to the account with this email.
+
+    If the account exists, the placeholder's expenses, shares and payments in its groups move to
+    it now. If not, the email is saved as an invite (`invite_email`) and whoever signs up with it
+    takes the placeholder's place. Everyone's balance stays the same either way.
+    """
+    return service.link_member(session, actor, group_id, user_id, body)
 
 
 @router.delete("/{group_id}/members/{user_id}", status_code=204)

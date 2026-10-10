@@ -17,6 +17,7 @@ class MemberOut {
     required this.role,
     required this.joinedAt,
     this.placeholderName,
+    this.inviteEmail,
   });
 
   UserBrief user;
@@ -27,12 +28,15 @@ class MemberOut {
 
   String? placeholderName;
 
+  String? inviteEmail;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is MemberOut &&
     other.user == user &&
     other.role == role &&
     other.joinedAt == joinedAt &&
-    other.placeholderName == placeholderName;
+    other.placeholderName == placeholderName &&
+    other.inviteEmail == inviteEmail;
 
   @override
   int get hashCode =>
@@ -40,10 +44,11 @@ class MemberOut {
     (user.hashCode) +
     (role.hashCode) +
     (joinedAt.hashCode) +
-    (placeholderName == null ? 0 : placeholderName!.hashCode);
+    (placeholderName == null ? 0 : placeholderName!.hashCode) +
+    (inviteEmail == null ? 0 : inviteEmail!.hashCode);
 
   @override
-  String toString() => 'MemberOut[user=$user, role=$role, joinedAt=$joinedAt, placeholderName=$placeholderName]';
+  String toString() => 'MemberOut[user=$user, role=$role, joinedAt=$joinedAt, placeholderName=$placeholderName, inviteEmail=$inviteEmail]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -54,6 +59,11 @@ class MemberOut {
       json[r'placeholder_name'] = this.placeholderName;
     } else {
       json[r'placeholder_name'] = null;
+    }
+    if (this.inviteEmail != null) {
+      json[r'invite_email'] = this.inviteEmail;
+    } else {
+      json[r'invite_email'] = null;
     }
     return json;
   }
@@ -81,6 +91,7 @@ class MemberOut {
         role: mapValueOfType<String>(json, r'role')!,
         joinedAt: mapDateTime(json, r'joined_at', r'')!,
         placeholderName: mapValueOfType<String>(json, r'placeholder_name'),
+        inviteEmail: mapValueOfType<String>(json, r'invite_email'),
       );
     }
     return null;
