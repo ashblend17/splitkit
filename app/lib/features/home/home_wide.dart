@@ -144,6 +144,72 @@ class HomeTabletBody extends ConsumerWidget {
     final groupId = ref.watch(activityFiltersProvider.select((f) => f.groupId));
     final feed = ref.watch(feedProvider((groupId: groupId, deleted: false)));
 
+    final balancesColumn = AsyncBody(
+      value: balances,
+      onRetry: () => ref.invalidate(overallBalancesProvider),
+      skeletonRows: 2,
+      builder: (b) {
+        final h = homeBalances(me, b);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            BalanceCard(
+              netMinor: h.totals?.netMinor ?? 0,
+              youOweMinor: h.totals?.youOweMinor ?? 0,
+              youAreOwedMinor: h.totals?.youAreOwedMinor ?? 0,
+              currency: h.currency,
+              layout: BalanceCardLayout.stacked,
+            ),
+            if (h.friends.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              ListCard(
+                title: 'Friends',
+                titleSize: 16,
+                children: [
+                  for (final (n, f) in h.friends.indexed)
+                    FriendBalanceRow(
+                      person: SkPerson(id: f.user.id, name: firstName(f.user.name)),
+                      state: friendChipState(f.netMinor, h.currency),
+                      tone: toneFor(f.netMinor),
+                      dense: true,
+                      showDivider: n < h.friends.length - 1,
+                      onTap: () => openFriend(context, f),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
+    );
+    final activityColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text('Recent activity', style: SkText.display(20, 700)),
+              ),
+            ),
+            SkPillButton(
+              groupFilterLabel(groupId, groups.value),
+              leading: 'filter',
+              onPressed: () => pickActivityGroup(context, ref, groups.value ?? const []),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        AsyncBody(
+          value: feed,
+          onRetry: () => ref.invalidate(feedProvider),
+          builder: (items) => items.isEmpty
+              ? homeEmpty(context, groups.value ?? const [])
+              : FeedList(items: items, onHome: true),
+        ),
+      ],
+    );
     return SafeArea(
       left: false,
       bottom: false,
@@ -155,82 +221,22 @@ class HomeTabletBody extends ConsumerWidget {
           children: [
             HomeGreeting(name: me.name),
             const SizedBox(height: 20),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 280,
-                  child: AsyncBody(
-                    value: balances,
-                    onRetry: () => ref.invalidate(overallBalancesProvider),
-                    skeletonRows: 2,
-                    builder: (b) {
-                      final h = homeBalances(me, b);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          BalanceCard(
-                            netMinor: h.totals?.netMinor ?? 0,
-                            youOweMinor: h.totals?.youOweMinor ?? 0,
-                            youAreOwedMinor: h.totals?.youAreOwedMinor ?? 0,
-                            currency: h.currency,
-                            layout: BalanceCardLayout.stacked,
-                          ),
-                          if (h.friends.isNotEmpty) ...[
-                            const SizedBox(height: 14),
-                            ListCard(
-                              title: 'Friends',
-                              titleSize: 16,
-                              children: [
-                                for (final (n, f) in h.friends.indexed)
-                                  FriendBalanceRow(
-                                    person: SkPerson(id: f.user.id, name: firstName(f.user.name)),
-                                    state: friendChipState(f.netMinor, h.currency),
-                                    tone: toneFor(f.netMinor),
-                                    dense: true,
-                                    showDivider: n < h.friends.length - 1,
-                                    onTap: () => openFriend(context, f),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Semantics(
-                              header: true,
-                              child: Text('Recent activity', style: SkText.display(20, 700)),
-                            ),
-                          ),
-                          SkPillButton(
-                            groupFilterLabel(groupId, groups.value),
-                            leading: 'filter',
-                            onPressed: () => pickActivityGroup(context, ref, groups.value ?? const []),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      AsyncBody(
-                        value: feed,
-                        onRetry: () => ref.invalidate(feedProvider),
-                        builder: (items) => items.isEmpty
-                            ? homeEmpty(context, groups.value ?? const [])
-                            : FeedList(items: items, onHome: true),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            // HomeTablet is an iPad (834px). In a narrower window the activity column would
+            // be too thin to read, so the columns stack.
+            LayoutBuilder(
+              builder: (context, c) => c.maxWidth >= 280 + 20 + 340
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 280, child: balancesColumn),
+                        const SizedBox(width: 20),
+                        Expanded(child: activityColumn),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [balancesColumn, const SizedBox(height: 24), activityColumn],
+                    ),
             ),
           ],
         ),

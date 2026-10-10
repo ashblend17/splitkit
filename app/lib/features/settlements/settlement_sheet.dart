@@ -191,8 +191,9 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     final remaining = fullMinor - amount;
     final overLimit = friendPlan != null && amount > fullMinor;
     final status = _status(me.id, from, to, fullMinor, remaining, currency);
-    final canSubmit =
-        !_busy && !overLimit && (amount > 0 || (friendPlan != null && fullMinor == 0 && friendPlan.groups.isNotEmpty));
+    // Square overall but not in every group: payments that cancel out per group.
+    final squareUp = friendPlan != null && fullMinor == 0 && friendPlan.groups.isNotEmpty;
+    final canSubmit = !_busy && !overLimit && (amount > 0 || squareUp);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -262,7 +263,11 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
         ],
         const SizedBox(height: 18),
         SkButton(
-          amount == 0 ? 'Mark all square' : 'Record ${money(amount, currency)} payment',
+          amount > 0
+              ? 'Record ${money(amount, currency)} payment'
+              : squareUp
+              ? 'Mark all square'
+              : 'Enter an amount',
           onPressed: canSubmit ? () => _submit(from: from, to: to, fullMinor: fullMinor, friendPlan: friendPlan) : null,
           size: SkButtonSize.large,
           expand: true,
