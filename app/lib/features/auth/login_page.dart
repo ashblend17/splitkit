@@ -95,6 +95,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           autofillHints: const [AutofillHints.email],
                           textInputAction: TextInputAction.next,
                           errorText: _emailError,
+                          onChanged: (_) {
+                            if (_emailError != null) setState(() => _emailError = null);
+                          },
                         ),
                         const SizedBox(height: 16),
                         SkTextField(
@@ -106,6 +109,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _submit(),
                           errorText: _error,
+                          onChanged: (_) {
+                            if (_error != null) setState(() => _error = null);
+                          },
                         ),
                         const SizedBox(height: 16),
                         SkButton(

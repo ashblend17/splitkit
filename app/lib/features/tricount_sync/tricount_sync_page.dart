@@ -160,7 +160,7 @@ class _LinkedState extends ConsumerState<_Linked> {
       TricountLinkOutStateEnum.error => (
         StatusTone.youOwe,
         'Not syncing',
-        '${l.lastError ?? 'The last sync failed.'} It tries again by itself.',
+        _withRetry(l.lastError ?? 'The last sync failed.'),
       ),
       _ => (
         StatusTone.settled,
@@ -232,6 +232,9 @@ class _LinkedState extends ConsumerState<_Linked> {
     );
   }
 }
+
+/// The server's message, plus that it retries, unless the message says so already.
+String _withRetry(String message) => message.contains('again') ? message : '$message It tries again by itself.';
 
 class _ShareLink extends StatelessWidget {
   const _ShareLink({required this.link});

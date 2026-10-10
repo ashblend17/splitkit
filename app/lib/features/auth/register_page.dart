@@ -39,6 +39,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     super.dispose();
   }
 
+  /// A field's error goes once it's being fixed.
+  void _clear(String field) {
+    if (_errors.containsKey(field)) setState(() => _errors = {..._errors}..remove(field));
+  }
+
   Future<void> _submit() async {
     final errors = <String, String>{
       if (_name.text.trim().isEmpty) 'name': 'Tell us your name',
@@ -123,6 +128,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           textInputAction: TextInputAction.next,
                           errorText: _errors['name'],
                           errorIcon: true,
+                          onChanged: (_) => _clear('name'),
                         ),
                         const SizedBox(height: 14),
                         SkTextField(
@@ -134,6 +140,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           textInputAction: TextInputAction.next,
                           errorText: _errors['email'],
                           errorIcon: true,
+                          onChanged: (_) => _clear('email'),
                         ),
                         const SizedBox(height: 14),
                         SkTextField(
@@ -142,8 +149,11 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           size: SkFieldSize.large,
                           obscureText: true,
                           autofillHints: const [AutofillHints.newPassword],
+                          textInputAction: TextInputAction.done,
+                          onSubmitted: (_) => _submit(),
                           errorText: _errors['password'],
                           errorIcon: true,
+                          onChanged: (_) => _clear('password'),
                         ),
                         const SizedBox(height: 14),
                         Text('Default currency', style: SkText.body(14, 600)),
