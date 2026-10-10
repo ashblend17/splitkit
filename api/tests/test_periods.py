@@ -47,3 +47,13 @@ def test_adaptive_buckets():
     assert weeks[0].label == "1 Jul" and weeks[-1].end == date(2026, 9, 23)
     months = adaptive_buckets(date(2026, 1, 15), date(2026, 9, 23))
     assert months[0].start == date(2026, 1, 15) and months[-1].label == "Sep"
+
+
+def test_adaptive_buckets_long_histories():
+    across = adaptive_buckets(date(2025, 11, 3), date(2026, 2, 10))
+    assert [b.label for b in across] == ["Nov", "Dec", "2026", "Feb"]
+    two_years = adaptive_buckets(date(2024, 10, 1), date(2026, 9, 30))
+    assert len(two_years) == 24
+    years = adaptive_buckets(date(2019, 6, 5), date(2026, 9, 23))
+    assert [b.label for b in years] == [str(y) for y in range(2019, 2027)]
+    assert years[0].start == date(2019, 6, 5) and years[-1].end == date(2026, 9, 23)

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/money/money.dart';
@@ -28,7 +29,7 @@ class HomeGreeting extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(longDateLabel(DateTime.now()), style: SkText.body(13, 400, color: SkColors.ink2)),
+      Text(longDateLabel(appClock.now()), style: SkText.body(13, 400, color: SkColors.ink2)),
       const SizedBox(height: 2),
       Semantics(header: true, child: Text('Hi, ${firstName(name)}', style: SkText.title)),
     ],
@@ -38,7 +39,7 @@ class HomeGreeting extends StatelessWidget {
 /// Settle up with a friend, or say you're square.
 void openFriend(BuildContext context, FriendBalance f) => f.netMinor == 0
     ? showMessage(context, 'You and ${firstName(f.user.name)} are all square')
-    : showFriendSettleUpSheet(context, f.user);
+    : showFriendSettleUpSheet(context, f.user, currency: f.currency);
 
 /// Totals and friends in your main currency (the one on your profile, else the first).
 ({CurrencyTotals? totals, String currency, List<FriendBalance> friends}) homeBalances(
@@ -465,7 +466,7 @@ class _ActivityCard extends ConsumerWidget {
     final notifier = ref.read(activityFiltersProvider.notifier);
     final groups = ref.watch(groupsProvider);
     final categories = ref.watch(groupCategoriesProvider);
-    final activity = ref.watch(activityProvider(filters.query(DateTime.now())));
+    final activity = ref.watch(activityProvider(filters.query(appClock.now())));
     final categoryLabel = filters.category == null
         ? 'Any category'
         : categories.value?.where((c) => c.key == filters.category).firstOrNull?.label ?? 'Category';

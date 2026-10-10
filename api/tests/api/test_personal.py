@@ -87,3 +87,28 @@ def test_group_only_categories_are_rejected(client, seeded):
         },
     )
     assert r.status_code == 422 and r.json()["error"]["code"] == "unknown_category"
+
+
+def test_totals_only_count_your_current_currency(client, seeded):
+    headers = login(client, "ansh")
+    client.patch(f"{API}/me", headers=headers, json={"currency": "USD"})
+    body = {"type": "expense", "amount_minor": 1250, "description": "Coffee", "date": "2026-09-20"}
+    assert (
+        client.post(f"{API}/personal/transactions", headers=headers, json=body).status_code == 201
+    )
+    s = client.get(f"{API}/personal/summary?month=2026-09-23", headers=headers).json()
+    # The rupee entries and INR groups aren't added to dollars.
+    assert (s["currency"], s["spent_minor"], s["income_minor"], s["group_share_minor"]) == (
+        "USD",
+        1250,
+        0,
+        0,
+    )
+    listed = client.get(
+        f"{API}/personal/transactions?start=2026-09-01&end=2026-09-30", headers=headers
+    ).json()
+    assert listed["spent_minor"] == 1250 and listed["count"] > 1
+    assert {i["currency"] for i in listed["items"]} == {"INR", "USD"}
+    cards = client.get(f"{API}/analytics/personal?on=2026-09-23", headers=headers).json()["cards"]
+    monthly = next(c for c in cards if c["source"] == "personal_monthly")
+    assert monthly["headline"] == "$12.50"

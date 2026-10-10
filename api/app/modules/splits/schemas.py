@@ -1,8 +1,6 @@
 import uuid
 
-from pydantic import Field
-
-from app.core.schemas import DecimalIn, DecimalStr, Schema
+from app.core.schemas import AmountMinor, DecimalIn, DecimalStr, Schema
 
 
 class SplitMethodOut(Schema):
@@ -24,7 +22,7 @@ class SplitIn(Schema):
 
 
 class SplitPreviewIn(SplitIn):
-    total_minor: int = Field(gt=0)
+    total_minor: AmountMinor
     currency: str = "INR"
 
 

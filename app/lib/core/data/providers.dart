@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/misc.dart' show ProviderOrFamily;
 import 'package:intl/intl.dart';
 
 import '../api/api.dart';
+import '../clock.dart';
 import '../local/ledger.dart';
 import '../local/providers.dart';
 import '../session/session.dart';
@@ -102,8 +103,9 @@ final groupCategoriesProvider = FutureProvider<List<CategoryOut>>(
   (ref) => local(ref, (l) => CategoryOut.listFromJson(l.categories(scope: 'group'))),
 );
 
-final settleUpPlanProvider = FutureProvider.family<SettleUpPlanOut, String>(
-  (ref, friendId) => local(ref, (l) => SettleUpPlanOut.fromJson(l.settleUpPlan(friendId))),
+/// Settling with a friend in one currency: the groups you share in it.
+final settleUpPlanProvider = FutureProvider.family<SettleUpPlanOut, ({String friendId, String currency})>(
+  (ref, key) => local(ref, (l) => SettleUpPlanOut.fromJson(l.settleUpPlan(key.friendId, currency: key.currency))),
 );
 
 // ---- personal finance & analytics (step 6) ----
@@ -146,11 +148,11 @@ final allCategoriesProvider = FutureProvider<List<CategoryOut>>(
 /// online only: offline, the page shows the offline card.
 final personalDashboardProvider = FutureProvider.family<DashboardOut, String>(
   (ref, period) =>
-      fetch(ref, ref.watch(apiProvider).analytics.personalDashboard(period: period, on_: apiDate(DateTime.now()))),
+      fetch(ref, ref.watch(apiProvider).analytics.personalDashboard(period: period, on_: apiDate(appClock.now()))),
 );
 
 final groupDashboardProvider = FutureProvider.family<DashboardOut, String>(
-  (ref, groupId) => fetch(ref, ref.watch(apiProvider).analytics.groupDashboard(groupId, on_: apiDate(DateTime.now()))),
+  (ref, groupId) => fetch(ref, ref.watch(apiProvider).analytics.groupDashboard(groupId, on_: apiDate(appClock.now()))),
 );
 
 final layoutProvider = FutureProvider.family<LayoutOut, String>(

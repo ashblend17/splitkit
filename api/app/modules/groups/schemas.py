@@ -2,9 +2,9 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import EmailStr, Field, model_validator
+from pydantic import EmailStr, model_validator
 
-from app.core.schemas import Schema
+from app.core.schemas import Currency, Schema, Text
 from app.modules.users.schemas import UserBrief
 
 Icon = Literal[
@@ -15,15 +15,15 @@ Icon = Literal[
 class GroupIn(Schema):
     id: uuid.UUID | None = None
     """Create only: an id made on the device, so a retried create doesn't make a duplicate."""
-    name: str = Field(min_length=1, max_length=80)
+    name: Text(80)
     icon: Icon = "groups"
-    currency: Literal["INR", "USD", "EUR"] = "INR"
+    currency: Currency = "INR"
 
 
 class GroupUpdate(Schema):
     version: int | None = None
     """The version you edited. If it changed since, the update gets a 409."""
-    name: str | None = Field(default=None, min_length=1, max_length=80)
+    name: Text(80) | None = None
     icon: Icon | None = None
     archived: bool | None = None
 
@@ -58,7 +58,7 @@ class AddMemberIn(Schema):
     """Add an existing account by email, or a placeholder person by name (no account)."""
 
     email: EmailStr | None = None
-    name: str | None = Field(default=None, min_length=1, max_length=80)
+    name: Text(80) | None = None
 
     @model_validator(mode="after")
     def _exactly_one(self):

@@ -9,10 +9,11 @@ off is an error on that row, in the engine's words ("₹100 still needs to be al
 """
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from app.core.money import SUPPORTED_CURRENCIES, format_minor
+from app.core.schemas import FIRST_DATE, MAX_AMOUNT_MINOR
 from app.modules.splits.engine import SplitInput, distribute, registry
 
 from .parser import RawRow
@@ -62,7 +63,8 @@ def _minor(amount: Decimal) -> int:
     return int((amount.scaleb(EXPONENT)).to_integral_value(ROUND_HALF_UP))
 
 
-def plan_row(raw: RawRow, currency: str) -> PlannedRow:
+def plan_row(raw: RawRow, currency: str, today: date | None = None) -> PlannedRow:
+    today = today or date.today()
     issues = [Issue("error", "unreadable", p) for p in raw.problems]
     issues += [Issue("warning", "note", n) for n in raw.notes]
 
@@ -74,6 +76,9 @@ def plan_row(raw: RawRow, currency: str) -> PlannedRow:
         issues.append(Issue("warning", "no_title", "No title in the file"))
     if raw.date is None and not raw.problems:
         error("no_date", "No date in the file")
+    elif raw.date is not None and not FIRST_DATE <= raw.date <= today + timedelta(days=366):
+        # The same range the app and API allow for anything added by hand.
+        error("date_range", "Only dates from 2000 up to a year ahead can be imported")
     if raw.kind == "income":
         error("income", "Income isn't supported yet, so this row is skipped")
 
@@ -123,6 +128,9 @@ def plan_row(raw: RawRow, currency: str) -> PlannedRow:
     row.amount_minor = total_minor
     if total_minor <= 0:
         error("zero", "The amount is zero")
+        return row
+    if total_minor > MAX_AMOUNT_MINOR:
+        error("too_large", "That amount is too large")
         return row
 
     if raw.kind == "transfer" and payer is not None:

@@ -252,8 +252,6 @@ class ApiClient {
           return GroupRef.fromJson(value);
         case 'GroupUpdate':
           return GroupUpdate.fromJson(value);
-        case 'HTTPValidationError':
-          return HTTPValidationError.fromJson(value);
         case 'HistoryEntry':
           return HistoryEntry.fromJson(value);
         case 'ImportBatchOut':
@@ -350,8 +348,6 @@ class ApiClient {
           return UserOut.fromJson(value);
         case 'UserUpdate':
           return UserUpdate.fromJson(value);
-        case 'ValidationError':
-          return ValidationError.fromJson(value);
         default:
           dynamic match;
           if (value is List && (match = _regList.firstMatch(targetType)?.group(1)) != null) {

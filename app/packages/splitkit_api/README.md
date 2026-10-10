@@ -163,7 +163,6 @@ Class | Method | HTTP request | Description
  - [GroupOut](doc//GroupOut.md)
  - [GroupRef](doc//GroupRef.md)
  - [GroupUpdate](doc//GroupUpdate.md)
- - [HTTPValidationError](doc//HTTPValidationError.md)
  - [HistoryEntry](doc//HistoryEntry.md)
  - [ImportBatchOut](doc//ImportBatchOut.md)
  - [ImportPreviewOut](doc//ImportPreviewOut.md)
@@ -212,7 +211,6 @@ Class | Method | HTTP request | Description
  - [UserBrief](doc//UserBrief.md)
  - [UserOut](doc//UserOut.md)
  - [UserUpdate](doc//UserUpdate.md)
- - [ValidationError](doc//ValidationError.md)
 
 
 ## Documentation For Authorization

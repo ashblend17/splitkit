@@ -76,6 +76,21 @@ void main() {
     expect(find.text('Settle up'), findsOneWidget);
   });
 
+  testWidgets('settling up uses the balance currency, not the profile one', (tester) async {
+    final be = FakeBackend();
+    final me = ((fixture('login') as Map)['user'] as Map)['id'];
+    for (final e in (be.snapshots['user:$me'] as Map)['entities'] as List) {
+      if (e['entity'] == 'profile') e['data']['currency'] = 'USD'; // every group is in rupees
+    }
+    await pumpApp(tester, backend: be);
+
+    await tester.dragUntilVisible(find.text('Aman'), find.byType(SingleChildScrollView).first, const Offset(-200, 0));
+    await tester.tap(find.text('Aman'));
+    await tester.pumpAndSettle();
+    expect(find.text('Settle up with Aman'), findsOneWidget);
+    expect(find.text('Full balance ₹1,170'), findsOneWidget);
+  });
+
   testWidgets('settle up with a friend across groups', (tester) async {
     final be = FakeBackend();
     await pumpApp(tester, backend: be);

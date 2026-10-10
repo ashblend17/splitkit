@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/local/writes.dart';
@@ -34,10 +35,10 @@ class GroupPaymentTarget {
 Future<void> showGroupPaymentSheet(BuildContext context, GroupPaymentTarget target) =>
     _show(context, _PaymentSheet(group: target));
 
-/// "Settle up with Aman": one payment across every group you share, saved as one settlement
-/// per group so each group's balance stays right.
-Future<void> showFriendSettleUpSheet(BuildContext context, UserBrief friend) =>
-    _show(context, _PaymentSheet(friend: friend));
+/// "Settle up with Aman": one payment across every group you share in [currency], saved as one
+/// settlement per group so each group's balance stays right.
+Future<void> showFriendSettleUpSheet(BuildContext context, UserBrief friend, {required String currency}) =>
+    _show(context, _PaymentSheet(friend: friend, currency: currency));
 
 Future<void> _show(BuildContext context, Widget sheet) => showModalBottomSheet<void>(
   context: context,
@@ -47,9 +48,12 @@ Future<void> _show(BuildContext context, Widget sheet) => showModalBottomSheet<v
 );
 
 class _PaymentSheet extends ConsumerStatefulWidget {
-  const _PaymentSheet({this.group, this.friend});
+  const _PaymentSheet({this.group, this.friend, this.currency});
   final GroupPaymentTarget? group;
   final UserBrief? friend;
+
+  /// Friend settle-up only: the currency of the balance being settled.
+  final String? currency;
 
   @override
   ConsumerState<_PaymentSheet> createState() => _PaymentSheetState();
@@ -63,7 +67,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   bool _full = true;
   bool _initialised = false;
   String _method = 'upi';
-  DateTime _date = DateTime.now();
+  DateTime _date = appClock.now();
   bool _busy = false;
 
   @override
@@ -83,12 +87,13 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   Widget build(BuildContext context) {
     final me = ref.watch(meProvider);
     if (widget.friend != null) {
-      final plan = ref.watch(settleUpPlanProvider(widget.friend!.id));
+      final key = (friendId: widget.friend!.id, currency: widget.currency!);
+      final plan = ref.watch(settleUpPlanProvider(key));
       return _frame(
         title: 'Settle up with ${firstName(widget.friend!.name)}',
         child: AsyncBody(
           value: plan,
-          onRetry: () => ref.invalidate(settleUpPlanProvider(widget.friend!.id)),
+          onRetry: () => ref.invalidate(settleUpPlanProvider(key)),
           skeletonRows: 2,
           builder: (p) {
             final youPay = p.netMinor < 0;
@@ -509,7 +514,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
           context: context,
           initialDate: _date,
           firstDate: DateTime(2000),
-          lastDate: DateTime.now().add(const Duration(days: 365)),
+          lastDate: appClock.now().add(const Duration(days: 365)),
         );
         if (picked != null) setState(() => _date = picked);
       },

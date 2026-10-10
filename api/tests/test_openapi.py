@@ -19,7 +19,6 @@ def test_dart_client_spec_adjustments():
     # required-but-nullable fields become optional
     assert "avatar_url" in source["components"]["schemas"]["UserOut"]["required"]
     assert "avatar_url" not in schemas["UserOut"]["required"]
-    assert schemas["ValidationError"]["properties"]["loc"]["items"] == {"type": "string"}
     # the canonical spec is untouched
     assert "default" in source["components"]["schemas"]["SettlementIn"]["properties"]["method"]
 

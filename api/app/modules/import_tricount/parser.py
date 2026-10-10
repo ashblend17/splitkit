@@ -232,6 +232,13 @@ def _find_header(table: list[list[Any]]) -> tuple[int, _Columns]:
 # ---- cells ----
 
 _NUMBER_CHARS = re.compile(r"[^0-9,.\-+()]")
+# A currency word before or after the number, with its dot ("Rs. 1,500", "1500 INR"), and
+# the Indian "/-" ending ("1,500/-"). Left in, the dot of "Rs." would read as a decimal point.
+_AFFIXES = re.compile(r"^[A-Za-z]+\.?\s*|\s*[A-Za-z]+\.?$|/-$")
+
+
+def _number_text(text: str) -> str:
+    return _NUMBER_CHARS.sub("", _AFFIXES.sub("", text.strip()))
 
 
 def decimal_style(values: list[Any]) -> bool | None:
@@ -240,7 +247,7 @@ def decimal_style(values: list[Any]) -> bool | None:
     for v in values:
         if not isinstance(v, str):
             continue
-        s = _NUMBER_CHARS.sub("", v)
+        s = _number_text(v)
         if re.search(r"\d,\d{1,2}$", s) or re.search(r"\.\d{3},\d+$", s):
             comma += 1
         elif re.search(r"\d\.\d{1,2}$", s) or re.search(r",\d{3}\.\d+$", s):
@@ -262,7 +269,9 @@ def parse_amount(value: Any, decimal_comma: bool | None = None) -> Decimal | Non
     text = str(value).strip()
     if not text:
         return None
-    s = _NUMBER_CHARS.sub("", text.replace(" ", "").replace("'", ""))
+    if re.search(r"[A-Za-z]", _AFFIXES.sub("", text)):
+        raise ValueError(text)  # "1e5", "12abc34": letters inside aren't a number we can trust
+    s = _number_text(text.replace(" ", "").replace("'", ""))
     negative = s.startswith("(") and s.endswith(")")
     s = s.strip("()")
     if not re.search(r"\d", s):

@@ -46,14 +46,16 @@ def query(
     )
 
 
-def group_share(session: Session, user_id: uuid.UUID, start: date, end: date) -> int:
-    """Your shares of live group expenses dated between start and end (inclusive)."""
+def group_share(session: Session, user_id: uuid.UUID, start: date, end: date, currency: str) -> int:
+    """Your shares of live group expenses in `currency` dated between start and end
+    (inclusive)."""
     total = session.scalar(
         select(func.coalesce(func.sum(ExpenseSplit.share_minor), 0))
         .join(Expense, Expense.id == ExpenseSplit.expense_id)
         .where(
             ExpenseSplit.user_id == user_id,
             Expense.deleted_at.is_(None),
+            Expense.currency == currency,
             Expense.date >= start,
             Expense.date <= end,
         )

@@ -30,6 +30,7 @@ class ExpenseIn {
 
   String description;
 
+  /// Maximum value: 9999999999
   int amountMinor;
 
   String payerId;

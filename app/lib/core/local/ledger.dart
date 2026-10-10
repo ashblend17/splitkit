@@ -8,6 +8,7 @@ library;
 
 import 'package:intl/intl.dart';
 
+import '../clock.dart';
 import 'balance_engine.dart';
 
 /// One synced entity, as stored: the full state from a snapshot or a change.
@@ -69,7 +70,7 @@ class FeedFilters {
 typedef Json = Map<String, dynamic>;
 
 class Ledger {
-  Ledger(Iterable<LocalEntity> entities, {DateTime? today}) : today = today ?? DateTime.now() {
+  Ledger(Iterable<LocalEntity> entities, {DateTime? today}) : today = today ?? appClock.now() {
     for (final e in entities) {
       final d = e.data;
       switch (e.entity) {
@@ -559,7 +560,10 @@ class Ledger {
   Json personalList({String? start, String? end, String? type, List<String>? categoryKeys, bool deleted = false, int limit = 100, int offset = 0}) {
     final rows = _personalRows(start: start, end: end, type: type, categoryKeys: categoryKeys, deleted: deleted);
     final page = rows.skip(offset).take(limit);
-    int sum(String kind) => rows.where((t) => t['type'] == kind).fold(0, (a, t) => a + (t['amount_minor'] as int));
+    // Entries in another currency (from before you changed yours) are listed but not counted.
+    final currency = userOut()['currency'];
+    int sum(String kind) =>
+        rows.where((t) => t['type'] == kind && t['currency'] == currency).fold(0, (a, t) => a + (t['amount_minor'] as int));
     return {'items': [for (final t in page) _txnOut(t)], 'spent_minor': sum('expense'), 'income_minor': sum('income'), 'count': rows.length};
   }
 
@@ -575,7 +579,8 @@ class Ledger {
     final start = DateTime(month.year, month.month);
     final last = DateTime(month.year, month.month + 1, 0);
     final s = _day(start), e = _day(last);
-    final rows = _personalRows(start: s, end: e);
+    final currency = userOut()['currency'];
+    final rows = _personalRows(start: s, end: e).where((t) => t['currency'] == currency);
     var spent = 0, income = 0;
     final byCat = <String?, int>{};
     for (final t in rows) {
@@ -600,7 +605,7 @@ class Ledger {
     var groupShare = 0;
     for (final x in _expenses.values) {
       final date = x['date'] as String;
-      if (x['deleted_at'] != null || date.compareTo(s) < 0 || date.compareTo(e) > 0) continue;
+      if (x['deleted_at'] != null || x['currency'] != currency || date.compareTo(s) < 0 || date.compareTo(e) > 0) continue;
       for (final split in x['splits'] as List) {
         if (split['user_id'] == me) groupShare += split['share_minor'] as int;
       }
@@ -609,7 +614,7 @@ class Ledger {
     return {
       'month': DateFormat('yyyy-MM').format(start),
       'month_label': start.year == today.year ? monthName : '$monthName ${start.year}',
-      'currency': userOut()['currency'],
+      'currency': currency,
       'spent_minor': spent,
       'income_minor': income,
       'left_over_minor': income - spent,

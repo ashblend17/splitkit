@@ -75,7 +75,7 @@ def _labels(session: Session) -> dict[uuid.UUID, str]:
 
 
 def personal_dashboard(session: Session, actor: Actor, period: Period, on: date) -> DashboardOut:
-    me = actor.user_id
+    me, currency = actor.user_id, actor.user.currency
     labels = _labels(session)
     personal = [
         sources.Entry(t.date, t.amount_minor, labels.get(t.category_id, "Uncategorised"))
@@ -83,6 +83,7 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
             select(PersonalTransaction).where(
                 PersonalTransaction.user_id == me,
                 PersonalTransaction.type == "expense",
+                PersonalTransaction.currency == currency,
                 PersonalTransaction.deleted_at.is_(None),
             )
         )
@@ -92,15 +93,19 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
         for d, share in session.execute(
             select(Expense.date, ExpenseSplit.share_minor)
             .join(ExpenseSplit, ExpenseSplit.expense_id == Expense.id)
-            .where(ExpenseSplit.user_id == me, Expense.deleted_at.is_(None))
+            .where(
+                ExpenseSplit.user_id == me,
+                Expense.currency == currency,
+                Expense.deleted_at.is_(None),
+            )
         )
     ]
     ctx = sources.Context(
-        period=period, on=on, currency=actor.user.currency, personal=personal, group_shares=shares
+        period=period, on=on, currency=currency, personal=personal, group_shares=shares
     )
     return DashboardOut(
         scope="personal",
-        currency=actor.user.currency,
+        currency=currency,
         cards=_cards(layout_rows(session, "personal", me), ctx),
     )
 

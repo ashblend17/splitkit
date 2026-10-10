@@ -31,7 +31,9 @@ void main() {
     expect(parseMinor(' 0.01 '), 1);
     expect(parseMinor('1,50,000.00'), 15000000);
     expect(parseMinor('12.'), 1200);
-    for (final bad in ['abc', '1.234', '', '-5']) {
+    expect(parseMinor('99,999,999.99'), maxAmountMinor);
+    expect(parseMinor('0099999999'), 9999999900);
+    for (final bad in ['abc', '1.234', '', '-5', '100000000', '99999999999999999999999']) {
       expect(parseMinor(bad), isNull, reason: bad);
     }
   });

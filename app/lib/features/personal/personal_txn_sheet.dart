@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/local/writes.dart';
@@ -44,7 +45,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
   late final _notes = TextEditingController(text: widget.existing?.notes ?? '');
   late int? _amount = widget.existing?.amountMinor;
   late String? _categoryId = widget.existing?.category?.id;
-  late DateTime _date = widget.existing?.date ?? DateTime.now();
+  late DateTime _date = widget.existing?.date ?? appClock.now();
   bool _busy = false;
 
   bool get _editing => widget.existing != null;
@@ -236,7 +237,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
           context: context,
           initialDate: _date,
           firstDate: DateTime(2000),
-          lastDate: DateTime.now().add(const Duration(days: 365)),
+          lastDate: appClock.now().add(const Duration(days: 365)),
         );
         if (picked != null) setState(() => _date = picked);
       },

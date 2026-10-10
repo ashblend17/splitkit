@@ -82,9 +82,12 @@ def trend_label(period: Period) -> str:
     return {"week": "Last 7 days", "month": "Last 6 months", "year": "Last 12 months"}[period]
 
 
+MAX_MONTH_BARS = 24
+
+
 def adaptive_buckets(start: date, end: date) -> list[Span]:
     """Buckets for a group's whole history: days up to 2 weeks, weeks up to ~3 months,
-    months beyond that."""
+    months up to two years, then whole years (so the chart never gets more than 24 bars)."""
     days = (end - start).days + 1
     if days <= 14:
         return [Span(d, d, f"{d.day}") for d in (start + timedelta(days=i) for i in range(days))]
@@ -95,8 +98,17 @@ def adaptive_buckets(start: date, end: date) -> list[Span]:
             spans.append(Span(s, e, f"{s.day} {s:%b}"))
             s = e + timedelta(days=1)
         return spans
+    months = (end.year - start.year) * 12 + end.month - start.month + 1
+    if months > MAX_MONTH_BARS:
+        return [
+            Span(max(date(y, 1, 1), start), min(date(y, 12, 31), end), str(y))
+            for y in range(start.year, end.year + 1)
+        ]
+    # Across a new year, January's bar shows the year ("Nov, Dec, 2026, Feb").
+    crosses = start.year != end.year
     spans, m = [], month_start(start)
     while m <= end:
-        spans.append(Span(max(m, start), min(month_end(m), end), f"{m:%b}"))
+        label = str(m.year) if crosses and m.month == 1 else f"{m:%b}"
+        spans.append(Span(max(m, start), min(month_end(m), end), label))
         m = add_months(m, 1)
     return spans

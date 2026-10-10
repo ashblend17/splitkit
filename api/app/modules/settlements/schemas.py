@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from app.core.schemas import Schema
+from app.core.schemas import AmountMinor, Currency, EntryDate, Schema
 from app.modules.users.schemas import UserBrief
 
 Method = Literal["upi", "cash", "bank", "other"]
@@ -17,8 +17,8 @@ class SettlementIn(Schema):
     """Who paid."""
     to_user: uuid.UUID
     """Who received the money."""
-    amount_minor: int = Field(gt=0)
-    date: date
+    amount_minor: AmountMinor
+    date: EntryDate
     method: Method = "upi"
     note: str | None = Field(default=None, max_length=500)
 
@@ -58,12 +58,12 @@ class SettleUpPlanOut(Schema):
 
 
 class SettleUpIn(Schema):
-    amount_minor: int | None = Field(default=None, gt=0)
+    amount_minor: AmountMinor | None = None
     """Omit to settle everything. Otherwise a part payment in the direction of the net."""
-    date: date
+    date: EntryDate
     method: Method = "upi"
     note: str | None = Field(default=None, max_length=500)
-    currency: str | None = Field(default=None, pattern="^[A-Z]{3}$")
+    currency: Currency | None = None
     """Defaults to your own currency; only groups in this currency are settled."""
 
 

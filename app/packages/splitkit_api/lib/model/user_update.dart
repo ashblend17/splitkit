@@ -25,7 +25,7 @@ class UserUpdate {
 
   String? avatarUrl;
 
-  String? currency;
+  UserUpdateCurrencyEnum? currency;
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is UserUpdate &&
@@ -92,7 +92,7 @@ class UserUpdate {
         version: mapValueOfType<int>(json, r'version'),
         name: mapValueOfType<String>(json, r'name'),
         avatarUrl: mapValueOfType<String>(json, r'avatar_url'),
-        currency: mapValueOfType<String>(json, r'currency'),
+        currency: UserUpdateCurrencyEnum.fromJson(json[r'currency']),
       );
     }
     return null;
@@ -142,4 +142,81 @@ class UserUpdate {
   static const requiredKeys = <String>{
   };
 }
+
+
+class UserUpdateCurrencyEnum {
+  /// Instantiate a new enum with the provided [value].
+  const UserUpdateCurrencyEnum._(this.value);
+
+  /// The underlying value of this enum member.
+  final String value;
+
+  @override
+  String toString() => value;
+
+  String toJson() => value;
+
+  static const INR = UserUpdateCurrencyEnum._(r'INR');
+  static const USD = UserUpdateCurrencyEnum._(r'USD');
+  static const EUR = UserUpdateCurrencyEnum._(r'EUR');
+
+  /// List of all possible values in this [enum][UserUpdateCurrencyEnum].
+  static const values = <UserUpdateCurrencyEnum>[
+    INR,
+    USD,
+    EUR,
+  ];
+
+  static UserUpdateCurrencyEnum? fromJson(dynamic value) => UserUpdateCurrencyEnumTypeTransformer().decode(value);
+
+  static List<UserUpdateCurrencyEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <UserUpdateCurrencyEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = UserUpdateCurrencyEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [UserUpdateCurrencyEnum] to String,
+/// and [decode] dynamic data back to [UserUpdateCurrencyEnum].
+class UserUpdateCurrencyEnumTypeTransformer {
+  factory UserUpdateCurrencyEnumTypeTransformer() => _instance ??= const UserUpdateCurrencyEnumTypeTransformer._();
+
+  const UserUpdateCurrencyEnumTypeTransformer._();
+
+  String encode(UserUpdateCurrencyEnum data) => data.value;
+
+  /// Decodes a [dynamic value][data] to a UserUpdateCurrencyEnum.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  UserUpdateCurrencyEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data != null) {
+      switch (data) {
+        case r'INR': return UserUpdateCurrencyEnum.INR;
+        case r'USD': return UserUpdateCurrencyEnum.USD;
+        case r'EUR': return UserUpdateCurrencyEnum.EUR;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// Singleton [UserUpdateCurrencyEnumTypeTransformer] instance.
+  static UserUpdateCurrencyEnumTypeTransformer? _instance;
+}
+
 

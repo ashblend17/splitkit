@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import '../../core/money/money.dart';
 import '../../core/theme/theme.dart';
 
-/// Keeps digits and one decimal point (max 2 places) and regroups the whole part in the
-/// Indian style as you type: "180000" -> "1,80,000".
-class IndianAmountFormatter extends TextInputFormatter {
-  const IndianAmountFormatter({this.decimals = 2});
+/// Keeps digits and one decimal point (max 2 places) and regroups the whole part as you type,
+/// the way [formatMinor] shows the currency: "180000" -> "1,80,000" in rupees, "180,000" in
+/// dollars and euros.
+class AmountFormatter extends TextInputFormatter {
+  const AmountFormatter({this.decimals = 2, this.currency = 'INR'});
 
   final int decimals;
+  final String currency;
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
@@ -23,8 +25,10 @@ class IndianAmountFormatter extends TextInputFormatter {
     }
     final parts = raw.split('.');
     var whole = parts.first.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+    if (whole.length > maxAmountDigits) return oldValue; // past ₹9,99,99,999: ignore the key
     if (whole.isEmpty && parts.length > 1) whole = '0';
-    final text = parts.length > 1 ? '${groupIndian(whole)}.${parts[1]}' : groupIndian(whole);
+    final grouped = currency == 'INR' ? groupIndian(whole) : groupThousands(whole);
+    final text = parts.length > 1 ? '$grouped.${parts[1]}' : grouped;
     return TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
@@ -105,7 +109,7 @@ class _AmountInputState extends State<AmountInput> {
                   autofocus: widget.autofocus,
                   textAlign: TextAlign.center,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: const [IndianAmountFormatter()],
+                  inputFormatters: [AmountFormatter(currency: widget.currency)],
                   onChanged: (t) => widget.onChanged?.call(parseMinor(t, currency: widget.currency)),
                   style: SkText.display(widget.fontSize, 800),
                   decoration: InputDecoration(
