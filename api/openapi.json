@@ -913,6 +913,29 @@
         "title": "ChartStat",
         "type": "object"
       },
+      "ConflictSideOut": {
+        "properties": {
+          "deleted": {
+            "title": "Deleted",
+            "type": "boolean"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "summary",
+          "deleted"
+        ],
+        "title": "ConflictSideOut",
+        "type": "object"
+      },
       "CurrencyTotals": {
         "properties": {
           "currency": {
@@ -2738,6 +2761,23 @@
         "title": "RegisterIn",
         "type": "object"
       },
+      "ResolveConflictIn": {
+        "properties": {
+          "keep": {
+            "enum": [
+              "splitkit",
+              "tricount"
+            ],
+            "title": "Keep",
+            "type": "string"
+          }
+        },
+        "required": [
+          "keep"
+        ],
+        "title": "ResolveConflictIn",
+        "type": "object"
+      },
       "ReviewItemOut": {
         "properties": {
           "expense_id": {
@@ -3660,6 +3700,325 @@
           "user"
         ],
         "title": "TokenOut",
+        "type": "object"
+      },
+      "TricountConflictOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity": {
+            "enum": [
+              "expense",
+              "payment"
+            ],
+            "title": "Entity",
+            "type": "string"
+          },
+          "group_id": {
+            "format": "uuid",
+            "title": "Group Id",
+            "type": "string"
+          },
+          "group_name": {
+            "title": "Group Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "splitkit": {
+            "$ref": "#/components/schemas/ConflictSideOut"
+          },
+          "tricount": {
+            "$ref": "#/components/schemas/ConflictSideOut"
+          }
+        },
+        "required": [
+          "id",
+          "group_id",
+          "group_name",
+          "entity",
+          "splitkit",
+          "tricount",
+          "created_at"
+        ],
+        "title": "TricountConflictOut",
+        "type": "object"
+      },
+      "TricountLinkIn": {
+        "properties": {
+          "create": {
+            "default": false,
+            "title": "Create",
+            "type": "boolean"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/TricountPersonIn"
+            },
+            "maxItems": 200,
+            "title": "People",
+            "type": "array"
+          }
+        },
+        "title": "TricountLinkIn",
+        "type": "object"
+      },
+      "TricountLinkOut": {
+        "properties": {
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/TricountConflictOut"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "group_id": {
+            "format": "uuid",
+            "title": "Group Id",
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "linked_at": {
+            "format": "date-time",
+            "title": "Linked At",
+            "type": "string"
+          },
+          "linked_by": {
+            "$ref": "#/components/schemas/UserBrief"
+          },
+          "share_link": {
+            "title": "Share Link",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "syncing",
+              "ok",
+              "error"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "group_id",
+          "share_link",
+          "state",
+          "last_error",
+          "warnings",
+          "last_synced_at",
+          "linked_at",
+          "linked_by",
+          "conflicts"
+        ],
+        "title": "TricountLinkOut",
+        "type": "object"
+      },
+      "TricountLinkPreviewIn": {
+        "properties": {
+          "link": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "link"
+        ],
+        "title": "TricountLinkPreviewIn",
+        "type": "object"
+      },
+      "TricountLinkPreviewOut": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "expenses": {
+            "title": "Expenses",
+            "type": "integer"
+          },
+          "payments": {
+            "title": "Payments",
+            "type": "integer"
+          },
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/TricountPersonOut"
+            },
+            "title": "People",
+            "type": "array"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unsupported": {
+            "title": "Unsupported",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "currency",
+          "expenses",
+          "payments",
+          "unsupported",
+          "people",
+          "problem"
+        ],
+        "title": "TricountLinkPreviewOut",
+        "type": "object"
+      },
+      "TricountPersonIn": {
+        "properties": {
+          "member_uuid": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Member Uuid",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "member_uuid"
+        ],
+        "title": "TricountPersonIn",
+        "type": "object"
+      },
+      "TricountPersonOut": {
+        "properties": {
+          "member_uuid": {
+            "title": "Member Uuid",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "you",
+              "matched",
+              "suggested",
+              "unmatched"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "suggested": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "member_uuid",
+          "name",
+          "suggested",
+          "state"
+        ],
+        "title": "TricountPersonOut",
+        "type": "object"
+      },
+      "TricountStatusOut": {
+        "properties": {
+          "link": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TricountLinkOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linked": {
+            "title": "Linked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "linked",
+          "link"
+        ],
+        "title": "TricountStatusOut",
         "type": "object"
       },
       "UserBrief": {
@@ -7717,6 +8076,460 @@
         ]
       }
     },
+    "/api/v1/groups/{group_id}/tricount": {
+      "delete": {
+        "description": "Stop syncing. Nothing is deleted on either side.",
+        "operationId": "unlink_tricount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unlink Tricount",
+        "tags": [
+          "tricount"
+        ]
+      },
+      "get": {
+        "description": "Whether the group is kept in sync with a tricount, how the last pass went, and the\nconflicts waiting for someone to pick a side.",
+        "operationId": "get_tricount_link",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TricountStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Tricount Link",
+        "tags": [
+          "tricount"
+        ]
+      },
+      "post": {
+        "description": "Keep this group in sync with a tricount: an existing one (`link`) or a new one made\nfrom the group (`create`). The first pass runs right after; the status says \"syncing\"\nuntil it's done.",
+        "operationId": "link_tricount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TricountLinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TricountStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Link Tricount",
+        "tags": [
+          "tricount"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}/tricount/preview": {
+      "post": {
+        "description": "Read a tricount by its share link (without joining it) and suggest who its people are\nin this group. Changes nothing.",
+        "operationId": "preview_tricount_link",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TricountLinkPreviewIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TricountLinkPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Preview Tricount Link",
+        "tags": [
+          "tricount"
+        ]
+      }
+    },
+    "/api/v1/groups/{group_id}/tricount/sync": {
+      "post": {
+        "description": "Sync now instead of waiting for the next pass.",
+        "operationId": "sync_tricount",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "group_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Group Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TricountStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Sync Tricount",
+        "tags": [
+          "tricount"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "operationId": "health",
@@ -9775,6 +10588,186 @@
         "summary": "Snapshot",
         "tags": [
           "sync"
+        ]
+      }
+    },
+    "/api/v1/tricount/conflicts": {
+      "get": {
+        "description": "Entries changed in both apps since they last agreed, in your groups.",
+        "operationId": "list_tricount_conflicts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TricountConflictOut"
+                  },
+                  "title": "Response List Tricount Conflicts",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Tricount Conflicts",
+        "tags": [
+          "tricount"
+        ]
+      }
+    },
+    "/api/v1/tricount/conflicts/{conflict_id}/resolve": {
+      "post": {
+        "description": "Keep Splitkit's or Tricount's version. The other app is updated before this returns\n(unless Tricount can't be reached; then the worker retries).",
+        "operationId": "resolve_tricount_conflict",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "conflict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conflict Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveConflictIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TricountStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Resolve Tricount Conflict",
+        "tags": [
+          "tricount"
         ]
       }
     }

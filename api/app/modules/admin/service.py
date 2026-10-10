@@ -87,7 +87,9 @@ def dashboard(session: Session) -> AdminDashboardOut:
     return AdminDashboardOut(
         users=_count(session, select(User.id).where(User.email.is_not(None))),
         admins=_count(session, select(User.id).where(User.role == "admin")),
-        placeholders=_count(session, select(User.id).where(User.email.is_(None))),
+        placeholders=_count(
+            session, select(User.id).where(User.email.is_(None), User.role != "system")
+        ),
         groups=_count(session, select(Group.id).where(Group.archived_at.is_(None))),
         groups_active_week=_count(
             session,
@@ -136,7 +138,7 @@ def list_users(
     limit: int,
     offset: int,
 ) -> AdminUsersPageOut:
-    query = select(User)
+    query = select(User).where(User.role != "system")
     if q and q.strip():
         pattern = _like(q)
         query = query.where(or_(User.name.ilike(pattern), User.email.ilike(pattern)))

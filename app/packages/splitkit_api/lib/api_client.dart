@@ -222,6 +222,8 @@ class ApiClient {
           return ChartRow.fromJson(value);
         case 'ChartStat':
           return ChartStat.fromJson(value);
+        case 'ConflictSideOut':
+          return ConflictSideOut.fromJson(value);
         case 'CurrencyTotals':
           return CurrencyTotals.fromJson(value);
         case 'DashboardOut':
@@ -294,6 +296,8 @@ class ApiClient {
           return PersonalTxnOut.fromJson(value);
         case 'RegisterIn':
           return RegisterIn.fromJson(value);
+        case 'ResolveConflictIn':
+          return ResolveConflictIn.fromJson(value);
         case 'ReviewItemOut':
           return ReviewItemOut.fromJson(value);
         case 'RowIssueOut':
@@ -342,6 +346,22 @@ class ApiClient {
           return SystemOut.fromJson(value);
         case 'TokenOut':
           return TokenOut.fromJson(value);
+        case 'TricountConflictOut':
+          return TricountConflictOut.fromJson(value);
+        case 'TricountLinkIn':
+          return TricountLinkIn.fromJson(value);
+        case 'TricountLinkOut':
+          return TricountLinkOut.fromJson(value);
+        case 'TricountLinkPreviewIn':
+          return TricountLinkPreviewIn.fromJson(value);
+        case 'TricountLinkPreviewOut':
+          return TricountLinkPreviewOut.fromJson(value);
+        case 'TricountPersonIn':
+          return TricountPersonIn.fromJson(value);
+        case 'TricountPersonOut':
+          return TricountPersonOut.fromJson(value);
+        case 'TricountStatusOut':
+          return TricountStatusOut.fromJson(value);
         case 'UserBrief':
           return UserBrief.fromJson(value);
         case 'UserOut':

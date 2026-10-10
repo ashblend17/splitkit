@@ -34,6 +34,20 @@ services:
       timeout: 3s
       retries: 20
 
+  # Keeps linked groups in sync with Tricount (api/app/modules/tricount_sync). Remove this
+  # service to turn the sync off; links then just stop updating.
+  tricount:
+    build: ./api
+    command: ["python", "-m", "app.modules.tricount_sync"]
+    environment:
+      ENV: ${ENV:-dev}
+      DATABASE_URL: postgresql+psycopg://splitkit:${POSTGRES_PASSWORD:-splitkit}@db:5432/splitkit
+      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me-please}
+    depends_on:
+      api:
+        condition: service_healthy  # its start-up runs the migrations
+    restart: unless-stopped
+
   web:
     build: ./app
     depends_on:

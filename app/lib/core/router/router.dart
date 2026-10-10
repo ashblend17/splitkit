@@ -20,6 +20,7 @@ import '../../features/home/home_page.dart';
 import '../../features/import_tricount/import_done_page.dart';
 import '../../features/import_tricount/import_review_page.dart';
 import '../../features/import_tricount/import_upload_page.dart';
+import '../../features/tricount_sync/tricount_sync_page.dart';
 import '../../features/personal/personal_history_page.dart';
 import '../../features/personal/personal_page.dart';
 import '../../features/profile/categories_page.dart';
@@ -98,6 +99,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                       GoRoute(
                         path: 'analytics',
                         builder: (_, s) => GroupAnalyticsPage(groupId: s.pathParameters['gid']!),
+                      ),
+                      // Tricount sync (deletable module: features/tricount_sync).
+                      GoRoute(
+                        path: 'tricount',
+                        builder: (_, s) => TricountSyncPage(groupId: s.pathParameters['gid']!),
                       ),
                     ],
                   ),

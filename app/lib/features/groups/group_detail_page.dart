@@ -16,6 +16,7 @@ import '../expenses/activity_table.dart';
 import '../expenses/feed_list.dart';
 import '../home/home_wide.dart' show ListCard;
 import '../settlements/settlement_sheet.dart';
+import '../tricount_sync/tricount_status_line.dart';
 
 enum _Tab { expenses, balances, analytics, members }
 
@@ -107,6 +108,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             ),
           ],
         ),
+        TricountStatusLine(groupId: g.id),
         const SizedBox(height: 16),
         _summary(g),
         const SizedBox(height: 16),
@@ -181,6 +183,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                         ),
                       ],
                     ),
+                    TricountStatusLine(groupId: g.id),
                   ],
                 ),
               ),
@@ -474,6 +477,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
           for (final (key, glyph, label) in [
             ('members', 'groups', 'Members'),
             ('deleted', 'trash', 'Deleted items'),
+            ('tricount', 'swap', 'Sync with Tricount'),
             ('archive', 'file', g.archivedAt == null ? 'Archive group' : 'Unarchive group'),
           ])
             Builder(
@@ -500,6 +504,8 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
         setState(() => _tab = _Tab.members);
       case 'deleted':
         context.go('/groups/${g.id}/deleted');
+      case 'tricount':
+        context.go('/groups/${g.id}/tricount');
       case 'archive':
         await ref.read(writesProvider).setGroupArchived(g.id, g.archivedAt == null);
         if (mounted) {

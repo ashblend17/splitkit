@@ -9,6 +9,13 @@ from app.modules.import_tricount.models import ImportBatch
 from app.modules.personal.models import PersonalTransaction
 from app.modules.settlements.models import Settlement
 from app.modules.sync.models import ChangeLog, SyncStream
+from app.modules.tricount_sync.models import (
+    TricountConflict,
+    TricountDevice,
+    TricountEntry,
+    TricountLink,
+    TricountMember,
+)
 from app.modules.users.models import User
 
 __all__ = [
@@ -26,5 +33,10 @@ __all__ = [
     "PersonalTransaction",
     "Settlement",
     "SyncStream",
+    "TricountConflict",
+    "TricountDevice",
+    "TricountEntry",
+    "TricountLink",
+    "TricountMember",
     "User",
 ]

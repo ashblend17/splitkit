@@ -34,6 +34,7 @@ class Api {
   late final personal = PersonalApi(client);
   late final analytics = AnalyticsApi(client);
   late final sync = SyncApi(client);
+  late final tricount = TricountApi(client); // features/tricount_sync
 }
 
 /// The human message from the API's error body ({"error": {"code", "message"}}), for showing
