@@ -132,6 +132,18 @@ def set_deleted(
     settlement = _load(session, actor, settlement_id)
     if (settlement.deleted_at is not None) != deleted:
         check_version(settlement, version)
+        if not deleted:
+            # e.g. a payment between a placeholder and the account it was linked to
+            # (groups/linking.py): bringing it back would give someone who left a balance.
+            current = active_member_ids(session, settlement.group_id)
+            gone = [u for u in (settlement.from_user, settlement.to_user) if u not in current]
+            if gone:
+                name = session.get(User, gone[0]).name
+                raise ApiError(
+                    409,
+                    "member_left",
+                    f"{name} isn't in this group any more, so this can't come back",
+                )
         settlement.deleted_at = datetime.now(UTC) if deleted else None
         settlement.acting_admin_id = actor.admin_id
         action = "settlement.delete" if deleted else "settlement.restore"

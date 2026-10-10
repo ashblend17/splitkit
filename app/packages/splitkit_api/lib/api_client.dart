@@ -272,6 +272,8 @@ class ApiClient {
           return LayoutIn.fromJson(value);
         case 'LayoutOut':
           return LayoutOut.fromJson(value);
+        case 'LinkMemberIn':
+          return LinkMemberIn.fromJson(value);
         case 'LoginIn':
           return LoginIn.fromJson(value);
         case 'MemberOut':

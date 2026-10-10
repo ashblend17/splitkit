@@ -189,7 +189,13 @@ class Ledger {
       'archived_at': g['archived_at'],
       'members': [
         for (final m in _activeMembers(id))
-          {'user': _brief(m['user_id']), 'role': m['role'], 'joined_at': m['joined_at'], 'placeholder_name': m['placeholder_name']},
+          {
+            'user': _brief(m['user_id']),
+            'role': m['role'],
+            'joined_at': m['joined_at'],
+            'placeholder_name': m['placeholder_name'],
+            'invite_email': m['invite_email'],
+          },
       ],
       'total_spent_minor': spent,
       'my_net_minor': positions(_flows(id))[me] ?? 0,

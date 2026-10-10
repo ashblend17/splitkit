@@ -50,6 +50,7 @@ Some are enforced by PostgreSQL and can't be broken by the app; the rest are che
 | `currency_matches_group` | error | Expenses and payments are in the group's currency | Bad import or manual SQL; fix the row |
 | `categories_fit_their_use` | error | Expenses use group categories; personal entries use personal ones (built in or their owner's) | Pick another category in the app |
 | `accounts_are_sane` | error | Placeholders have no password or personal entries; no duplicate emails | Merge the accounts, or move the rows |
+| `invites_are_open` | warning | Invite emails are lowercase, only on current placeholder members, and no account has the email yet | Link the member again: with an account it merges |
 | `groups_have_members` | warning | A group that isn't archived has a current member | Normal after everyone leaves; archive it |
 | `versions_start_at_one` | error | Every versioned row has version ≥ 1 (used for conflict detection) | `UPDATE … SET version = 1`, then reset its stream |
 | `undone_imports_left_nothing` | error | An undone Tricount import has no live rows left | Undo it again (`POST /import/batches/{id}/undo` is idempotent) |

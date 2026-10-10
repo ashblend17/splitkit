@@ -88,6 +88,7 @@ part 'model/import_totals_out.dart';
 part 'model/layout_card.dart';
 part 'model/layout_in.dart';
 part 'model/layout_out.dart';
+part 'model/link_member_in.dart';
 part 'model/login_in.dart';
 part 'model/member_out.dart';
 part 'model/money_total.dart';

@@ -33,6 +33,8 @@ class MemberOut(Schema):
     role: str
     joined_at: datetime
     placeholder_name: str | None
+    invite_email: str | None
+    """Placeholders only: who signing up with this email takes this place."""
 
 
 class GroupOut(Schema):
@@ -63,3 +65,9 @@ class AddMemberIn(Schema):
         if (self.email is None) == (self.name is None):
             raise ValueError("Give either an email or a name")
         return self
+
+
+class LinkMemberIn(Schema):
+    """The account a placeholder member is linked to."""
+
+    email: EmailStr

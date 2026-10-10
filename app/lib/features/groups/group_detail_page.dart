@@ -526,9 +526,17 @@ class _MembersTab extends ConsumerWidget {
             subtitle: [
               if (m.user.id == me.id) 'You',
               if (m.role == 'owner') 'Owner',
-              if (m.user.isPlaceholder == true) 'No account yet',
+              if (m.user.isPlaceholder == true) m.inviteEmail == null ? 'No account yet' : 'Invited · ${m.inviteEmail}',
               if (m.placeholderName != null && m.user.isPlaceholder != true) 'Was “${m.placeholderName}”',
             ].join(' · ').ifEmpty('Member'),
+            trailing: m.user.isPlaceholder == true
+                ? SkButton(
+                    'Link',
+                    variant: SkButtonVariant.secondary,
+                    size: SkButtonSize.small,
+                    onPressed: () => linkGroupMember(context, group, m),
+                  )
+                : null,
           ),
           const SizedBox(height: 8),
         ],
@@ -556,6 +564,104 @@ Future<void> addGroupMember(BuildContext context, GroupOut group) async {
 
 extension on String {
   String ifEmpty(String fallback) => isEmpty ? fallback : this;
+}
+
+/// Links a placeholder member to an account (groups/linking.py on the server).
+Future<void> linkGroupMember(BuildContext context, GroupOut group, MemberOut member) async {
+  final message = await showAppBottomSheet<String>(
+    context,
+    title: 'Link ${member.user.name} to an account',
+    child: _LinkMemberForm(groupId: group.id, member: member),
+  );
+  if (message != null && context.mounted) showMessage(context, message);
+}
+
+class _LinkMemberForm extends ConsumerStatefulWidget {
+  const _LinkMemberForm({required this.groupId, required this.member});
+  final String groupId;
+  final MemberOut member;
+
+  @override
+  ConsumerState<_LinkMemberForm> createState() => _LinkMemberFormState();
+}
+
+class _LinkMemberFormState extends ConsumerState<_LinkMemberForm> {
+  late final _email = TextEditingController(text: widget.member.inviteEmail);
+  String? _error;
+  bool _busy = false;
+
+  String get _name => widget.member.user.name;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = 'Enter their email');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final group = await ref
+          .read(apiProvider)
+          .groups
+          .linkMember(widget.groupId, widget.member.user.id, LinkMemberIn(email: email));
+      refreshLedger(ref.invalidate);
+      // Still here as a placeholder: no account had that email, so it was saved as an invite.
+      final invited = group?.members.any((x) => x.user.id == widget.member.user.id) ?? false;
+      if (mounted) {
+        Navigator.of(
+          context,
+        ).pop(invited ? 'Invite saved. Signing up with $email takes $_name’s place.' : '$_name is linked to $email');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = apiErrorMessage(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SkTextField(
+            label: 'Their email',
+            controller: _email,
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            errorText: _error,
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'If they have a Splitkit account, $_name’s expenses and payments move to it now. '
+            'If not, they take $_name’s place when they sign up with this email. '
+            'Nobody’s balance changes.',
+            style: SkText.body(13, 400, color: SkColors.ink2),
+          ),
+          const SizedBox(height: 18),
+          SkButton(
+            _busy ? 'Linking…' : 'Link account',
+            onPressed: _busy ? null : _submit,
+            size: SkButtonSize.large,
+            expand: true,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AddMemberForm extends ConsumerStatefulWidget {

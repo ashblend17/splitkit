@@ -178,6 +178,72 @@ class GroupsApi {
     return null;
   }
 
+  /// Link Member
+  ///
+  /// Link a placeholder member (no account) to the account with this email.  If the account exists, the placeholder's expenses, shares and payments in its groups move to it now. If not, the email is saved as an invite (`invite_email`) and whoever signs up with it takes the placeholder's place. Everyone's balance stays the same either way.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] groupId (required):
+  ///
+  /// * [String] userId (required):
+  ///
+  /// * [LinkMemberIn] linkMemberIn (required):
+  Future<Response> linkMemberWithHttpInfo(String groupId, String userId, LinkMemberIn linkMemberIn,) async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/groups/{group_id}/members/{user_id}/link'
+      .replaceAll('{group_id}', groupId)
+      .replaceAll('{user_id}', userId);
+
+    // ignore: prefer_final_locals
+    Object? postBody = linkMemberIn;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Link Member
+  ///
+  /// Link a placeholder member (no account) to the account with this email.  If the account exists, the placeholder's expenses, shares and payments in its groups move to it now. If not, the email is saved as an invite (`invite_email`) and whoever signs up with it takes the placeholder's place. Everyone's balance stays the same either way.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] groupId (required):
+  ///
+  /// * [String] userId (required):
+  ///
+  /// * [LinkMemberIn] linkMemberIn (required):
+  Future<GroupOut?> linkMember(String groupId, String userId, LinkMemberIn linkMemberIn,) async {
+    final response = await linkMemberWithHttpInfo(groupId, userId, linkMemberIn,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'GroupOut',) as GroupOut;
+    
+    }
+    return null;
+  }
+
   /// List Groups
   ///
   /// Note: This method returns the HTTP [Response].
