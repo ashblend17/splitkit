@@ -69,6 +69,9 @@ class FeedFilters {
 
 typedef Json = Map<String, dynamic>;
 
+/// The "Tricount" user (SYSTEM_USER_ID in api/app/modules/tricount_sync/reconcile.py).
+const tricountUserId = '1a352678-7c38-5085-8131-bbcad6d0ae9d';
+
 class Ledger {
   Ledger(Iterable<LocalEntity> entities, {DateTime? today}) : today = today ?? appClock.now() {
     for (final e in entities) {
@@ -130,7 +133,11 @@ class Ledger {
 
   Json _brief(String userId) {
     final p = _people[userId];
-    if (p == null) return {'id': userId, 'name': 'Someone', 'avatar_url': null, 'is_placeholder': false};
+    if (p == null) {
+      // Changes synced from Tricount are recorded as this user (tricount_sync/reconcile.py).
+      if (userId == tricountUserId) return {'id': userId, 'name': 'Tricount', 'avatar_url': null, 'is_placeholder': true};
+      return {'id': userId, 'name': 'Someone', 'avatar_url': null, 'is_placeholder': false};
+    }
     return {'id': p['id'], 'name': p['name'], 'avatar_url': p['avatar_url'], 'is_placeholder': p['is_placeholder'] ?? false};
   }
 

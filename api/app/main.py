@@ -20,6 +20,8 @@ from app.modules.personal.router import router as personal_router
 from app.modules.settlements.router import router as settlements_router
 from app.modules.splits.router import router as splits_router
 from app.modules.sync.router import router as sync_router
+from app.modules.tricount_sync.activity import ActivityMiddleware
+from app.modules.tricount_sync.router import router as tricount_router
 from app.modules.users.router import router as users_router
 
 API_PREFIX = "/api/v1"
@@ -40,6 +42,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(ActivityMiddleware)  # removable with the tricount_sync module
 install_error_handler(app)
 
 # Every error uses the same body; documented so the generated client gets a typed model.
@@ -68,6 +71,7 @@ for module_router in (
     sync_router,
     admin_router,
     import_router,  # removable with the import_tricount module
+    tricount_router,  # removable with the tricount_sync module
 ):
     api.include_router(module_router)
 

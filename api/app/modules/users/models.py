@@ -13,7 +13,8 @@ class User(Base):
 
     __tablename__ = "users"
     __table_args__ = (
-        CheckConstraint("role IN ('user', 'admin')", name="role"),
+        # system: the "Tricount" user that changes synced from Tricount are recorded as.
+        CheckConstraint("role IN ('user', 'admin', 'system')", name="role"),
         CheckConstraint("password_hash IS NULL OR email IS NOT NULL", name="login_needs_email"),
         Index("uq_users_email_lower", func.lower(text("email")), unique=True),
     )

@@ -7,9 +7,12 @@ import '../../core/local/providers.dart';
 import '../../core/local/writes.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
+import '../tricount_sync/tricount_conflicts.dart';
+import '../tricount_sync/tricount_providers.dart';
 
 /// One line above every signed-in screen when something needs saying: offline (and how many
-/// changes are waiting), or changes the server refused ("Needs your attention").
+/// changes are waiting), changes the server refused ("Needs your attention"), or entries
+/// changed in both Splitkit and a linked tricount.
 class SyncBanner extends ConsumerWidget {
   const SyncBanner({super.key, required this.child});
 
@@ -21,6 +24,7 @@ class SyncBanner extends ConsumerWidget {
     final ops = ref.watch(outboxProvider);
     final waiting = ops.where((o) => o.status != OutboxStatus.rejected).length;
     final refused = ops.where((o) => o.status == OutboxStatus.rejected).length;
+    final fromTricount = ref.watch(tricountConflictsProvider).value?.length ?? 0;
 
     Widget? line;
     if (refused > 0) {
@@ -31,6 +35,17 @@ class SyncBanner extends ConsumerWidget {
         background: SkColors.pendingSoft,
         foreground: SkColors.pending,
         onTap: () => showAttentionSheet(context),
+      );
+    } else if (fromTricount > 0 && !offline) {
+      line = _Line(
+        glyph: 'swap',
+        text: fromTricount == 1
+            ? '1 change from Tricount needs a decision'
+            : '$fromTricount changes from Tricount need a decision',
+        action: 'Review',
+        background: SkColors.pendingSoft,
+        foreground: SkColors.pending,
+        onTap: () => showTricountConflictsSheet(context),
       );
     } else if (offline) {
       line = _Line(

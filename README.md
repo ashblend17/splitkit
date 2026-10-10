@@ -204,6 +204,45 @@ that hasn't been tried on a device yet.
   largest remainder, with ties going to the earlier input, so shares always add up to the total.
 - A deferred database trigger rejects any expense whose splits don't add up to its amount.
 
+## Tricount sync
+
+A deletable module (`api/app/modules/tricount_sync/`, `app/lib/features/tricount_sync/`, the
+`tricount` compose service and migration 0008) that keeps a group and a tricount the same,
+both ways, from the group's menu → Sync with Tricount (`/groups/{id}/tricount`).
+
+- **Unofficial.** Tricount has no public API. The server talks to bunq's private one the way
+  the Android app does (`client.py`, after github.com/federicobond/go-tricount): it registers
+  once as an anonymous device and joins tricounts by their share link. Writes are only accepted
+  with the Android app's User-Agent (`TRICOUNT_USER_AGENT`). It may break or be blocked at any
+  time, and may not be allowed by Tricount's terms. `TRICOUNT_API_URL` points it elsewhere.
+- **Server-side.** Apps and the website never call Tricount: they write to Splitkit as always
+  (offline queue included), and the server mirrors. Turning the sync off is stopping the
+  `tricount` service.
+- `POST /groups/{id}/tricount/preview {link}` reads a tricount without joining it and suggests
+  who its people are. `POST /groups/{id}/tricount {link, people}` links it (or `{create: true}`
+  makes a new tricount from the group); the first pass runs right after, and the group takes
+  the tricount's name. `GET …/tricount` is the status, `POST …/tricount/sync` syncs now,
+  `DELETE …/tricount` stops (nothing is deleted).
+- **A pass** (`reconcile.py`) reads the whole tricount and compares each entry three ways:
+  Splitkit's, Tricount's, and the version both last agreed on (`tricount_entries.base`, in the
+  form `mapping.py` defines). One side changed: it goes to the other. Both changed: a
+  `tricount_conflicts` row, shown in the app as "N changes from Tricount need a decision",
+  resolved with `POST /tricount/conflicts/{id}/resolve {keep}`. New people on either side
+  are added to the other (Tricount people become placeholders). There's no retry queue: what
+  still has to go is whatever differs from its base, so a failed pass just leaves work for the
+  next one, and creates use ids derived from the other side so a redo never duplicates.
+- **When** (`worker.py`): within seconds of a Splitkit change, every
+  `TRICOUNT_POLL_SECONDS` (60) while someone in the group uses the app
+  (`ActivityMiddleware` sets `last_active_at`), with exponential backoff after failures.
+  `python -m app.modules.tricount_sync --once` runs one round.
+- Changes from Tricount are recorded as the "Tricount" system user (`role = 'system'`), so
+  history says "Edited by Tricount".
+- Not carried over: Tricount income entries (shown as a warning with the amount, since
+  balances then differ), payment methods and expense notes (Tricount has neither), member
+  removals and renames after linking. Categories map coarsely (`mapping.py`).
+- Tests use an in-memory Tricount (`api/tests/tricount_fake.py`). Nothing here has run
+  against the real service: try it on a throwaway tricount first.
+
 ## Tricount import
 
 A deletable module: `api/app/modules/import_tricount/` and `app/lib/features/import_tricount/`,

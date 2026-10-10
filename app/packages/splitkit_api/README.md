@@ -122,6 +122,13 @@ Class | Method | HTTP request | Description
 *SyncApi* | [**callSync**](doc//SyncApi.md#callsync) | **POST** /api/v1/sync | Sync
 *SyncApi* | [**snapshot**](doc//SyncApi.md#snapshot) | **GET** /api/v1/sync/snapshot/{stream} | Snapshot
 *SystemApi* | [**health**](doc//SystemApi.md#health) | **GET** /api/v1/health | Health
+*TricountApi* | [**getTricountLink**](doc//TricountApi.md#gettricountlink) | **GET** /api/v1/groups/{group_id}/tricount | Get Tricount Link
+*TricountApi* | [**linkTricount**](doc//TricountApi.md#linktricount) | **POST** /api/v1/groups/{group_id}/tricount | Link Tricount
+*TricountApi* | [**listTricountConflicts**](doc//TricountApi.md#listtricountconflicts) | **GET** /api/v1/tricount/conflicts | List Tricount Conflicts
+*TricountApi* | [**previewTricountLink**](doc//TricountApi.md#previewtricountlink) | **POST** /api/v1/groups/{group_id}/tricount/preview | Preview Tricount Link
+*TricountApi* | [**resolveTricountConflict**](doc//TricountApi.md#resolvetricountconflict) | **POST** /api/v1/tricount/conflicts/{conflict_id}/resolve | Resolve Tricount Conflict
+*TricountApi* | [**syncTricount**](doc//TricountApi.md#synctricount) | **POST** /api/v1/groups/{group_id}/tricount/sync | Sync Tricount
+*TricountApi* | [**unlinkTricount**](doc//TricountApi.md#unlinktricount) | **DELETE** /api/v1/groups/{group_id}/tricount | Unlink Tricount
 *UsersApi* | [**getMe**](doc//UsersApi.md#getme) | **GET** /api/v1/me | Get Me
 *UsersApi* | [**updateMe**](doc//UsersApi.md#updateme) | **PATCH** /api/v1/me | Update Me
 
@@ -148,6 +155,7 @@ Class | Method | HTTP request | Description
  - [ChartBar](doc//ChartBar.md)
  - [ChartRow](doc//ChartRow.md)
  - [ChartStat](doc//ChartStat.md)
+ - [ConflictSideOut](doc//ConflictSideOut.md)
  - [CurrencyTotals](doc//CurrencyTotals.md)
  - [DashboardOut](doc//DashboardOut.md)
  - [ErrorBody](doc//ErrorBody.md)
@@ -184,6 +192,7 @@ Class | Method | HTTP request | Description
  - [PersonalTxnIn](doc//PersonalTxnIn.md)
  - [PersonalTxnOut](doc//PersonalTxnOut.md)
  - [RegisterIn](doc//RegisterIn.md)
+ - [ResolveConflictIn](doc//ResolveConflictIn.md)
  - [ReviewItemOut](doc//ReviewItemOut.md)
  - [RowIssueOut](doc//RowIssueOut.md)
  - [RowShareOut](doc//RowShareOut.md)
@@ -208,6 +217,14 @@ Class | Method | HTTP request | Description
  - [SyncStreamOut](doc//SyncStreamOut.md)
  - [SystemOut](doc//SystemOut.md)
  - [TokenOut](doc//TokenOut.md)
+ - [TricountConflictOut](doc//TricountConflictOut.md)
+ - [TricountLinkIn](doc//TricountLinkIn.md)
+ - [TricountLinkOut](doc//TricountLinkOut.md)
+ - [TricountLinkPreviewIn](doc//TricountLinkPreviewIn.md)
+ - [TricountLinkPreviewOut](doc//TricountLinkPreviewOut.md)
+ - [TricountPersonIn](doc//TricountPersonIn.md)
+ - [TricountPersonOut](doc//TricountPersonOut.md)
+ - [TricountStatusOut](doc//TricountStatusOut.md)
  - [UserBrief](doc//UserBrief.md)
  - [UserOut](doc//UserOut.md)
  - [UserUpdate](doc//UserUpdate.md)
