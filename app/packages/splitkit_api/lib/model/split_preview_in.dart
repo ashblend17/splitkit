@@ -23,6 +23,7 @@ class SplitPreviewIn {
 
   List<SplitInputIn> inputs;
 
+  /// Maximum value: 9999999999
   int totalMinor;
 
   String currency;

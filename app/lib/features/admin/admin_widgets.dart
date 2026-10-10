@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/layout/layout.dart';
 import '../../core/theme/theme.dart';
@@ -194,7 +195,7 @@ String auditWho(AuditEntryOut e) {
 String lastActiveLabel(DateTime? at, {DateTime? now}) {
   if (at == null) return 'Never';
   final local = at.toLocal();
-  final today = now ?? DateTime.now();
+  final today = now ?? appClock.now();
   final days = DateTime(today.year, today.month, today.day).difference(DateTime(local.year, local.month, local.day)).inDays;
   if (days <= 0) return timeLabel(at);
   if (days < 7) return DateFormat('EEE').format(local);

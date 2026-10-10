@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' show Response;
 import 'package:splitkit_api/api.dart';
 
+import '../clock.dart';
 import 'ledger.dart';
 import 'outbox.dart';
 import 'store.dart';
@@ -91,7 +92,7 @@ class SyncEngine {
         await _settle();
       } while (_again);
       if (pushError != null) throw pushError;
-      _set(SyncStatus(lastSyncedAt: DateTime.now()));
+      _set(SyncStatus(lastSyncedAt: appClock.now()));
     } catch (e) {
       final offline = isOfflineError(e);
       _set(SyncStatus(offline: offline, lastSyncedAt: _current.lastSyncedAt, error: offline ? null : e));

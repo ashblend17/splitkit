@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/session/session.dart';
@@ -20,8 +21,8 @@ class PersonalHistoryPage extends ConsumerStatefulWidget {
 }
 
 class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
-  late DateTime _start = DateTime(DateTime.now().year, DateTime.now().month);
-  DateTime _end = DateTime.now();
+  late DateTime _start = DateTime(appClock.now().year, appClock.now().month);
+  DateTime _end = appClock.now();
   String? _type = 'expense';
   Set<String> _categories = {};
 
@@ -310,7 +311,7 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: appClock.now().add(const Duration(days: 365)),
       initialDateRange: DateTimeRange(start: _start, end: _end),
     );
     if (picked != null) {

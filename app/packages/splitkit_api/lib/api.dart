@@ -78,7 +78,6 @@ part 'model/group_net.dart';
 part 'model/group_out.dart';
 part 'model/group_ref.dart';
 part 'model/group_update.dart';
-part 'model/http_validation_error.dart';
 part 'model/history_entry.dart';
 part 'model/import_batch_out.dart';
 part 'model/import_preview_out.dart';
@@ -127,7 +126,6 @@ part 'model/token_out.dart';
 part 'model/user_brief.dart';
 part 'model/user_out.dart';
 part 'model/user_update.dart';
-part 'model/validation_error.dart';
 
 
 /// An [ApiClient] instance that uses the default values obtained from

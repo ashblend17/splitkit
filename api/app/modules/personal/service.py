@@ -69,17 +69,25 @@ def list_transactions(
     )
     page = rows[offset : offset + limit]
     cats = _categories(session, page)
+    # Totals can't add up different currencies: entries made before you changed your currency
+    # are listed but not counted.
+    counted = [t for t in rows if t.currency == actor.user.currency]
     return PersonalListOut(
         items=[_out(t, cats) for t in page],
-        spent_minor=sum(t.amount_minor for t in rows if t.type == "expense"),
-        income_minor=sum(t.amount_minor for t in rows if t.type == "income"),
+        spent_minor=sum(t.amount_minor for t in counted if t.type == "expense"),
+        income_minor=sum(t.amount_minor for t in counted if t.type == "income"),
         count=len(rows),
     )
 
 
 def summary(session: Session, actor: Actor, month: date) -> PersonalSummaryOut:
     start, end = month.replace(day=1), month_end(month)
-    rows = repo.query(session, actor.user_id, start=start, end=end)
+    currency = actor.user.currency
+    rows = [
+        t
+        for t in repo.query(session, actor.user_id, start=start, end=end)
+        if t.currency == currency
+    ]
     cats = _categories(session, rows)
     spent = sum(t.amount_minor for t in rows if t.type == "expense")
     income = sum(t.amount_minor for t in rows if t.type == "income")
@@ -100,11 +108,11 @@ def summary(session: Session, actor: Actor, month: date) -> PersonalSummaryOut:
     return PersonalSummaryOut(
         month=f"{start:%Y-%m}",
         month_label=label,
-        currency=actor.user.currency,
+        currency=currency,
         spent_minor=spent,
         income_minor=income,
         left_over_minor=income - spent,
-        group_share_minor=repo.group_share(session, actor.user_id, start, end),
+        group_share_minor=repo.group_share(session, actor.user_id, start, end, currency),
         by_category=totals,
     )
 

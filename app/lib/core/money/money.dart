@@ -9,6 +9,13 @@ const supportedCurrencies = <String, String>{'INR': 'Indian rupee', 'USD': 'US d
 
 const minus = '−'; // typographic minus, as in "−₹850"
 
+/// The most one expense, payment or entry can be (₹9,99,99,999.99), as the API allows
+/// (MAX_AMOUNT_MINOR in api/app/core/schemas.py).
+const maxAmountMinor = 9999999999;
+
+/// Whole-number digits an amount field accepts: 99,999,999 is the largest whole amount.
+const maxAmountDigits = 8;
+
 (int, String) _currency(String code) {
   final c = _currencies[code];
   if (c == null) throw ArgumentError('Unsupported currency: $code');
@@ -64,7 +71,7 @@ String formatMinor(int amountMinor, {String currency = 'INR', bool signed = fals
 }
 
 /// "600.5" -> 60050. Accepts grouping commas and a leading symbol. Returns null if the text
-/// is not an amount or has more decimals than the currency allows.
+/// is not an amount, has more decimals than the currency allows, or is over [maxAmountMinor].
 int? parseMinor(String text, {String currency = 'INR'}) {
   final (exponent, symbol) = _currency(currency);
   var cleaned = text.trim().replaceAll(',', '');
@@ -73,6 +80,8 @@ int? parseMinor(String text, {String currency = 'INR'}) {
   if (match == null) return null;
   final fraction = match.group(2) ?? '';
   if (fraction.length > exponent) return null;
+  // Checked before int.parse, which throws past 2^63 on Android and iOS.
+  if (match.group(1)!.replaceFirst(RegExp(r'^0+(?=\d)'), '').length > maxAmountDigits) return null;
   final minor = fraction.padRight(exponent, '0');
   return int.parse(match.group(1)!) * minorUnitsPerMajor(currency) + (minor.isEmpty ? 0 : int.parse(minor));
 }

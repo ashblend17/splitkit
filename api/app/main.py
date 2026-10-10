@@ -43,7 +43,7 @@ app.add_middleware(
 install_error_handler(app)
 
 # Every error uses the same body; documented so the generated client gets a typed model.
-ERRORS = {status: {"model": ErrorResponse} for status in (401, 403, 404, 409)}
+ERRORS = {status: {"model": ErrorResponse} for status in (401, 403, 404, 409, 422)}
 api = APIRouter(prefix=API_PREFIX, responses=ERRORS)
 
 

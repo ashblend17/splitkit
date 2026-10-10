@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/local/writes.dart';
@@ -31,7 +32,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   int? _amount;
   String? _categoryId;
   String? _payerId;
-  DateTime _date = DateTime.now();
+  DateTime _date = appClock.now();
   SplitController? _split;
   String? _splitGroupId;
   bool _prefilled = false;
@@ -529,7 +530,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       context: context,
       initialDate: _date,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      lastDate: appClock.now().add(const Duration(days: 365)),
     );
     if (picked != null) setState(() => _date = picked);
   }

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../design_system/design_system.dart';
 import '../api/api.dart';
+import '../clock.dart';
 import '../money/money.dart';
 import '../theme/theme.dart';
 
@@ -14,7 +15,7 @@ DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
 
 /// "Today", "Yesterday", "Mon, 21 Sep", or "21 Sep 2025" for other years.
 String dayLabel(DateTime date, {DateTime? now}) {
-  final today = _day(now ?? DateTime.now());
+  final today = _day(now ?? appClock.now());
   final day = _day(date);
   final diff = today.difference(day).inDays;
   if (diff == 0) return 'Today';
@@ -39,7 +40,7 @@ String formDateLabel(DateTime date, {DateTime? now}) {
 /// "Active today", "Active yesterday", "3 days ago", "Last week", "12 Aug".
 String activityLabel(DateTime? at, {DateTime? now}) {
   if (at == null) return 'No activity yet';
-  final days = _day(now ?? DateTime.now()).difference(_day(at.toLocal())).inDays;
+  final days = _day(now ?? appClock.now()).difference(_day(at.toLocal())).inDays;
   if (days <= 0) return 'Active today';
   if (days == 1) return 'Active yesterday';
   if (days < 7) return '$days days ago';

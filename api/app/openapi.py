@@ -26,8 +26,6 @@ def render() -> str:
 def dart_client_spec(source: dict) -> dict:
     """Work around two openapi-generator `dart` bugs with OpenAPI 3.1 input:
 
-    - FastAPI's ValidationError.loc items (string | integer) generate an uncompilable model;
-      the app never parses 422 details with the client, so loc items are typed as strings.
     - An enum property with a default generates `?? 'upi'` against an enum type, and an
       optional one is sent as null (which the API rejects). Such properties become required
       in the client, so the app always sends an explicit value.
@@ -36,8 +34,6 @@ def dart_client_spec(source: dict) -> dict:
     """
     out = copy.deepcopy(source)
     schemas = out["components"]["schemas"]
-    if "ValidationError" in schemas:
-        schemas["ValidationError"]["properties"]["loc"]["items"] = {"type": "string"}
     for schema in schemas.values():
         for name, prop in schema.get("properties", {}).items():
             if "enum" in prop and "default" in prop:

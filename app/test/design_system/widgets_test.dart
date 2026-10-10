@@ -111,6 +111,18 @@ void main() {
     expect(value, 18000050);
   });
 
+  testWidgets('AmountInput groups dollars in thousands and stops at the largest amount', (tester) async {
+    int? value;
+    await tester.pumpWidget(wrap(AmountInput(currency: 'USD', onChanged: (m) => value = m)));
+    await tester.enterText(find.byType(TextField), '180000');
+    await tester.pump();
+    expect(find.text('180,000'), findsOneWidget);
+    expect(value, 18000000);
+    await tester.enterText(find.byType(TextField), '1234567890123');
+    await tester.pump();
+    expect(find.text('180,000'), findsOneWidget, reason: 'more than 8 whole digits is ignored');
+  });
+
   testWidgets('TransactionCard reads as one sentence to screen readers', (tester) async {
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(

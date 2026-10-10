@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import Field
 
-from app.core.schemas import Schema
+from app.core.schemas import AmountMinor, EntryDate, Schema, Text
 from app.modules.categories.schemas import CategoryOut
 
 TxnType = Literal["income", "expense"]
@@ -16,9 +16,9 @@ class PersonalTxnIn(Schema):
     version: int | None = None
     """Update only: the version you edited. If it changed since, the update gets a 409."""
     type: TxnType
-    amount_minor: int = Field(gt=0)
-    description: str = Field(min_length=1, max_length=200)
-    date: date
+    amount_minor: AmountMinor
+    description: Text(200)
+    date: EntryDate
     category_id: uuid.UUID | None = None
     notes: str | None = Field(default=None, max_length=2000)
 
@@ -43,7 +43,7 @@ class PersonalListOut(Schema):
     items: list[PersonalTxnOut]
     """Newest first."""
     spent_minor: int
-    """Sum of expenses in the filtered set."""
+    """Sum of expenses in the filtered set, in your currency (entries in another are left out)."""
     income_minor: int
     count: int
 
@@ -65,6 +65,6 @@ class PersonalSummaryOut(Schema):
     left_over_minor: int
     """Income minus spending. Negative when you spent more than came in."""
     group_share_minor: int
-    """Your share of group expenses dated in this month."""
+    """Your share of group expenses dated in this month, in groups that use your currency."""
     by_category: list[CategoryTotal]
     """Spending by category, largest first."""

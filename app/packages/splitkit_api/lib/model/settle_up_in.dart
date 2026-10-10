@@ -20,6 +20,7 @@ class SettleUpIn {
     this.currency,
   });
 
+  /// Maximum value: 9999999999
   int? amountMinor;
 
   DateTime date;
@@ -28,7 +29,7 @@ class SettleUpIn {
 
   String? note;
 
-  String? currency;
+  SettleUpInCurrencyEnum? currency;
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is SettleUpIn &&
@@ -95,7 +96,7 @@ class SettleUpIn {
         date: mapDateTime(json, r'date', r'')!,
         method: SettleUpInMethodEnum.fromJson(json[r'method'])!,
         note: mapValueOfType<String>(json, r'note'),
-        currency: mapValueOfType<String>(json, r'currency'),
+        currency: SettleUpInCurrencyEnum.fromJson(json[r'currency']),
       );
     }
     return null;
@@ -225,6 +226,83 @@ class SettleUpInMethodEnumTypeTransformer {
 
   /// Singleton [SettleUpInMethodEnumTypeTransformer] instance.
   static SettleUpInMethodEnumTypeTransformer? _instance;
+}
+
+
+
+class SettleUpInCurrencyEnum {
+  /// Instantiate a new enum with the provided [value].
+  const SettleUpInCurrencyEnum._(this.value);
+
+  /// The underlying value of this enum member.
+  final String value;
+
+  @override
+  String toString() => value;
+
+  String toJson() => value;
+
+  static const INR = SettleUpInCurrencyEnum._(r'INR');
+  static const USD = SettleUpInCurrencyEnum._(r'USD');
+  static const EUR = SettleUpInCurrencyEnum._(r'EUR');
+
+  /// List of all possible values in this [enum][SettleUpInCurrencyEnum].
+  static const values = <SettleUpInCurrencyEnum>[
+    INR,
+    USD,
+    EUR,
+  ];
+
+  static SettleUpInCurrencyEnum? fromJson(dynamic value) => SettleUpInCurrencyEnumTypeTransformer().decode(value);
+
+  static List<SettleUpInCurrencyEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <SettleUpInCurrencyEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = SettleUpInCurrencyEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [SettleUpInCurrencyEnum] to String,
+/// and [decode] dynamic data back to [SettleUpInCurrencyEnum].
+class SettleUpInCurrencyEnumTypeTransformer {
+  factory SettleUpInCurrencyEnumTypeTransformer() => _instance ??= const SettleUpInCurrencyEnumTypeTransformer._();
+
+  const SettleUpInCurrencyEnumTypeTransformer._();
+
+  String encode(SettleUpInCurrencyEnum data) => data.value;
+
+  /// Decodes a [dynamic value][data] to a SettleUpInCurrencyEnum.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  SettleUpInCurrencyEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data != null) {
+      switch (data) {
+        case r'INR': return SettleUpInCurrencyEnum.INR;
+        case r'USD': return SettleUpInCurrencyEnum.USD;
+        case r'EUR': return SettleUpInCurrencyEnum.EUR;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// Singleton [SettleUpInCurrencyEnumTypeTransformer] instance.
+  static SettleUpInCurrencyEnumTypeTransformer? _instance;
 }
 
 

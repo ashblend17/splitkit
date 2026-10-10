@@ -144,13 +144,19 @@ def test_unreadable_files(content, message):
         (1234.56, None, "1234.56"),
         (0.1, None, "0.1"),
         (7, None, "7"),
+        # The dot of "Rs." must not read as a decimal point.
+        ("Rs. 1,500", None, "1500"),
+        ("Rs.1,50,000/-", None, "150000"),
+        ("INR 1500.50", None, "1500.50"),
+        ("1500 INR", None, "1500"),
+        ("EUR 12,50", None, "12.50"),
     ],
 )
 def test_amounts(text, comma, expected):
     assert parse_amount(text, comma) == Decimal(expected)
 
 
-@pytest.mark.parametrize("text", ["abc", "--", "1.2.3,4,5"])
+@pytest.mark.parametrize("text", ["abc", "--", "1.2.3,4,5", "1e5", "12abc34"])
 def test_bad_amounts(text):
     with pytest.raises(ValueError):
         parse_amount(text)
@@ -294,3 +300,12 @@ def test_category_suggestions():
     assert suggest_category("transport", available) == "transport"
     assert suggest_category("Parking", available) is None
     assert suggest_category("Shopping", available) is None  # not available in this group
+
+
+def test_amounts_and_dates_the_app_cant_hold_are_row_errors():
+    huge = _one("50000000000,50000000000", amount="100000000000")
+    assert not huge.ok and huge.issues[-1].message == "That amount is too large"
+    head = "Title,Amount,Date,Paid by,For A,For B\n"
+    for day in ("1999-12-31", "9999-09-12"):
+        [row] = planned(f"{head}Taxi,10,{day},A,5,5\n".encode(), "t.csv")
+        assert not row.ok and row.issues[0].code == "date_range"

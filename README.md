@@ -54,7 +54,11 @@ file, and confirm with `uv run alembic check`.
   Tokens last 7 days; `POST /auth/refresh` swaps a working one for a fresh one (the app does
   this on every online launch). View-as tokens can't be refreshed.
 - Errors always look like `{"error": {"code": "split_invalid", "message": "₹100 still needs to be allocated", ...}}`.
-  `message` is human copy the app can show as-is.
+  `message` is human copy the app can show as-is. Request validation errors are 422
+  `invalid_input` with the first problem as `message` ("Name can't be empty") and every problem
+  in `fields`.
+- Text fields are trimmed, and blank ones are refused. Amounts go up to ₹9,99,99,999.99
+  (`MAX_AMOUNT_MINOR`), dates from 2000 to a year ahead, the same limits as the app's inputs.
 - Balances are pairwise and per group ("You owe Rahul ₹500"). `GET /groups/{id}/balances` also
   returns `suggested`, the fewest payments that would settle the whole group. Home adds the
   groups up per friend.
@@ -171,6 +175,8 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   local store synced from the snapshots in `app/test/fixtures/sync`. Refresh both with
   `docker compose exec api python -m app.seed --reset && python3 tool/capture_api_fixtures.py`
   (this resets the dev database; `API=http://localhost:8001` points it at another instance).
+- Tests run on 25 Sep 2026, the day the fixtures were captured: screens read the time from
+  `appClock` (`lib/core/clock.dart`), which `test/flutter_test_config.dart` pins.
 - On a machine with little free memory, run `flutter test --concurrency=1`.
 
 ### iOS

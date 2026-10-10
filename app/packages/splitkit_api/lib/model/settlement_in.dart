@@ -28,6 +28,7 @@ class SettlementIn {
 
   String toUser;
 
+  /// Maximum value: 9999999999
   int amountMinor;
 
   DateTime date;

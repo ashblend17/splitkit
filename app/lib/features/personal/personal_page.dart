@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/theme/theme.dart';
@@ -19,7 +20,7 @@ class PersonalPage extends ConsumerStatefulWidget {
 }
 
 class _PersonalPageState extends ConsumerState<PersonalPage> {
-  DateTime _month = monthOf(DateTime.now());
+  DateTime _month = monthOf(appClock.now());
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +251,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
   );
 
   Future<void> _pickMonth() async {
-    final now = monthOf(DateTime.now());
+    final now = monthOf(appClock.now());
     final months = [for (var i = 0; i < 12; i++) DateTime(now.year, now.month - i)];
     final picked = await showAppBottomSheet<DateTime>(
       context,

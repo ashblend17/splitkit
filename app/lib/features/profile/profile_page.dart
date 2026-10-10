@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/local/providers.dart';
@@ -21,7 +22,7 @@ class ProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
-    final month = monthOf(DateTime.now());
+    final month = monthOf(appClock.now());
     final summary = ref.watch(personalSummaryProvider(month));
     final balances = ref.watch(overallBalancesProvider);
     final categories = ref.watch(allCategoriesProvider);
@@ -313,7 +314,7 @@ class _EditProfileState extends ConsumerState<_EditProfile> {
     }
     setState(() => _busy = true);
     try {
-      await ref.read(apiProvider).users.updateMe(UserUpdate(name: _name.text.trim(), currency: _currency));
+      await ref.read(apiProvider).users.updateMe(UserUpdate(name: _name.text.trim(), currency: UserUpdateCurrencyEnum.fromJson(_currency)));
       ref.invalidate(sessionProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {

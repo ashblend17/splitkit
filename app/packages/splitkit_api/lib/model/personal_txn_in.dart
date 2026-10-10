@@ -29,6 +29,7 @@ class PersonalTxnIn {
 
   PersonalTxnInTypeEnum type;
 
+  /// Maximum value: 9999999999
   int amountMinor;
 
   String description;

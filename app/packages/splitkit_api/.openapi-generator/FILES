@@ -63,7 +63,6 @@ lib/model/group_out.dart
 lib/model/group_ref.dart
 lib/model/group_update.dart
 lib/model/history_entry.dart
-lib/model/http_validation_error.dart
 lib/model/import_batch_out.dart
 lib/model/import_preview_out.dart
 lib/model/import_row_out.dart
@@ -111,5 +110,4 @@ lib/model/token_out.dart
 lib/model/user_brief.dart
 lib/model/user_out.dart
 lib/model/user_update.dart
-lib/model/validation_error.dart
 pubspec.yaml

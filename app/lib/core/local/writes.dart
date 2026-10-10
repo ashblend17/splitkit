@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../api/api.dart';
+import '../clock.dart';
 import '../money/money.dart';
 import '../session/session.dart';
 import '../splits/split_engine.dart';
@@ -44,7 +45,7 @@ class LocalWrites {
     return (await _ref.read(localStoreProvider.future)).ledger;
   }
 
-  String _now() => DateTime.now().toUtc().toIso8601String();
+  String _now() => appClock.now().toUtc().toIso8601String();
   static String _day(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
   Future<void> _queue(OutboxOp op) async {
