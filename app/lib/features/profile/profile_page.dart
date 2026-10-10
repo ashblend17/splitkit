@@ -129,7 +129,11 @@ class ProfilePage extends ConsumerWidget {
   }
 
   Widget _overview(AsyncValue<PersonalSummaryOut> summary, AsyncValue<OverallBalancesOut> balances, String currency) {
-    final totals = balances.value?.totals.where((t) => t.currency == currency).firstOrNull;
+    // Like Home: your currency's balances, else the first currency you have any in, so
+    // switching your currency doesn't make rupee debts look like $0.
+    final all = balances.value?.totals ?? const <CurrencyTotals>[];
+    final totals = all.where((t) => t.currency == currency).firstOrNull ?? all.firstOrNull;
+    final owedIn = totals?.currency ?? currency;
     Widget tile(
       Widget label,
       String value, {
@@ -188,7 +192,7 @@ class ProfilePage extends ConsumerWidget {
           children: [
             tile(
               Text('You owe', style: SkText.body(12, 600, color: SkColors.oweInk)),
-              money(totals?.youOweMinor ?? 0, currency),
+              money(totals?.youOweMinor ?? 0, owedIn),
               bg: SkColors.oweSoft,
               valueColor: SkColors.owe,
               border: false,
@@ -196,7 +200,7 @@ class ProfilePage extends ConsumerWidget {
             const SizedBox(width: 8),
             tile(
               Text('Owed to you', style: SkText.body(12, 600, color: SkColors.owedInk)),
-              money(totals?.youAreOwedMinor ?? 0, currency),
+              money(totals?.youAreOwedMinor ?? 0, owedIn),
               bg: SkColors.owedSoft,
               valueColor: SkColors.owed,
               border: false,

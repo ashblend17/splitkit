@@ -123,6 +123,18 @@ void main() {
     expect(find.text('180,000'), findsOneWidget, reason: 'more than 8 whole digits is ignored');
   });
 
+  testWidgets('AmountInput shrinks long amounts so they still fit', (tester) async {
+    await tester.pumpWidget(wrap(const AmountInput()));
+    double size() => tester.widget<EditableText>(find.byType(EditableText)).style.fontSize!;
+    await tester.enterText(find.byType(TextField), '500');
+    await tester.pump();
+    expect(size(), 56);
+    await tester.enterText(find.byType(TextField), '99999999.99');
+    await tester.pump();
+    expect(find.text('9,99,99,999.99'), findsOneWidget);
+    expect(size(), 28);
+  });
+
   testWidgets('TransactionCard reads as one sentence to screen readers', (tester) async {
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(

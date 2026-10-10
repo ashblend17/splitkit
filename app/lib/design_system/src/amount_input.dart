@@ -87,6 +87,45 @@ class _AmountInputState extends State<AmountInput> {
     super.dispose();
   }
 
+  /// Long amounts get smaller so they still fit the field ("9,99,99,999.99" at full size
+  /// would be cut off at the left).
+  double _scale(String text) => text.length <= 7 ? 1 : (7 / text.length).clamp(0.5, 1);
+
+  Widget _figure(double scale) => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(currencySymbol(widget.currency), style: SkText.display(widget.symbolSize * scale, 600, color: SkColors.ink3)),
+          const SizedBox(width: 6),
+          IntrinsicWidth(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 80, maxWidth: 260),
+              child: TextField(
+                controller: _controller,
+                autofocus: widget.autofocus,
+                textAlign: TextAlign.center,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [AmountFormatter(currency: widget.currency)],
+                onChanged: (t) => widget.onChanged?.call(parseMinor(t, currency: widget.currency)),
+                style: SkText.display(widget.fontSize * scale, 800),
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  hintText: '0',
+                  hintStyle: SkText.display(widget.fontSize * scale, 800, color: SkColors.lineStrong),
+                  semanticCounterText: '',
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -94,39 +133,9 @@ class _AmountInputState extends State<AmountInput> {
       children: [
         Text(widget.label, style: SkText.body(13, 600, color: SkColors.ink2)),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(currencySymbol(widget.currency), style: SkText.display(widget.symbolSize, 600, color: SkColors.ink3)),
-            const SizedBox(width: 6),
-            IntrinsicWidth(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 80, maxWidth: 260),
-                child: TextField(
-                  controller: _controller,
-                  autofocus: widget.autofocus,
-                  textAlign: TextAlign.center,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [AmountFormatter(currency: widget.currency)],
-                  onChanged: (t) => widget.onChanged?.call(parseMinor(t, currency: widget.currency)),
-                  style: SkText.display(widget.fontSize, 800),
-                  decoration: InputDecoration(
-                    isCollapsed: true,
-                    contentPadding: EdgeInsets.zero,
-                    filled: false,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    hintText: '0',
-                    hintStyle: SkText.display(widget.fontSize, 800, color: SkColors.lineStrong),
-                    semanticCounterText: '',
-                  ),
-                ),
-              ),
-            ),
-          ],
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _controller,
+          builder: (context, value, _) => _figure(_scale(value.text)),
         ),
         if (widget.showCurrencyChip) const SizedBox(height: 8),
         if (widget.showCurrencyChip)

@@ -26,6 +26,7 @@ import '../../features/personal/personal_page.dart';
 import '../../features/profile/categories_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/shell/app_shell.dart';
+import '../../features/shell/not_found_page.dart';
 import '../../features/shell/splash_page.dart';
 import '../session/session.dart';
 
@@ -45,6 +46,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootKey,
     initialLocation: '/home',
     refreshListenable: listenable,
+    errorBuilder: (_, _) => const NotFoundPage(),
     redirect: (context, state) {
       final session = ref.read(sessionProvider);
       final path = state.uri.path;
