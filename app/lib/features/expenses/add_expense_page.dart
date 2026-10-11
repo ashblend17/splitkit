@@ -60,21 +60,26 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   Widget build(BuildContext context) {
     final me = ref.watch(meProvider);
     final groups = ref.watch(groupsProvider);
+    final archived = ref.watch(archivedGroupsProvider);
     final expense = _editing ? ref.watch(expenseProvider(widget.editExpenseId!)) : null;
+    // An archived group's own "Add split", and edits to its expenses, stay in it; the picker
+    // offers only active groups.
+    final known = [...?groups.value, ...?archived.value];
+    final wanted = _groupId ?? expense?.value?.groupId ?? widget.groupId;
 
     Widget body;
-    if (groups.hasError || (expense?.hasError ?? false)) {
+    if (groups.hasError || archived.hasError || (expense?.hasError ?? false)) {
       body = Padding(
         padding: const EdgeInsets.all(16),
         child: ErrorState(
           title: "Couldn't load this",
-          body: apiErrorMessage(groups.error ?? expense!.error!),
+          body: apiErrorMessage(groups.error ?? archived.error ?? expense!.error!),
           onRetry: () => refreshLedger(ref.invalidate),
         ),
       );
-    } else if (!groups.hasValue || (expense != null && !expense.hasValue)) {
+    } else if (!groups.hasValue || !archived.hasValue || (expense != null && !expense.hasValue)) {
       body = const Padding(padding: EdgeInsets.all(16), child: LoadingSkeleton());
-    } else if (groups.value!.isEmpty) {
+    } else if (groups.value!.isEmpty && !known.any((g) => g.id == wanted)) {
       body = Align(
         alignment: Alignment.topCenter, // not stretched to the page's height
         child: Padding(
@@ -88,11 +93,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         ),
       );
     } else {
-      _prepare(me, groups.value!, expense?.value);
-      body = _form(me, groups.value!.firstWhere((g) => g.id == _groupId));
+      _prepare(me, groups.value!, known, expense?.value);
+      body = _form(me, known.firstWhere((g) => g.id == _groupId));
     }
 
-    final group = groups.value?.where((g) => g.id == _groupId).firstOrNull;
+    final group = known.where((g) => g.id == _groupId).firstOrNull;
     return Scaffold(
       backgroundColor: SkColors.surface,
       body: SafeArea(
@@ -135,10 +140,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   }
 
   /// Picks the group, builds the split for its members, and pre-fills when editing.
-  void _prepare(UserOut me, List<GroupOut> groups, ExpenseOut? editing) {
-    _groupId ??= editing?.groupId ?? widget.groupId ?? _mostRecent(groups).id;
-    if (!groups.any((g) => g.id == _groupId)) _groupId = _mostRecent(groups).id;
-    final group = groups.firstWhere((g) => g.id == _groupId);
+  /// [known] is [active] plus the archived groups.
+  void _prepare(UserOut me, List<GroupOut> active, List<GroupOut> known, ExpenseOut? editing) {
+    _groupId ??= editing?.groupId ?? widget.groupId ?? _mostRecent(active).id;
+    if (!known.any((g) => g.id == _groupId)) _groupId = _mostRecent(active).id;
+    final group = known.firstWhere((g) => g.id == _groupId);
     if (_splitGroupId == group.id) return;
 
     final people = [for (final m in group.members) _person(m.user, me.id)];

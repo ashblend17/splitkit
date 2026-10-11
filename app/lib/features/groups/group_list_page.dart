@@ -21,6 +21,7 @@ class GroupListPage extends ConsumerStatefulWidget {
 
 class _GroupListPageState extends ConsumerState<GroupListPage> {
   final _search = TextEditingController();
+  bool _showArchived = false;
 
   @override
   void initState() {
@@ -46,7 +47,9 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
   @override
   Widget build(BuildContext context) {
     final groups = ref.watch(groupsProvider);
+    final archived = ref.watch(archivedGroupsProvider).value ?? const <GroupOut>[];
     final q = _search.text.trim().toLowerCase();
+    bool matches(GroupOut g) => g.name.toLowerCase().contains(q);
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -114,28 +117,29 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
                       value: groups,
                       onRetry: () => ref.invalidate(groupsProvider),
                       builder: (all) {
-                        final shown = all.where((g) => g.name.toLowerCase().contains(q)).toList();
-                        if (all.isEmpty) {
-                          return EmptyState(
-                            title: 'No groups yet',
-                            body: 'Make a group for your flat, a trip or a dinner, then add what people paid.',
-                            actionLabel: 'New group',
-                            onAction: _newGroup,
-                          );
-                        }
-                        if (shown.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              'No group called “${_search.text.trim()}”',
-                              textAlign: TextAlign.center,
-                              style: SkText.body(15, 500, color: SkColors.ink2),
-                            ),
-                          );
-                        }
+                        final shown = all.where(matches).toList();
+                        final shownArchived = archived.where(matches).toList();
                         return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            if (all.isEmpty)
+                              EmptyState(
+                                title: 'No groups yet',
+                                body: 'Make a group for your flat, a trip or a dinner, then add what people paid.',
+                                actionLabel: 'New group',
+                                onAction: _newGroup,
+                              )
+                            else if (shown.isEmpty && shownArchived.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text(
+                                  'No group called “${_search.text.trim()}”',
+                                  textAlign: TextAlign.center,
+                                  style: SkText.body(15, 500, color: SkColors.ink2),
+                                ),
+                              ),
                             for (final g in shown) ...[_card(g), const SizedBox(height: 10)],
+                            if (shownArchived.isNotEmpty) ..._archived(shownArchived, searching: q.isNotEmpty),
                           ],
                         );
                       },
@@ -148,6 +152,33 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
         ),
       ),
     );
+  }
+
+  /// Archived groups, folded away under the others (open while searching finds one).
+  List<Widget> _archived(List<GroupOut> groups, {required bool searching}) {
+    final open = _showArchived || searching;
+    return [
+      const SizedBox(height: 6),
+      Semantics(
+        button: true,
+        expanded: open,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: searching ? null : () => setState(() => _showArchived = !_showArchived),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Row(
+              children: [
+                Expanded(child: Text('Archived (${groups.length})', style: SkText.body(14, 600, color: SkColors.ink2))),
+                if (!searching) SkIcon(open ? 'up' : 'down', size: 18, color: SkColors.ink2),
+              ],
+            ),
+          ),
+        ),
+      ),
+      if (open)
+        for (final g in groups) ...[Opacity(opacity: 0.7, child: _card(g)), const SizedBox(height: 10)],
+    ];
   }
 
   Widget _card(GroupOut g) {

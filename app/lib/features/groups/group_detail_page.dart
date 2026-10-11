@@ -103,6 +103,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             ),
           ],
         ),
+        _archivedLine(g),
         TricountStatusLine(groupId: g.id),
         const SizedBox(height: 16),
         _summary(g),
@@ -178,6 +179,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                         ),
                       ],
                     ),
+                    _archivedLine(g),
                     TricountStatusLine(groupId: g.id),
                   ],
                 ),
@@ -352,9 +354,13 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             skeletonRows: 1,
             builder: (b) => Row(
               children: [
-                figure('You owe', money(b.youOweMinor, g.currency), SkColors.owe),
+                figure('You owe', money(b.youOweMinor, g.currency), b.youOweMinor == 0 ? SkColors.ink2 : SkColors.owe),
                 const SizedBox(width: 8),
-                figure('You are owed', money(b.youAreOwedMinor, g.currency), SkColors.owed),
+                figure(
+                  'You are owed',
+                  money(b.youAreOwedMinor, g.currency),
+                  b.youAreOwedMinor == 0 ? SkColors.ink2 : SkColors.owed,
+                ),
                 const SizedBox(width: 8),
                 figure(
                   'Net',
@@ -522,12 +528,35 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
       case 'leave':
         await _leave(g);
       case 'archive':
-        await ref.read(writesProvider).setGroupArchived(g.id, g.archivedAt == null);
-        if (mounted) {
-          showMessage(context, g.archivedAt == null ? '${g.name} archived' : '${g.name} is back');
-          if (g.archivedAt == null) context.go('/groups');
-        }
+        await _setArchived(g, g.archivedAt == null);
     }
+  }
+
+  /// Archiving goes back to the list, where the group now sits under "Archived".
+  Future<void> _setArchived(GroupOut g, bool archived) async {
+    final writes = ref.read(writesProvider);
+    await writes.setGroupArchived(g.id, archived);
+    if (!mounted) return;
+    if (!archived) return showMessage(context, '${g.name} is back');
+    showMessage(context, '${g.name} archived', actionLabel: 'Undo', onAction: () => writes.setGroupArchived(g.id, false));
+    context.go('/groups');
+  }
+
+  /// "Archived · Unarchive" under the name of an archived group.
+  Widget _archivedLine(GroupOut g) {
+    if (g.archivedAt == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          const SkIcon('file', size: 14, color: SkColors.ink2),
+          const SizedBox(width: 6),
+          Text('Archived', style: SkText.body(13, 600, color: SkColors.ink2)),
+          const SizedBox(width: 4),
+          TextButton(onPressed: () => _setArchived(g, false), child: const Text('Unarchive')),
+        ],
+      ),
+    );
   }
 
   Future<void> _leave(GroupOut g) async {
