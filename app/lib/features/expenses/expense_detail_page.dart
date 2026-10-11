@@ -36,7 +36,7 @@ class ExpenseDetailPage extends ConsumerWidget {
                       onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
                     ),
                     const Spacer(),
-                    if (expense.value?.deletedAt == null) ...[
+                    if (expense.hasValue && expense.value!.deletedAt == null) ...[
                       HeaderIconButton(
                         glyph: 'edit',
                         label: 'Edit expense',

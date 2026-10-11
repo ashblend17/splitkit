@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
 import '../../core/theme/theme.dart';
@@ -40,6 +41,14 @@ class AsyncBody<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (value) {
       AsyncData(:final value) => builder(value),
+      // Gone or never yours: trying again won't help, so offer a way out instead.
+      AsyncError(:final error) when !value.isLoading && error is ApiException && error.code == 404 => EmptyState(
+        glyph: 'search',
+        title: "This isn't here",
+        body: "${apiErrorMessage(error)}. It may have been deleted, or you're no longer part of it.",
+        actionLabel: 'Go home',
+        onAction: () => GoRouter.of(context).go('/home'),
+      ),
       AsyncError(:final error) when !value.isLoading => ErrorState(
         title: "Couldn't load this",
         body: error is ApiException && error.code == 0 || error.toString().contains('SocketException')
