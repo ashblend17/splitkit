@@ -275,10 +275,12 @@ PERSONAL = [
     SeedPersonal("ansh", "expense", 486,  "food",      sep(23), "Swiggy order",      "UPI", at(sep(23), 13, 10)),
 ]
 
-# Default dashboards (owner_id NULL). Titles from PersonalAnalytics / GroupAnalytics.
+# Default dashboards (owner_id NULL). Titles from PersonalAnalytics / GroupAnalytics, except
+# "Spending" (the design's "Monthly spending" is wrong once Week shows days).
+# Migration 0009 adds these and CATEGORIES to every database; keep the two in step.
 A = SeedAnalytics
 ANALYTICS = [
-    A("personal", 1, "spending_trend",       "Monthly spending",     "last_6_months", "personal_monthly",     {"bucket": "month"}),
+    A("personal", 1, "spending_trend",       "Spending",             "last_6_months", "personal_monthly",     {"bucket": "month"}),
     A("personal", 2, "spending_by_category", "Spending by category", "this_month",    "personal_by_category"),
     A("personal", 3, "personal_vs_group",    "Personal vs group",    "this_month",    "scope_split"),
     A("personal", 4, "average_daily",        "Average per day",      "this_month",    "personal_daily_avg",   {"compare": "previous_month"}),

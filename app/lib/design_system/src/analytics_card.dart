@@ -91,13 +91,7 @@ class TrendBars extends StatelessWidget {
                           if (b.highlight)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 4),
-                              child: Text(
-                                formatTop(b.value),
-                                style: SkText.body(11, 700),
-                                maxLines: 1,
-                                overflow: TextOverflow.visible,
-                                softWrap: false,
-                              ),
+                              child: _TopLabel(formatTop(b.value), first: i == 0, last: i == bars.length - 1),
                             ),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 28),
@@ -137,6 +131,47 @@ class TrendBars extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The figure over the highlighted bar. Wider than a narrow bar's column, it is centred over
+/// the bar but kept inside the chart at either end (the last bar is usually the highlighted one).
+class _TopLabel extends StatelessWidget {
+  const _TopLabel(this.text, {required this.first, required this.last});
+  final String text;
+  final bool first;
+  final bool last;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = SkText.body(11, 700);
+    return LayoutBuilder(
+      builder: (context, c) {
+        final size = (TextPainter(
+          text: TextSpan(text: text, style: style),
+          textDirection: TextDirection.ltr,
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1,
+        )..layout()).size;
+        final width = size.width;
+        final alignment = width <= c.maxWidth
+            ? Alignment.center
+            : last
+            ? Alignment.centerRight
+            : first
+            ? Alignment.centerLeft
+            : Alignment.center;
+        return SizedBox(
+          width: c.maxWidth,
+          height: size.height,
+          child: OverflowBox(
+            maxWidth: double.infinity,
+            alignment: alignment,
+            child: Text(text, style: style, maxLines: 1, softWrap: false),
+          ),
+        );
+      },
     );
   }
 }
