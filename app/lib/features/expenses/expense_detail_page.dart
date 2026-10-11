@@ -228,9 +228,11 @@ class _Body extends ConsumerWidget {
     final c = e.currency;
     final payerName = firstName(e.payer.name);
     final ({String label, String? figure, Color bg, Color labelColor, Color figureColor, bool settle}) part;
+    // A deleted expense says what it was, in grey: it doesn't count towards balances.
+    final deleted = e.deletedAt != null;
     if (iPaid && e.myNetMinor > 0) {
       part = (
-        label: 'You are owed',
+        label: deleted ? 'You were owed' : 'You are owed',
         figure: money(e.myNetMinor, c),
         bg: SkColors.owedSoft,
         labelColor: SkColors.owedInk,
@@ -266,15 +268,16 @@ class _Body extends ConsumerWidget {
       );
     } else {
       part = (
-        label: 'You owe $payerName',
+        label: deleted ? 'You owed $payerName' : 'You owe $payerName',
         figure: money(mine.shareMinor, c),
         bg: SkColors.oweSoft,
         labelColor: SkColors.oweInk,
         figureColor: SkColors.owe,
-        settle: e.deletedAt == null,
+        settle: !deleted,
       );
     }
-    final (:label, :figure, :bg, :labelColor, :figureColor, :settle) = part;
+    var (:label, :figure, :bg, :labelColor, :figureColor, :settle) = part;
+    if (deleted) (bg, labelColor, figureColor) = (SkColors.settledSoft, SkColors.ink2, SkColors.ink2);
     return Semantics(
       label: 'Your part: $label ${figure ?? ''}',
       container: true,
@@ -389,7 +392,7 @@ class _Body extends ConsumerWidget {
                     Expanded(
                       child: Text(s.user.id == me.id ? 'You' : firstName(s.user.name), style: SkText.body(15, 600)),
                     ),
-                    _status(s.status),
+                    if (e.deletedAt == null) _status(s.status), // a deleted one has nothing to settle
                     SizedBox(
                       width: 72,
                       child: Text(money(s.shareMinor, c), textAlign: TextAlign.right, style: SkText.display(16, 700)),
