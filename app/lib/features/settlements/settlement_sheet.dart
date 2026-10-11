@@ -42,6 +42,7 @@ Future<void> showFriendSettleUpSheet(BuildContext context, UserBrief friend, {re
 
 Future<void> _show(BuildContext context, Widget sheet) => showModalBottomSheet<void>(
   context: context,
+  useRootNavigator: true, // over the tab bar, not under it
   isScrollControlled: true,
   backgroundColor: Colors.transparent,
   builder: (_) => sheet,
