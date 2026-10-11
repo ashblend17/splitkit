@@ -555,6 +555,42 @@ def test_audit_where_column(client, seeded):
     assert pay["summary"] == "Recorded a payment · Ansh paid Rahul ₹500"
 
 
+def test_every_audit_line_is_words(client, seeded):
+    """No action falls through to its raw name ("group.tricount_link") in the audit log."""
+    h = login(client, "ansh")
+    register(client, "Neha", "neha.k@example.com")
+    flat = gid("flat")
+    assert (
+        client.patch(f"{API}/groups/{flat}", headers=h, json={"archived": True}).status_code == 200
+    )
+    assert (
+        client.patch(f"{API}/groups/{flat}", headers=h, json={"archived": False}).status_code == 200
+    )
+    r = client.post(
+        f"{API}/groups/{flat}/members",
+        headers=h,
+        json={"email": "meera@example.com", "name": "Meera"},
+    )
+    assert r.status_code == 201, r.text
+    e = client.post(f"{API}/groups/{gid('goa')}/expenses", headers=h, json=expense_body()).json()
+    r = client.put(
+        f"{API}/expenses/{e['id']}", headers=h, json=expense_body(category_id=cat("travel"))
+    )
+    assert r.status_code == 200, r.text
+
+    items = client.get(f"{API}/admin/audit?limit=200", headers=h).json()["items"]
+    lines = {x["summary"] for x in items}
+    assert {
+        "Signed up",
+        "Archived “Flatmates”",
+        "Unarchived “Flatmates”",
+        "Added Meera without an account",
+        "Changed the category of “Parasailing”",
+    } <= lines
+    raw = [x["summary"] for x in items if re.search(r"[a-z]_[a-z]|^[a-z]+\.[a-z]+$", x["summary"])]
+    assert raw == []
+
+
 def test_record_refuses_a_read_only_actor():
     """The second line of defence behind the auth-layer check: nothing gets recorded."""
     from app.core.errors import ApiError
