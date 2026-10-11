@@ -119,7 +119,8 @@ class _PhoneHome extends ConsumerWidget {
 
   Widget _balance(BuildContext context, UserOut me, OverallBalancesOut b) {
     final h = homeBalances(me, b);
-    return BalanceCard(
+    final others = otherCurrencies(me, b);
+    final card = BalanceCard(
       netMinor: h.totals?.netMinor ?? 0,
       youOweMinor: h.totals?.youOweMinor ?? 0,
       youAreOwedMinor: h.totals?.youAreOwedMinor ?? 0,
@@ -142,6 +143,14 @@ class _PhoneHome extends ConsumerWidget {
                 ],
               ),
             ),
+    );
+    if (others.isEmpty) return card;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        card,
+        Padding(padding: const EdgeInsets.fromLTRB(4, 8, 4, 0), child: OtherCurrencies(totals: others)),
+      ],
     );
   }
 }

@@ -51,6 +51,29 @@ void openFriend(BuildContext context, FriendBalance f) => f.netMinor == 0
   return (totals: totals, currency: currency, friends: b.friends.where((f) => f.currency == currency).toList());
 }
 
+/// Balances in your other currencies (from groups in USD or EUR, say), which Home's totals and
+/// friends leave out.
+List<CurrencyTotals> otherCurrencies(UserOut me, OverallBalancesOut b) {
+  final main = homeBalances(me, b).currency;
+  return [for (final t in b.totals) if (t.currency != main && t.netMinor != 0) t];
+}
+
+/// "Also: you are owed $25 in USD groups" under Home's balance, when there's anything.
+class OtherCurrencies extends StatelessWidget {
+  const OtherCurrencies({super.key, required this.totals});
+  final List<CurrencyTotals> totals;
+
+  @override
+  Widget build(BuildContext context) {
+    if (totals.isEmpty) return const SizedBox.shrink();
+    final parts = [
+      for (final t in totals)
+        '${t.netMinor > 0 ? 'you are owed' : 'you owe'} ${money(t.netMinor.abs(), t.currency)} in ${t.currency} groups',
+    ];
+    return Text('Also: ${parts.join(' · ')}', style: SkText.body(13, 500, color: SkColors.ink2));
+  }
+}
+
 /// Group picker sheet for the phone and tablet "All groups" button.
 Future<void> pickActivityGroup(BuildContext context, WidgetRef ref, List<GroupOut> groups) async {
   final current = ref.read(activityFiltersProvider).groupId;
@@ -160,6 +183,10 @@ class HomeTabletBody extends ConsumerWidget {
               currency: h.currency,
               layout: BalanceCardLayout.stacked,
             ),
+            if (otherCurrencies(me, b) case final others when others.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              OtherCurrencies(totals: others),
+            ],
             if (h.friends.isNotEmpty) ...[
               const SizedBox(height: 14),
               ListCard(
@@ -276,7 +303,16 @@ class HomeDesktopBody extends ConsumerWidget {
             value: balances,
             onRetry: () => ref.invalidate(overallBalancesProvider),
             skeletonRows: 1,
-            builder: (b) => _SummaryTiles(h: homeBalances(me, b)),
+            builder: (b) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SummaryTiles(h: homeBalances(me, b)),
+                if (otherCurrencies(me, b) case final others when others.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  OtherCurrencies(totals: others),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: 18),
           Expanded(
