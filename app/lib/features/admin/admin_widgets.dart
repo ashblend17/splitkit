@@ -102,10 +102,18 @@ class AdminSearchField extends StatelessWidget {
               onSubmitted: onSubmitted,
               style: SkText.body(14, 400),
               textInputAction: TextInputAction.search,
-              decoration: InputDecoration.collapsed(
+              // The box above is the field; switch off the theme's own fill and outlines.
+              decoration: InputDecoration(
+                isCollapsed: true,
+                contentPadding: EdgeInsets.zero,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
                 hintText: hint,
                 hintStyle: SkText.body(14, 400, color: SkColors.ink3),
-              ).copyWith(semanticCounterText: ''),
+                semanticCounterText: '',
+              ),
             ),
           ),
         ],

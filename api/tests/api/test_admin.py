@@ -132,6 +132,12 @@ def test_dashboard_counts_placeholders_and_active_groups(client, seeded):
     assert d["placeholders"] == 1 and d["users"] == len(data.USERS)
     assert d["groups_active_week"] >= 1
 
+    # Archived (with activity this week): out of both counts, so "active" never exceeds "groups".
+    client.patch(f"{API}/groups/{gid('flat')}", headers=h, json={"archived": True})
+    after = client.get(f"{API}/admin/dashboard", headers=h).json()
+    assert after["groups"] == d["groups"] - 1
+    assert after["groups_active_week"] == d["groups_active_week"] - 1
+
 
 # ---- users ----
 
