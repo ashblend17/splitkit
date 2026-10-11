@@ -19,7 +19,4 @@ enum SkLayout {
       : compact;
 
   static SkLayout of(BuildContext context) => forWidth(MediaQuery.sizeOf(context).width);
-
-  /// The rail and the sidebar have their own "Add split", so pages drop the floating one.
-  bool get showsFab => this == compact;
 }

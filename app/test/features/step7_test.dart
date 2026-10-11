@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/layout/layout.dart';
 import 'package:splitkit/design_system/design_system.dart';
+import 'package:splitkit/features/common/common.dart';
 import 'package:splitkit/features/expenses/add_expense_page.dart';
+import 'package:splitkit/features/groups/group_detail_page.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';
@@ -25,6 +27,21 @@ void main() {
     expect(find.byType(BottomNav), findsOneWidget);
     expect(find.byType(NavRail), findsNothing);
     expect(find.byType(AddSplitFab), findsOneWidget);
+  });
+
+  testWidgets('phones: a group floats Add split for itself, and snackbars sit above the button', (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}');
+    expect(find.byType(AddSplitFab), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Add expense to Goa Trip')), findsOneWidget);
+
+    showMessage(tester.element(find.byType(GroupDetailPage)), 'Payment deleted', actionLabel: 'Undo', onAction: () {});
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.byType(SnackBar)).bottom, lessThanOrEqualTo(tester.getRect(find.byType(AddSplitFab)).top));
+
+    await tester.tap(find.byType(AddSplitFab));
+    await tester.pumpAndSettle();
+    expect(tester.widget<AddExpensePage>(find.byType(AddExpensePage)).groupId, be.goa['id']);
   });
 
   testWidgets('tablet: rail, balance and friends beside the activity', (tester) async {
