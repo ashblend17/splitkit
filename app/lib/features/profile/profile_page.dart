@@ -339,7 +339,14 @@ class _EditProfileState extends ConsumerState<_EditProfile> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          SkTextField(label: 'Name', controller: _name, errorText: _error),
+          SkTextField(
+            label: 'Name',
+            controller: _name,
+            errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+          ),
           const SizedBox(height: 14),
           Text('Default currency', style: SkText.body(13, 600)),
           const SizedBox(height: 6),

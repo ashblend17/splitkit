@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/splits/split_engine.dart';
 import 'package:splitkit/core/theme/theme.dart';
@@ -121,6 +122,19 @@ void main() {
     await tester.enterText(find.byType(TextField), '1234567890123');
     await tester.pump();
     expect(find.text('180,000'), findsOneWidget, reason: 'more than 8 whole digits is ignored');
+  });
+
+  test('split values keep to what the API stores', () {
+    String type(TextInputFormatter f, String before, String after) => f
+        .formatEditUpdate(TextEditingValue(text: before), TextEditingValue(text: after))
+        .text;
+    const percent = SplitValueFormatter(whole: 6, places: 4);
+    expect(type(percent, '33.333', '33.3333'), '33.3333');
+    expect(type(percent, '33.3333', '33.33333'), '33.3333', reason: 'a fifth decimal is ignored');
+    expect(type(percent, '1', '1.2.'), '1', reason: 'one decimal point');
+    const exact = SplitValueFormatter(whole: 8, places: 2);
+    expect(type(exact, '', '1,234.5'), '1234.5');
+    expect(type(exact, '12.34', '12.345'), '12.34');
   });
 
   testWidgets('AmountInput shrinks long amounts so they still fit', (tester) async {

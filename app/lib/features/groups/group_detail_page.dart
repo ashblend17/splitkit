@@ -457,7 +457,14 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
     return AsyncBody(
       value: feed,
       onRetry: () => ref.invalidate(feedProvider),
-      builder: (items) => items.isEmpty
+      builder: (items) => items.isEmpty && g.members.length < 2
+          ? EmptyState(
+              title: 'Just you so far',
+              body: "Add the people you're splitting with, then add what you spend.",
+              actionLabel: 'Add people',
+              onAction: () => addGroupMember(context, g),
+            )
+          : items.isEmpty
           ? EmptyState(
               title: 'No expenses yet',
               body: "Add the first one and we'll keep the balances.",
@@ -648,6 +655,9 @@ class _LinkMemberFormState extends ConsumerState<_LinkMemberForm> {
             autofocus: true,
             keyboardType: TextInputType.emailAddress,
             errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 8),
@@ -736,6 +746,9 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
             autofocus: true,
             keyboardType: _byEmail ? TextInputType.emailAddress : TextInputType.name,
             errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 8),

@@ -27,7 +27,12 @@ Future<T> fetch<T>(Ref ref, Future<T?> request) async {
 /// An answer computed from the synced data on this device (see core/local/ledger.dart). Screens
 /// see the same models, and the same 404 for something they can't have, as from the API.
 Future<T> local<T>(Ref ref, T? Function(Ledger ledger) view) async {
-  final ledger = await ref.watch(ledgerProvider.future);
+  final watched = await ref.watch(ledgerProvider.future); // asked again when the data changes
+  // The store's own ledger is current the moment a write is queued; ledgerProvider only
+  // catches up on its next event. Reading it means a screen opened right after a write
+  // (a new group) finds what was just written. Read without awaiting: an await here would
+  // let the next event cancel this answer before anyone gets it.
+  final ledger = ref.read(localStoreProvider).value?.ledger ?? watched;
   try {
     final result = view(ledger);
     if (result == null) throw ApiException(500, 'Could not read this from the device');
@@ -36,6 +41,10 @@ Future<T> local<T>(Ref ref, T? Function(Ledger ledger) view) async {
     throw ApiException(404, jsonEncode({'error': {'code': 'not_found', 'message': '$e'}}));
   }
 }
+
+/// For answers that come from the server rather than the device: ask again once a sync has
+/// sent this device's queued writes, or they'd still show the server's state from before them.
+void _afterEachSync(Ref ref) => ref.watch(syncStatusProvider.select((s) => s.value?.lastSyncedAt));
 
 String? _day(DateTime? d) => d == null ? null : DateFormat('yyyy-MM-dd').format(d);
 
@@ -95,9 +104,10 @@ final expenseProvider = FutureProvider.family<ExpenseOut, String>(
 );
 
 /// Who changed what, from the audit log. Online only; the detail page shows none offline.
-final expenseHistoryProvider = FutureProvider.family<List<HistoryEntry>, String>(
-  (ref, id) => fetch(ref, ref.watch(apiProvider).expenses.expenseHistory(id)),
-);
+final expenseHistoryProvider = FutureProvider.family<List<HistoryEntry>, String>((ref, id) {
+  _afterEachSync(ref);
+  return fetch(ref, ref.watch(apiProvider).expenses.expenseHistory(id));
+});
 
 final groupCategoriesProvider = FutureProvider<List<CategoryOut>>(
   (ref) => local(ref, (l) => CategoryOut.listFromJson(l.categories(scope: 'group'))),
@@ -146,14 +156,15 @@ final allCategoriesProvider = FutureProvider<List<CategoryOut>>(
 
 /// Personal dashboard for "week", "month" or "year", as of today on this device. Analytics is
 /// online only: offline, the page shows the offline card.
-final personalDashboardProvider = FutureProvider.family<DashboardOut, String>(
-  (ref, period) =>
-      fetch(ref, ref.watch(apiProvider).analytics.personalDashboard(period: period, on_: apiDate(appClock.now()))),
-);
+final personalDashboardProvider = FutureProvider.family<DashboardOut, String>((ref, period) {
+  _afterEachSync(ref);
+  return fetch(ref, ref.watch(apiProvider).analytics.personalDashboard(period: period, on_: apiDate(appClock.now())));
+});
 
-final groupDashboardProvider = FutureProvider.family<DashboardOut, String>(
-  (ref, groupId) => fetch(ref, ref.watch(apiProvider).analytics.groupDashboard(groupId, on_: apiDate(appClock.now()))),
-);
+final groupDashboardProvider = FutureProvider.family<DashboardOut, String>((ref, groupId) {
+  _afterEachSync(ref);
+  return fetch(ref, ref.watch(apiProvider).analytics.groupDashboard(groupId, on_: apiDate(appClock.now())));
+});
 
 final layoutProvider = FutureProvider.family<LayoutOut, String>(
   (ref, scope) => fetch(ref, ref.watch(apiProvider).analytics.getLayout(scope)),
