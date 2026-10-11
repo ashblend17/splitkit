@@ -50,6 +50,10 @@ String? _day(DateTime? d) => d == null ? null : DateFormat('yyyy-MM-dd').format(
 
 final groupsProvider = FutureProvider<List<GroupOut>>((ref) => local(ref, (l) => GroupOut.listFromJson(l.groups())));
 
+final archivedGroupsProvider = FutureProvider<List<GroupOut>>(
+  (ref) => local(ref, (l) => GroupOut.listFromJson(l.groups(archived: true))),
+);
+
 final groupProvider = FutureProvider.family<GroupOut, String>(
   (ref, id) => local(ref, (l) => GroupOut.fromJson(l.group(id))),
 );

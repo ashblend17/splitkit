@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:splitkit/features/common/common.dart';
 
 import '../fake_backend.dart';
@@ -73,5 +74,64 @@ void main() {
     await tester.tap(find.text('Members'));
     await tester.pumpAndSettle();
     expect(find.byWidgetPredicate((w) => w is HeaderIconButton && w.label.startsWith('Remove ')), findsNothing);
+  });
+
+  testWidgets('an archived group waits under Archived, and can come back', (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}');
+    await tester.tap(find.bySemanticsLabel('Group settings').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive group'));
+    await tester.pumpAndSettle();
+    expect(find.text('Goa Trip archived'), findsOneWidget);
+    expect(find.text('Archived (1)'), findsOneWidget, reason: 'back on the list, folded away');
+    expect(find.text('Goa Trip'), findsNothing);
+
+    await tester.tap(find.text('Archived (1)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Goa Trip'));
+    await tester.pumpAndSettle();
+    expect(find.text('Archived'), findsOneWidget);
+    await tester.tap(find.text('Unarchive'));
+    await tester.pumpAndSettle();
+    expect(find.text('Goa Trip is back'), findsOneWidget);
+    expect(find.text('Unarchive'), findsNothing);
+    await tester.tap(find.bySemanticsLabel('Back to groups'));
+    await tester.pumpAndSettle();
+    expect(find.text('Archived (1)'), findsNothing);
+    expect(find.text('Goa Trip'), findsOneWidget);
+  });
+
+  testWidgets('archiving can be undone from the snackbar', (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}');
+    await tester.tap(find.bySemanticsLabel('Group settings').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive group'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Undo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Archived (1)'), findsNothing);
+    expect(find.text('Goa Trip'), findsOneWidget);
+  });
+
+  testWidgets("an archived group's Add split and edits stay in that group", (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}');
+    await tester.tap(find.bySemanticsLabel('Group settings').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Archive group'));
+    await tester.pumpAndSettle();
+    final router = tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig as GoRouter;
+
+    router.push('/expenses/new?group=${be.goa['id']}');
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel(RegExp('^Group: Goa Trip')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^Group: Flatmates')), findsNothing);
+
+    router.go('/expenses/${be.dinnerId}/edit');
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel(RegExp('^Group: Goa Trip')), findsOneWidget);
+    expect(find.text('Dinner at Thalassa'), findsOneWidget);
   });
 }
