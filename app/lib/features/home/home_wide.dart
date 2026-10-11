@@ -332,6 +332,13 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
 
   @override
   Widget build(BuildContext context) {
+    // Cleared from elsewhere ("Nothing matches" → Clear): empty the box too.
+    ref.listen(activityFiltersProvider.select((f) => f.search), (_, search) {
+      if (search.isEmpty && _text.text.trim().isNotEmpty) {
+        _debounce?.cancel();
+        setState(_text.clear);
+      }
+    });
     return Container(
       height: 44,
       padding: const EdgeInsets.only(left: 14, right: 4),
@@ -554,7 +561,7 @@ class _ActivityCard extends ConsumerWidget {
                         glyph: 'search',
                         title: 'Nothing matches',
                         body: 'Try another filter or search.',
-                        actionLabel: 'Clear filters',
+                        actionLabel: filters.narrowed ? 'Clear filters' : 'Clear search',
                         onAction: notifier.clear,
                       )
                     : homeEmpty(context, groups.value ?? const []);
