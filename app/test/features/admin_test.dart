@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:splitkit/core/router/router.dart';
 import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/local/writes.dart';
 import 'package:splitkit/design_system/design_system.dart';
@@ -173,12 +174,19 @@ void main() {
     expect(find.text('Editing · every change is logged as Admin'), findsOneWidget);
     expect(find.text('Make read-only'), findsOneWidget);
 
-    // Exit ends the session and goes back to the admin.
+    // A draft started as Rahul...
+    container.read(routerProvider).push('/expenses/new');
+    await tester.pumpAndSettle();
+    expect(find.text('Save split'), findsOneWidget);
+
+    // Exit ends the session and goes back to the admin area; nothing open as Rahul stays
+    // open (saving that draft would have recorded it as the admin).
     await tester.tap(find.text('Exit'));
     await tester.pumpAndSettle();
     expect(be.writes.last.$2, '/api/v1/admin/sessions/$sid/end');
     expect(find.byType(AdminBanner), findsNothing);
-    expect(find.text('Hi, John'), findsOneWidget);
+    expect(find.text('Save split'), findsNothing);
+    expect(find.byType(AdminDashboardPage), findsOneWidget);
   });
 
   testWidgets('user search and role filter go to the API', (tester) async {

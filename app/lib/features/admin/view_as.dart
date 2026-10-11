@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api.dart';
 import '../../core/layout/layout.dart';
 import '../../core/local/providers.dart';
+import '../../core/router/router.dart';
 import '../../core/session/session.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
@@ -68,6 +69,9 @@ class ViewAsChrome extends ConsumerWidget {
         // Offline: exit anyway; the server has what it has.
       }
       await controller.exitViewAs();
+      // Back where view-as started. Nothing open as them may stay open as the admin: a draft
+      // on Add split would be saved in the admin's name. go() also drops pushed pages.
+      ref.read(routerProvider).go('/admin');
     }
 
     return AdminFrame(
