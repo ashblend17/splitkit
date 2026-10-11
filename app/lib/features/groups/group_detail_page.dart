@@ -485,6 +485,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             ('members', 'groups', 'Members'),
             ('deleted', 'trash', 'Deleted items'),
             ('tricount', 'swap', 'Sync with Tricount'),
+            ('leave', 'logout', 'Leave group'),
             ('archive', 'file', g.archivedAt == null ? 'Archive group' : 'Unarchive group'),
           ])
             Builder(
@@ -513,6 +514,8 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
         context.go('/groups/${g.id}/deleted');
       case 'tricount':
         context.go('/groups/${g.id}/tricount');
+      case 'leave':
+        await _leave(g);
       case 'archive':
         await ref.read(writesProvider).setGroupArchived(g.id, g.archivedAt == null);
         if (mounted) {
@@ -520,6 +523,46 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
           if (g.archivedAt == null) context.go('/groups');
         }
     }
+  }
+
+  Future<void> _leave(GroupOut g) async {
+    final me = ref.read(meProvider);
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Leave ${g.name}?',
+      body: "You'll stop seeing it. You need to be settled up with everyone in it first.",
+      confirmLabel: 'Leave group',
+    );
+    if (!ok || !mounted) return;
+    try {
+      await ref.read(apiProvider).groups.removeMember(g.id, me.id);
+      refreshLedger(ref.invalidate);
+      if (mounted) {
+        showMessage(context, 'You left ${g.name}');
+        context.go('/groups');
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, apiErrorMessage(e));
+    }
+  }
+}
+
+/// Take someone out of the group (the owner only; they need to be settled up).
+Future<void> removeGroupMember(BuildContext context, WidgetRef ref, GroupOut group, MemberOut m) async {
+  final name = firstName(m.user.name);
+  final ok = await showConfirmDialog(
+    context,
+    title: 'Remove $name from ${group.name}?',
+    body: 'They stop seeing the group; their past expenses stay. They need to be settled up first.',
+    confirmLabel: 'Remove',
+  );
+  if (!ok || !context.mounted) return;
+  try {
+    await ref.read(apiProvider).groups.removeMember(group.id, m.user.id);
+    refreshLedger(ref.invalidate);
+    if (context.mounted) showMessage(context, '$name is no longer in ${group.name}');
+  } catch (e) {
+    if (context.mounted) showMessage(context, apiErrorMessage(e));
   }
 }
 
@@ -530,6 +573,7 @@ class _MembersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
+    final owner = group.members.any((m) => m.user.id == me.id && m.role == 'owner');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -542,14 +586,25 @@ class _MembersTab extends ConsumerWidget {
               if (m.user.isPlaceholder == true) m.inviteEmail == null ? 'No account yet' : 'Invited · ${m.inviteEmail}',
               if (m.placeholderName != null && m.user.isPlaceholder != true) 'Was “${m.placeholderName}”',
             ].join(' · ').ifEmpty('Member'),
-            trailing: m.user.isPlaceholder == true
-                ? SkButton(
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (m.user.isPlaceholder == true)
+                  SkButton(
                     'Link',
                     variant: SkButtonVariant.secondary,
                     size: SkButtonSize.small,
                     onPressed: () => linkGroupMember(context, group, m),
-                  )
-                : null,
+                  ),
+                if (owner && m.user.id != me.id)
+                  HeaderIconButton(
+                    glyph: 'close',
+                    label: 'Remove ${m.user.name}',
+                    color: SkColors.ink3,
+                    onPressed: () => removeGroupMember(context, ref, group, m),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
         ],

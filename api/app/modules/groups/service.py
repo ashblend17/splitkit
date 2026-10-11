@@ -229,4 +229,29 @@ def remove_member(session: Session, actor: Actor, group_id: uuid.UUID, user_id: 
     record(
         session, actor, action, "group", group_id, group_id, {"user_id": str(user_id)}, obj=target
     )
+    if target.role == "owner":
+        _hand_over(session, actor, group_id, target)
     session.commit()
+
+
+def _hand_over(session: Session, actor: Actor, group_id: uuid.UUID, leaving: GroupMember) -> None:
+    """The owner left: whoever has been in the group longest (with an account) takes over, so
+    someone can still remove people. Placeholders can't own a group."""
+    leaving.role = "member"
+    heir = next(
+        (m for m, u in repo.active_members(session, group_id) if u.email is not None),
+        None,
+    )
+    if heir is None:
+        return
+    heir.role = "owner"
+    record(
+        session,
+        actor,
+        "member.promote",
+        "group",
+        group_id,
+        group_id,
+        {"user_id": str(heir.user_id), "role": "owner"},
+        obj=[leaving, heir],
+    )
