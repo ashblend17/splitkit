@@ -65,7 +65,7 @@ class ProfilePage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
                   _Tabs(
-                    onHistory: () => context.go('/personal/history'),
+                    onHistory: () => context.go('/profile/history'),
                     onAnalytics: () => context.go('/profile/analytics'),
                   ),
                   const SizedBox(height: 16),

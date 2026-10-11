@@ -89,6 +89,17 @@ void main() {
     expect(find.text('Soon'), findsNothing); // the importer is live (features/import_tricount)
   });
 
+  testWidgets("Profile's History tab stays in Profile, so Back returns there", (tester) async {
+    await pumpApp(tester, location: '/profile');
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+    expect(find.text('Spending history'), findsOneWidget);
+    expect(tester.widget<BottomNav>(find.byType(BottomNav)).current, 'profile');
+    await tester.tap(find.bySemanticsLabel('Back'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Member since'), findsOneWidget);
+  });
+
   testWidgets('personal analytics renders every configured card by type', (tester) async {
     await pumpApp(tester, location: '/profile/analytics');
     expect(find.text('Monthly spending'), findsOneWidget);

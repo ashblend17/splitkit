@@ -129,6 +129,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, _) => const ProfilePage(),
                 routes: [
                   GoRoute(path: 'analytics', builder: (_, _) => const PersonalAnalyticsPage()),
+                  // Profile's History tab: the same page, but Back returns to Profile.
+                  GoRoute(path: 'history', builder: (_, _) => const PersonalHistoryPage()),
                   GoRoute(path: 'categories', builder: (_, _) => const CategoriesPage()),
                   // Tricount import (deletable module: features/import_tricount).
                   GoRoute(
