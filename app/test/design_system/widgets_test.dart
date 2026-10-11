@@ -74,6 +74,15 @@ void main() {
     await tester.tap(find.text('Percent'));
     await tester.pump();
     expect(find.textContaining('100% (₹1,800) still needs'), findsOneWidget);
+
+    // Shares start at one each for whoever was ticked (not Vivek).
+    await tester.tap(find.text('Shares'));
+    await tester.pump();
+    expect(find.text('3 shares'), findsOneWidget);
+    expect(find.text('Split is valid'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '2');
+    await tester.pump();
+    expect(controller.shares!.map((s) => s.shareMinor), [90000, 45000, 45000, 0]);
   });
 
   testWidgets('split tabs come from the registry', (tester) async {

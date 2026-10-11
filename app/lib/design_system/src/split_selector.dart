@@ -53,6 +53,11 @@ class SplitController extends ChangeNotifier {
     if (key == _method) return;
     registry.get(key);
     _method = key;
+    // Shares start from the equal split, one each for whoever is ticked, so "2 for a couple"
+    // is one edit rather than one per person.
+    if (key == 'shares' && (_values['shares']?.values.every((v) => v.trim().isEmpty) ?? true)) {
+      _values['shares'] = {for (final p in people) p.id: _included.contains(p.id) ? '1' : ''};
+    }
     notifyListeners();
   }
 
