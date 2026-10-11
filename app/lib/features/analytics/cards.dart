@@ -144,7 +144,7 @@ class _EditLayoutState extends ConsumerState<_EditLayout> {
                   children: [
                     Expanded(child: Text(c.title, style: SkText.body(15, 600))),
                     HeaderIconButton(
-                      glyph: 'back',
+                      glyph: 'up',
                       label: 'Move ${c.title} up',
                       onPressed: i == 0 ? null : () => setState(() => cards.insert(i - 1, cards.removeAt(i))),
                       color: i == 0 ? SkColors.lineStrong : SkColors.ink,
