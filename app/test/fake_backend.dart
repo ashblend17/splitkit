@@ -11,7 +11,7 @@ import 'package:sembast/sembast_memory.dart';
 import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/local/providers.dart';
 import 'package:splitkit/core/router/router.dart';
-import 'package:splitkit/features/admin/view_as.dart';
+import 'package:splitkit/features/shell/sync_banner.dart';
 import 'package:splitkit/core/session/session.dart';
 import 'package:splitkit/core/theme/theme.dart';
 
@@ -166,6 +166,7 @@ Future<FakeBackend> pumpApp(
   TokenStore? tokens,
   http.Client? client,
   List<Override> overrides = const [],
+  Duration? syncInterval,
 }) async {
   final be = backend ?? FakeBackend();
   tester.view.physicalSize = size;
@@ -177,7 +178,7 @@ Future<FakeBackend> pumpApp(
       tokenStoreProvider.overrideWithValue(tokens ?? MemoryTokenStore(token)),
       localDatabaseFactoryProvider.overrideWithValue(databaseFactoryMemory),
       localDatabasePathProvider.overrideWithValue((userId) async => database ?? 'test-${_databases++}-$userId'),
-      syncIntervalProvider.overrideWithValue(null),
+      syncIntervalProvider.overrideWithValue(syncInterval), // no timer unless asked for
       ...overrides,
     ],
     retry: (_, _) => null,
@@ -189,7 +190,7 @@ Future<FakeBackend> pumpApp(
     child: MaterialApp.router(
       theme: buildSplitkitTheme(),
       routerConfig: router,
-      builder: (context, child) => ViewAsChrome(child: child!),
+      builder: appChrome,
     ),
   ));
   await tester.pumpAndSettle();

@@ -6,7 +6,7 @@ import 'core/config.dart';
 import 'core/router/router.dart';
 import 'core/session/session.dart';
 import 'core/theme/theme.dart';
-import 'features/admin/view_as.dart';
+import 'features/shell/sync_banner.dart';
 
 Future<void> main() async {
   // Real paths (/groups/…) instead of /#/groups/…; nginx serves index.html for any path.
@@ -32,7 +32,7 @@ class SplitkitApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: buildSplitkitTheme(),
       routerConfig: ref.watch(routerProvider),
-      builder: (context, child) => ViewAsChrome(child: child!),
+      builder: appChrome,
     );
   }
 }
