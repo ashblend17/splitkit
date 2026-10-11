@@ -368,6 +368,9 @@ class _NotLinkedState extends ConsumerState<_NotLinked> {
             controller: _link,
             keyboardType: TextInputType.url,
             errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
             onSubmitted: (_) => _check(),
           ),
           const SizedBox(height: 12),

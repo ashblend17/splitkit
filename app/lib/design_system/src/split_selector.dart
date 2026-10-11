@@ -484,10 +484,31 @@ class _PersonRowState extends State<_PersonRow> {
               },
               label: '${c.splitMethod.label} for ${p.name}',
               onChanged: (t) => c.setValue(p.id, t),
+              // What the API keeps: money to the paisa, percentages and shares to 4 places.
+              formatter: c.method == 'exact'
+                  ? const SplitValueFormatter(whole: maxAmountDigits, places: 2)
+                  : const SplitValueFormatter(whole: 6, places: 4),
             ),
         ],
       ),
     );
+  }
+}
+
+/// Digits and one decimal point, with at most [whole] digits before it and [places] after.
+/// Grouping commas are dropped. A key that would break that is ignored.
+class SplitValueFormatter extends TextInputFormatter {
+  const SplitValueFormatter({required this.whole, required this.places});
+
+  final int whole;
+  final int places;
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text.replaceAll(',', '');
+    final ok = RegExp('^\\d{0,$whole}(\\.\\d{0,$places})?\$').hasMatch(text);
+    if (!ok) return oldValue;
+    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 }
 
@@ -498,7 +519,10 @@ class _ValueInput extends StatelessWidget {
     required this.suffix,
     required this.label,
     required this.onChanged,
+    required this.formatter,
   });
+
+  final TextInputFormatter formatter;
 
   final TextEditingController controller;
   final String prefix;
@@ -532,7 +556,7 @@ class _ValueInput extends StatelessWidget {
                 onChanged: onChanged,
                 textAlign: TextAlign.right,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                inputFormatters: [formatter],
                 style: SkText.body(16, 700),
                 decoration: InputDecoration(
                   isCollapsed: true,

@@ -38,6 +38,29 @@ void main() {
     expect(find.text('Use at least 8 characters'), findsOneWidget);
   });
 
+  testWidgets('a new group opens straight away, and its name error clears as you type', (tester) async {
+    final be = FakeBackend();
+    be.postResponses['/api/v1/groups'] = (201, be.goa); // what the server answers doesn't matter here
+    await pumpApp(tester, backend: be, location: '/groups');
+    await tester.tap(find.text('New group').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create group'));
+    await tester.pumpAndSettle();
+    expect(find.text('Give the group a name'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, 'NYC conference');
+    await tester.pump();
+    expect(find.text('Give the group a name'), findsNothing);
+
+    await tester.tap(find.text('USD \$'));
+    await tester.tap(find.text('Create group'));
+    await tester.pumpAndSettle();
+    expect(find.text('Group not found'), findsNothing);
+    expect(find.text('NYC conference'), findsWidgets, reason: 'the new group is open');
+    expect(find.text('Create group'), findsNothing, reason: 'the sheet closed');
+    final (method, path, body) = be.writes.firstWhere((w) => w.$2 == '/api/v1/groups');
+    expect((method, body['name'], body['currency']), ('POST', 'NYC conference', 'USD'));
+  });
+
   testWidgets('an unknown address gets a friendly page, not a router error', (tester) async {
     await pumpApp(tester, location: '/nowhere/at/all');
     expect(find.text("This page doesn't exist"), findsOneWidget);

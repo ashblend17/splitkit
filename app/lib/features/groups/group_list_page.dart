@@ -241,6 +241,9 @@ class _NewGroupFormState extends ConsumerState<_NewGroupForm> {
             hint: 'Goa Trip, Flatmates…',
             autofocus: true,
             errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
             onSubmitted: (_) => _create(),
           ),
           const SizedBox(height: 14),
