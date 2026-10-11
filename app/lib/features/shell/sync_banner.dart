@@ -5,10 +5,17 @@ import '../../core/api/api.dart';
 import '../../core/local/outbox.dart';
 import '../../core/local/providers.dart';
 import '../../core/local/writes.dart';
+import '../../core/router/router.dart';
+import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
+import '../admin/view_as.dart';
 import '../tricount_sync/tricount_conflicts.dart';
 import '../tricount_sync/tricount_providers.dart';
+
+/// What every screen sits in (MaterialApp's builder): the view-as banner and frame, then the
+/// sync line. Above the navigator, so full-screen pages and sheets get the line too.
+Widget appChrome(BuildContext context, Widget? child) => ViewAsChrome(child: SyncBanner(child: child!));
 
 /// One line above every signed-in screen when something needs saying: offline (and how many
 /// changes are waiting), changes the server refused ("Needs your attention"), or entries
@@ -20,7 +27,11 @@ class SyncBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Nothing to say before sign-in (and the providers below need a session).
+    if (ref.watch(sessionProvider.select((s) => s.value == null))) return child;
     final offline = ref.watch(syncStatusProvider).value?.offline ?? false;
+    // This line sits above the navigator, so its sheets open from the navigator's context.
+    BuildContext sheetContext() => ref.read(routerProvider).routerDelegate.navigatorKey.currentContext ?? context;
     final ops = ref.watch(outboxProvider);
     final waiting = ops.where((o) => o.status != OutboxStatus.rejected).length;
     final refused = ops.where((o) => o.status == OutboxStatus.rejected).length;
@@ -34,7 +45,7 @@ class SyncBanner extends ConsumerWidget {
         action: 'Review',
         background: SkColors.pendingSoft,
         foreground: SkColors.pending,
-        onTap: () => showAttentionSheet(context),
+        onTap: () => showAttentionSheet(sheetContext()),
       );
     } else if (fromTricount > 0 && !offline) {
       line = _Line(
@@ -45,7 +56,7 @@ class SyncBanner extends ConsumerWidget {
         action: 'Review',
         background: SkColors.pendingSoft,
         foreground: SkColors.pending,
-        onTap: () => showTricountConflictsSheet(context),
+        onTap: () => showTricountConflictsSheet(sheetContext()),
       );
     } else if (offline) {
       line = _Line(

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/layout/layout.dart';
 import '../../core/session/session.dart';
 import '../../design_system/design_system.dart';
-import 'sync_banner.dart';
 
 /// Signed-in shell: tab bar under 600px, navigation rail up to 1279px (HomeTablet), sidebar
 /// from 1280px (HomeDesktop). The rail and sidebar carry "Add split"; on phones each page
@@ -35,11 +34,10 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final destinations = NavDestination.primary(admin: ref.watch(meProvider).role == 'admin');
     final current = _keys[shell.currentIndex];
-    final body = SyncBanner(child: shell);
     switch (SkLayout.of(context)) {
       case SkLayout.compact:
         return Scaffold(
-          body: body,
+          body: shell,
           bottomNavigationBar: BottomNav(destinations: destinations, current: current, onSelected: _select),
         );
       case SkLayout.medium:
@@ -55,7 +53,7 @@ class AppShell extends ConsumerWidget {
                   onAdd: () => _add(context),
                 ),
               ),
-              Expanded(child: body),
+              Expanded(child: shell),
             ],
           ),
         );
@@ -72,7 +70,7 @@ class AppShell extends ConsumerWidget {
                 user: SkPerson(id: me.id, name: me.name),
                 role: me.role == 'admin' ? 'Administrator' : 'Personal account',
               ),
-              Expanded(child: body),
+              Expanded(child: shell),
             ],
           ),
         );

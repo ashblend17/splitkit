@@ -16,8 +16,8 @@ final localDatabaseFactoryProvider = Provider<DatabaseFactory>((_) => platformDa
 
 final localDatabasePathProvider = Provider<Future<String> Function(String userId)>((_) => localDatabasePath);
 
-/// How often to sync while the app is open (besides on start, on resume and after writes).
-/// Null turns the timer off (tests).
+/// How often to sync while the app is open (besides on start, on resume and after writes);
+/// a third of that while offline. Null turns the timer off (tests).
 final syncIntervalProvider = Provider<Duration?>((_) => const Duration(seconds: 45));
 
 /// Sync when the app comes back to the foreground. Off only where there is no Flutter binding
@@ -49,7 +49,15 @@ final syncEngineProvider = FutureProvider<SyncEngine>((ref) async {
     onUnauthorized: () => ref.read(sessionProvider.notifier).expire(),
   );
   final interval = ref.watch(syncIntervalProvider);
-  final timer = interval == null ? null : Timer.periodic(interval, (_) => engine.pull().ignore());
+  // Every interval, and three times as often while offline, so the app notices it's back
+  // (and sends what's waiting) sooner.
+  var ticks = 0;
+  final timer = interval == null
+      ? null
+      : Timer.periodic(interval ~/ 3, (_) {
+          ticks++;
+          if (engine.status.offline || ticks % 3 == 0) engine.pull().ignore();
+        });
   final lifecycle = ref.watch(syncOnResumeProvider) ? AppLifecycleListener(onResume: () => engine.pull().ignore()) : null;
   ref.onDispose(() {
     timer?.cancel();
