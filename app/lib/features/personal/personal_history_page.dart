@@ -123,6 +123,15 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
                           )
                         else
                           ..._dayGroups(l.items),
+                        if (l.items.length < l.count)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              'Showing the newest ${l.items.length} of ${l.count}. Pick a shorter range to see the rest.',
+                              style: SkText.body(13, 400, color: SkColors.ink2),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                       ],
                     ),
                   ),
