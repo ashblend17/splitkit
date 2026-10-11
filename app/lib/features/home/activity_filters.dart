@@ -71,7 +71,8 @@ class ActivityFiltersNotifier extends Notifier<ActivityFilters> {
 
   void change(ActivityFilters Function(ActivityFilters f) edit) => state = edit(state);
 
-  void clear() => state = ActivityFilters(search: state.search);
+  /// Back to everything: filters and search ("Nothing matches" → Clear).
+  void clear() => state = const ActivityFilters();
 }
 
 final activityFiltersProvider = NotifierProvider<ActivityFiltersNotifier, ActivityFilters>(ActivityFiltersNotifier.new);

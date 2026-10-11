@@ -119,6 +119,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Dinner at Thalassa'), findsOneWidget);
     expect(find.text('Late-night pizza'), findsNothing);
+
+    // Nothing matches → Clear empties the search box too, not just the filters.
+    await tester.enterText(find.byType(TextField), 'nothing like this');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(find.text('Nothing matches'), findsOneWidget);
+    await tester.tap(find.text('Clear filters'));
+    await tester.pumpAndSettle();
+    expect(find.text('Electricity bill'), findsOneWidget);
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '');
+
+    await tester.enterText(find.byType(TextField), 'nothing like this');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear search')); // only the search was narrowing it
+    await tester.pumpAndSettle();
+    expect(find.text('Electricity bill'), findsOneWidget);
   });
 
   testWidgets('desktop table drops columns rather than overflowing at 1280px', (tester) async {
