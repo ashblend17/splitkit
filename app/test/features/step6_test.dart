@@ -1,5 +1,7 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:splitkit/core/clock.dart';
 import 'package:splitkit/design_system/design_system.dart';
 
 import '../fake_backend.dart';
@@ -19,6 +21,28 @@ void main() {
     expect(find.text('Rent'), findsOneWidget);
     final swiggy = tester.widget<TransactionCard>(find.widgetWithText(TransactionCard, 'Swiggy order'));
     expect((swiggy.subtitle, swiggy.label, swiggy.amount, swiggy.scope), ('Food · UPI', 'spent', '₹486', TxnScope.personal));
+  });
+
+  testWidgets('a month with spending but no income is not "overspent"', (tester) async {
+    final before = appClock;
+    appClock = Clock.fixed(DateTime(2026, 10, 3, 12));
+    addTearDown(() => appClock = before);
+    final be = FakeBackend();
+    be.postResponses['/api/v1/personal/transactions'] = (201, (fixture('personal_list') as Map)['items'][0]);
+    await pumpApp(tester, backend: be, location: '/personal');
+    expect(find.text('Spent in October'), findsOneWidget);
+    await tester.tap(find.text('Expense'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), '250');
+    await tester.enterText(find.byType(TextField).at(1), 'Books');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(SelectableChip, 'Shopping'));
+    await tester.tap(find.text('Save expense'));
+    await tester.pumpAndSettle();
+    expect(find.text('₹250'), findsWidgets);
+    expect(find.text('Overspent'), findsNothing);
+    expect(find.text('Left over'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
   });
 
   testWidgets('adding a personal expense sends the right body', (tester) async {

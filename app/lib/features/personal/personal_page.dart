@@ -158,7 +158,9 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
     final c = s.currency;
     final top = s.byCategory.take(3).toList();
     final max = top.isEmpty ? 0 : top.first.amountMinor;
-    final over = s.leftOverMinor < 0;
+    // With no income logged there's nothing to be left over from (not "overspent").
+    final noIncome = s.incomeMinor == 0;
+    final over = s.leftOverMinor < 0 && !noIncome;
     return SkCard(
       radius: 20,
       padding: const EdgeInsets.all(18),
@@ -188,7 +190,13 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
               Expanded(
                 child: over
                     ? _tile('Overspent', money(-s.leftOverMinor, c), SkColors.oweSoft, SkColors.oweInk, SkColors.owe)
-                    : _tile('Left over', money(s.leftOverMinor, c), SkColors.paper, SkColors.ink2, SkColors.ink),
+                    : _tile(
+                        'Left over',
+                        noIncome ? '—' : money(s.leftOverMinor, c),
+                        SkColors.paper,
+                        SkColors.ink2,
+                        SkColors.ink,
+                      ),
               ),
             ],
           ),
@@ -245,7 +253,11 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
       children: [
         Text(label, style: SkText.body(12, 600, color: labelColor)),
         const SizedBox(height: 2),
-        Text(value, style: SkText.display(18, 700, color: valueColor)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(value, maxLines: 1, style: SkText.display(18, 700, color: valueColor)),
+        ),
       ],
     ),
   );
