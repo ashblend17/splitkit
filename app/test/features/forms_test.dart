@@ -86,6 +86,28 @@ void main() {
     await tester.pumpAndSettle();
     expect(be.writes.last.$3, {'email': 'neha.k@example.com', 'name': 'Neha'});
     expect(find.text('Add and invite'), findsNothing, reason: 'the sheet closed');
+    expect(find.text('Added Neha to Goa Trip'), findsOneWidget);
+  });
+
+  testWidgets('adding someone by email names them in the confirmation', (tester) async {
+    final be = FakeBackend();
+    final meera = {
+      'user': {'id': '0f0e0d0c-0000-4000-8000-000000000001', 'name': 'Meera Iyer', 'avatar_url': null, 'is_placeholder': false},
+      'role': 'member',
+      'joined_at': '2026-09-25T10:00:00Z',
+      'placeholder_name': null,
+    };
+    be.postResponses['/api/v1/groups/${be.goa['id']}/members'] = (201, {
+      ...be.goa,
+      'members': [...be.goa['members'] as List, meera],
+    });
+    await pumpApp(tester, backend: be, size: const Size(1440, 900), location: '/groups/${be.goa['id']}');
+    await tester.tap(find.text('Invite'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'meera@example.com');
+    await tester.tap(find.text('Add to group'));
+    await tester.pumpAndSettle();
+    expect(find.text('Added Meera to Goa Trip'), findsOneWidget);
   });
 
   testWidgets('an unknown address gets a friendly page, not a router error', (tester) async {
