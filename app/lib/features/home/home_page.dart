@@ -42,7 +42,7 @@ class _PhoneHome extends ConsumerWidget {
     final balances = ref.watch(overallBalancesProvider);
     final groups = ref.watch(groupsProvider);
     final groupId = ref.watch(activityFiltersProvider.select((f) => f.groupId));
-    final feed = ref.watch(feedProvider((groupId: groupId, deleted: false)));
+    final feed = ref.watch(feedProvider((groupId: groupId, deleted: false, limit: ref.watch(feedLimitProvider('home')))));
 
     return Scaffold(
       floatingActionButton: AddSplitFab(
@@ -87,7 +87,12 @@ class _PhoneHome extends ConsumerWidget {
                       onRetry: () => ref.invalidate(feedProvider),
                       builder: (items) => items.isEmpty
                           ? homeEmpty(context, groups.value ?? const [])
-                          : FeedList(items: items, onHome: true),
+                          : Column(
+                              children: [
+                                FeedList(items: items, onHome: true),
+                                ShowOlder(list: 'home', shown: items.length),
+                              ],
+                            ),
                     ),
                   ],
                 ),
