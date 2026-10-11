@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/data/providers.dart';
 import 'package:splitkit/core/layout/layout.dart';
 import 'package:splitkit/design_system/design_system.dart';
 import 'package:splitkit/features/common/common.dart';
@@ -51,6 +53,20 @@ void main() {
     await tester.pumpAndSettle();
     final note = find.descendant(of: find.byType(SnackBar), matching: find.byType(Material)).first;
     expect(tester.getSize(note).width, snackBarWidth);
+  });
+
+  testWidgets('Home mentions balances in your other currencies, on every size', (tester) async {
+    final b = Map<String, dynamic>.from(fixture('balances') as Map);
+    b['totals'] = [
+      ...b['totals'] as List,
+      {'currency': 'USD', 'net_minor': 2500, 'you_owe_minor': 0, 'you_are_owed_minor': 2500},
+      {'currency': 'EUR', 'net_minor': 0, 'you_owe_minor': 0, 'you_are_owed_minor': 0}, // settled: not mentioned
+    ];
+    final balances = OverallBalancesOut.fromJson(b)!;
+    for (final size in [const Size(390, 844), tablet, desktop]) {
+      await pumpApp(tester, size: size, overrides: [overallBalancesProvider.overrideWith((ref) async => balances)]);
+      expect(find.text('Also: you are owed \$25 in USD groups'), findsOneWidget, reason: '$size');
+    }
   });
 
   testWidgets('tablet: rail, balance and friends beside the activity', (tester) async {
