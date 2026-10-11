@@ -656,12 +656,12 @@ class _MembersTab extends ConsumerWidget {
 }
 
 Future<void> addGroupMember(BuildContext context, GroupOut group) async {
-  final added = await showAppBottomSheet<bool>(
+  final added = await showAppBottomSheet<String>(
     context,
     title: 'Add someone',
-    child: _AddMemberForm(groupId: group.id),
+    child: _AddMemberForm(group: group),
   );
-  if (added == true && context.mounted) showMessage(context, 'Added to ${group.name}');
+  if (added != null && context.mounted) showMessage(context, 'Added $added to ${group.name}');
 }
 
 extension on String {
@@ -769,9 +769,10 @@ class _LinkMemberFormState extends ConsumerState<_LinkMemberForm> {
   }
 }
 
+/// Pops with the first name of whoever was added.
 class _AddMemberForm extends ConsumerStatefulWidget {
-  const _AddMemberForm({required this.groupId});
-  final String groupId;
+  const _AddMemberForm({required this.group});
+  final GroupOut group;
 
   @override
   ConsumerState<_AddMemberForm> createState() => _AddMemberFormState();
@@ -808,11 +809,11 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
     }
     setState(() => _busy = true);
     try {
-      await ref
+      final group = await ref
           .read(apiProvider)
           .groups
           .addMember(
-            widget.groupId,
+            widget.group.id,
             !_byEmail
                 ? AddMemberIn(name: value)
                 : _invite
@@ -820,7 +821,10 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
                 : AddMemberIn(email: value),
           );
       refreshLedger(ref.invalidate);
-      if (mounted) Navigator.of(context).pop(true);
+      final before = {for (final m in widget.group.members) m.user.id};
+      final added = group?.members.where((m) => !before.contains(m.user.id)).firstOrNull;
+      final fallback = !_byEmail ? firstName(value) : (_invite ? firstName(name) : value);
+      if (mounted) Navigator.of(context).pop(added == null ? fallback : firstName(added.user.name));
     } catch (e) {
       if (mounted) {
         setState(() {
