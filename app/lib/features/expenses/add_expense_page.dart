@@ -236,6 +236,11 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                 controller: _description,
                 size: SkFieldSize.large,
                 hint: 'Dinner, taxi, rent…',
+                textInputAction: TextInputAction.done,
+                // Enter saves once there's enough to save (as Save split would).
+                onSubmitted: (_) {
+                  if (_canSave) _save(group);
+                },
               ),
               const SizedBox(height: 20),
               Text('Category', style: SkText.body(14, 600)),
@@ -402,6 +407,9 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     );
   }
 
+  bool get _canSave =>
+      !_busy && (_amount ?? 0) > 0 && (_split?.validation.ok ?? false) && _description.text.trim().isNotEmpty;
+
   Widget _footer(UserOut me, GroupOut group) {
     final c = _split!;
     final v = c.validation;
@@ -463,7 +471,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       }
     }
 
-    final canSave = !_busy && amount > 0 && v.ok && _description.text.trim().isNotEmpty;
+    final canSave = _canSave;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       decoration: const BoxDecoration(

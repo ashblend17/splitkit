@@ -178,6 +178,27 @@ void main() {
     expect(find.text('Payment recorded in 2 groups'), findsOneWidget);
   });
 
+  testWidgets('Enter in the description saves a split that is ready, and only then', (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/expenses/new?group=${be.goa['id']}');
+    await tester.enterText(find.byType(TextField).at(1), 'Chai');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(be.writes, isEmpty, reason: 'no amount yet');
+
+    await tester.enterText(find.byType(TextField).at(0), '45');
+    await tester.showKeyboard(find.byType(TextField).at(1));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    final (method, path, body) = be.writes.single;
+    expect((method, path, body['amount_minor'], body['description']), (
+      'POST',
+      '/api/v1/groups/${be.goa['id']}/expenses',
+      4500,
+      'Chai',
+    ));
+  });
+
   testWidgets('add split: amount, description, equal split, save', (tester) async {
     final be = FakeBackend();
     await pumpApp(tester, backend: be, location: '/expenses/new?group=${be.goa['id']}');
