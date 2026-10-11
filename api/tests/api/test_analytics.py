@@ -11,7 +11,7 @@ def test_personal_dashboard_matches_personal_analytics_mockup(client, seeded):
     c = cards(client, login(client, "john"), "/analytics/personal?period=month&on=2026-09-23")
     trend = c["spending_trend"]
     assert (trend["title"], trend["period_label"], trend["headline"]) == (
-        "Spending",
+        "Spending over time",
         "Last 6 months",
         "₹32,450",
     )

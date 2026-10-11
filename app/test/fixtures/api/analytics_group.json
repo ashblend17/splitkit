@@ -20,7 +20,7 @@
     {
       "id": "3cf9a31b-eb89-5b69-a548-90d992ea7055",
       "type": "spending_trend",
-      "title": "Spending per day",
+      "title": "Spending over time",
       "period_label": "12 – 23 Sep",
       "source": "group_daily",
       "headline": "Peak ₹19,160 on 12 Sep",

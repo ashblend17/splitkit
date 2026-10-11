@@ -179,7 +179,7 @@
        {
         "position": 2,
         "type": "spending_trend",
-        "title": "Spending per day",
+        "title": "Spending over time",
         "period": "all_time",
         "source": "group_daily",
         "params_json": {
@@ -216,7 +216,7 @@
        {
         "position": 1,
         "type": "spending_trend",
-        "title": "Spending",
+        "title": "Spending over time",
         "period": "last_6_months",
         "source": "personal_monthly",
         "params_json": {

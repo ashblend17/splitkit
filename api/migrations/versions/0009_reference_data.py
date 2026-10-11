@@ -5,8 +5,8 @@ to run in production, so a production database had no categories to pick and no 
 cards. They are added here with the seed's ids (uuid5 in its namespace), so reseeding a dev
 database replaces them in place.
 
-The personal trend card is renamed "Monthly spending" -> "Spending": with Week selected its
-bars are days.
+The trend cards are renamed "Spending over time" (from "Monthly spending" and "Spending per
+day"): their bars are days, weeks, months or years depending on the period.
 
 Revision ID: 0009_reference_data
 Revises: 0008_tricount_sync
@@ -45,12 +45,12 @@ CATEGORIES = [
 
 # scope, position, type, title, period, source, params
 DASHBOARDS = [
-    ("personal", 1, "spending_trend", "Spending", "last_6_months", "personal_monthly", {"bucket": "month"}),
+    ("personal", 1, "spending_trend", "Spending over time", "last_6_months", "personal_monthly", {"bucket": "month"}),
     ("personal", 2, "spending_by_category", "Spending by category", "this_month", "personal_by_category", {}),
     ("personal", 3, "personal_vs_group", "Personal vs group", "this_month", "scope_split", {}),
     ("personal", 4, "average_daily", "Average per day", "this_month", "personal_daily_avg", {"compare": "previous_month"}),
     ("group", 1, "total_spend", "Total group spending", "all_time", "group_total", {}),
-    ("group", 2, "spending_trend", "Spending per day", "all_time", "group_daily", {"bucket": "day"}),
+    ("group", 2, "spending_trend", "Spending over time", "all_time", "group_daily", {"bucket": "day"}),
     ("group", 3, "spending_by_category", "By category", "all_time", "group_by_category", {}),
     ("group", 4, "paid_by_member", "Who paid", "all_time", "group_paid_by", {}),
 ]
@@ -101,8 +101,9 @@ def upgrade() -> None:
             )
     # Defaults and the layouts people saved from them.
     op.execute(
-        "UPDATE analytics_configuration SET title = 'Spending' "
-        "WHERE source = 'personal_monthly' AND title = 'Monthly spending'"
+        "UPDATE analytics_configuration SET title = 'Spending over time' "
+        "WHERE (source = 'personal_monthly' AND title IN ('Monthly spending', 'Spending')) "
+        "OR (source = 'group_daily' AND title = 'Spending per day')"
     )
 
 
@@ -110,5 +111,9 @@ def downgrade() -> None:
     # The reference data stays: entries may point at the categories.
     op.execute(
         "UPDATE analytics_configuration SET title = 'Monthly spending' "
-        "WHERE source = 'personal_monthly' AND title = 'Spending'"
+        "WHERE source = 'personal_monthly' AND title = 'Spending over time'"
+    )
+    op.execute(
+        "UPDATE analytics_configuration SET title = 'Spending per day' "
+        "WHERE source = 'group_daily' AND title = 'Spending over time'"
     )
