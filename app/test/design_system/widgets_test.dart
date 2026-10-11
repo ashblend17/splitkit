@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/splits/split_engine.dart';
@@ -135,7 +136,7 @@ void main() {
     await tester.pumpWidget(
       wrap(
         BreakdownBars(
-          rows: const [(label: 'Rent', value: 41094505), (label: 'Food', value: 500)],
+          rows: const [(label: 'Rent', value: 41094505), (label: 'Uncategorised', value: 500)],
           format: (v) => formatMinor(v, currency: 'INR'),
         ),
       ),
@@ -143,6 +144,8 @@ void main() {
     final big = tester.getSize(find.text('₹4,10,945.05'));
     expect(big.height, lessThan(24), reason: 'one line');
     expect(tester.getSize(find.text('₹5')).width, big.width);
+    final label = tester.renderObject<RenderParagraph>(find.text('Uncategorised'));
+    expect(label.didExceedMaxLines, isFalse, reason: 'not cut short');
   });
 
   testWidgets('split tabs come from the registry', (tester) async {
