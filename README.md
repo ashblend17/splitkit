@@ -28,6 +28,8 @@ docker compose exec api python -m app.seed --reset
 - Seeded logins: any seeded email with password `splitkit-dev`, e.g. `ansh.c@cyware.com` (admin)
 
 The API container runs `alembic upgrade head` on start. Seeding never runs automatically.
+The system categories and default dashboards are reference data, added by migration 0009 to
+every database (the seed has the same rows; `tests/api/test_reference_data.py` keeps them equal).
 
 ## API development
 

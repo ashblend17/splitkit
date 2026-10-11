@@ -37,8 +37,9 @@ def test_an_unseeded_database_gets_categories_and_dashboards(client):
     command.downgrade(cfg, "0008_tricount_sync")
     command.upgrade(cfg, "head")  # into the empty tables `clean` left
     with SessionLocal() as s:
-        assert s.scalar(select(func.count()).select_from(Category)) == len(data.CATEGORIES)
-        assert s.scalar(select(func.count()).select_from(AnalyticsConfiguration)) == len(data.ANALYTICS)
+        count = lambda model: s.scalar(select(func.count()).select_from(model))  # noqa: E731
+        assert count(Category) == len(data.CATEGORIES)
+        assert count(AnalyticsConfiguration) == len(data.ANALYTICS)
 
     # A first user signs up and has something to pick and something to look at.
     r = client.post(
@@ -47,7 +48,8 @@ def test_an_unseeded_database_gets_categories_and_dashboards(client):
     )
     assert r.status_code == 201, r.text
     h = {"Authorization": f"Bearer {r.json()['access_token']}"}
-    assert {c["key"] for c in client.get("/api/v1/categories", headers=h).json()} >= {"food", "other"}
+    keys = {c["key"] for c in client.get("/api/v1/categories", headers=h).json()}
+    assert keys >= {"food", "other"}
     cards = client.get("/api/v1/analytics/personal?period=week", headers=h).json()["cards"]
     assert [c["title"] for c in cards][0] == "Spending"
 
