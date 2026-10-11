@@ -429,7 +429,8 @@ class _Body extends ConsumerWidget {
           : 'Added by ${e.createdBy.id == me.id ? 'you' : firstName(e.createdBy.name)} · ${at(e.createdAt)}',
       for (final h in history)
         if (h.action != 'expense.create')
-          '${_verb(h.action)} by ${who(h.person)}${h.admin != null ? ' (admin: ${h.admin!.name})' : ''}'
+          '${_verb(h.action)} ${h.diff['via'] == 'tricount' ? 'in Tricount' : 'by ${who(h.person)}'}'
+              '${h.admin != null ? ' (admin: ${h.admin!.name})' : ''}'
               '${_changes(h.diff, e.currency)} · ${at(h.at)}',
     ];
     return Padding(
@@ -453,25 +454,27 @@ class _Body extends ConsumerWidget {
     _ => 'Changed',
   };
 
-  /// " · amount ₹1,650 → ₹1,800", " · category, split".
+  /// " · amount ₹1,650 → ₹1,800", " · category, split". Keys it doesn't know (like "via")
+  /// are left out rather than shown raw.
   String _changes(Map<String, Object> diff, String currency) {
-    if (diff.isEmpty) return '';
     final parts = <String>[];
     for (final MapEntry(:key, :value) in diff.entries) {
       if (key == 'amount_minor' && value is Map) {
         parts.add('amount ${money(value['from'] as int, currency)} → ${money(value['to'] as int, currency)}');
       } else {
-        parts.add(switch (key) {
+        final part = switch (key) {
+          'amount_minor' => 'amount',
           'category_id' || 'category' => 'category',
           'payer_id' => 'payer',
           'splits' || 'split_method' => 'split',
           'description' => 'description',
           'date' => 'date',
           'notes' => 'notes',
-          _ => key,
-        });
+          _ => null,
+        };
+        if (part != null) parts.add(part);
       }
     }
-    return ' · ${parts.toSet().join(', ')}';
+    return parts.isEmpty ? '' : ' · ${parts.toSet().join(', ')}';
   }
 }

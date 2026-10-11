@@ -387,6 +387,11 @@ def test_tricount_edits_and_deletes_arrive(client, seeded, tc):
     history = client.get(f"{API}/expenses/{big['id']}/history", headers=h).json()
     assert [x["action"] for x in history] == ["expense.create", "expense.update"]
     assert history[-1]["person"]["name"] == "Tricount"
+    # The same shape as an edit in the app, so the history line can say what changed.
+    assert history[-1]["diff"] == {
+        "description": {"from": "Tent", "to": "Big tent"},
+        "via": "tricount",
+    }
 
     tc.remove(reg, tent["id"])
     _sync(group_id)
