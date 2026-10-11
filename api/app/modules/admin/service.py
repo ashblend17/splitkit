@@ -524,11 +524,13 @@ def _summary(
         title = f"“{e.description}”" if e else "an expense"
         if what == "create" and e:
             return f"Added {title} · {format_minor(e.amount_minor, e.currency)}"
-        if what == "update" and set(diff) == {"category"}:
+        changed = set(diff) - {"via"}
+        if what == "update" and changed and changed <= {"category", "category_id"}:
             return f"Changed the category of {title}"
         if what == "delete":
             return f"Deleted {title} · restorable"
-        return f"{past.get(what, what.capitalize())} {title}"
+        in_tricount = " in Tricount" if diff.get("via") == "tricount" else ""
+        return f"{past.get(what, what.capitalize())} {title}{in_tricount}"
     if r.entity == "settlement":
         s = settlements.get(r.entity_id)
         if s is None:
@@ -541,16 +543,32 @@ def _summary(
     if r.entity == "group":
         group_name = f"“{group.name}”" if group else "a group"
         member = name(diff.get("user_id"))
+        archived = diff.get("archived")
+        archived = archived.get("to") if isinstance(archived, dict) else None
+        keep = {"splitkit": "kept the Splitkit version", "tricount": "kept the Tricount version"}
         return {
             "group.create": f"Created {group_name}",
-            "group.update": f"Edited {group_name}",
+            "group.update": f"Archived {group_name}"
+            if archived is True
+            else f"Unarchived {group_name}"
+            if archived is False
+            else f"Edited {group_name}",
+            "group.tricount_link": "Made a tricount from the group"
+            if diff.get("created")
+            else "Linked the group to a tricount",
+            "group.tricount_unlink": "Stopped syncing with Tricount",
+            "group.tricount_resolve": "Settled a Tricount sync conflict · "
+            + keep.get(diff.get("keep"), "picked a version"),
             "member.add": f"Added {member} to the group",
+            "member.invite": f"Invited {diff.get('email') or member}",
+            "member.link": f"Linked a member to {name(diff.get('user_id'))}'s account",
+            "member.promote": f"Made {member} the owner",
             "member.remove": f"Removed {member} from the group",
             "member.leave": "Left the group",
             "member.join": "Joined via invite link"
             if diff.get("via") == "invite_link"
             else "Joined the group",
-        }.get(r.action, r.action)
+        }.get(r.action, f"{verb.replace('_', ' ').capitalize()} {what.replace('_', ' ')}")
     if r.entity == "admin_session":
         who = name(r.acting_as_id)
         if what == "start":
@@ -574,6 +592,10 @@ def _summary(
     if r.entity == "user":
         if r.action == "user.create_placeholder":
             return f"Added {diff.get('name', 'someone')} without an account"
+        if r.action == "user.register":
+            return "Signed up"
+        if r.action == "user.claim":
+            return "Signed up and took over their invited places"
         return "Updated their profile"
     if r.entity == "layout":
         return "Reset an analytics layout" if what == "reset" else "Saved an analytics layout"

@@ -556,6 +556,8 @@ def test_a_new_tricount_from_a_group(client, seeded, tc):
     assert status["state"] == "ok", status
     [reg] = tc.registries.values()
     assert reg["title"] == "Flatmates" and reg["currency"] == "INR"
+    audit = client.get(f"{API}/admin/audit", headers=h).json()["items"]
+    assert audit[0]["summary"] == "Made a tricount from the group"
     assert sorted(m["name"] for m in reg["members"] if m["status"] == "ACTIVE") == [
         "Aman Verma",
         "John Doe",
