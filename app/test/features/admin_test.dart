@@ -61,6 +61,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(AdminDashboardPage), findsOneWidget);
     expect(find.text('View the app as a user'), findsOneWidget);
+
+    // The search box draws its own border; the theme's outline must not show inside it.
+    final field = tester.widget<InputDecorator>(
+      find.descendant(of: find.byType(AdminSearchField), matching: find.byType(InputDecorator)),
+    );
+    expect((field.decoration.enabledBorder, field.decoration.filled), (InputBorder.none, false));
   });
 
   testWidgets('non-admins have no Admin tab and are sent home from /admin', (tester) async {

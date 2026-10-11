@@ -91,11 +91,12 @@ def dashboard(session: Session) -> AdminDashboardOut:
             session, select(User.id).where(User.email.is_(None), User.role != "system")
         ),
         groups=_count(session, select(Group.id).where(Group.archived_at.is_(None))),
+        # Of the groups counted above (archived ones are left out of both).
         groups_active_week=_count(
             session,
-            select(distinct(ActivityEvent.group_id)).where(
-                ActivityEvent.at >= now - timedelta(days=7), ActivityEvent.group_id.is_not(None)
-            ),
+            select(distinct(ActivityEvent.group_id))
+            .join(Group, Group.id == ActivityEvent.group_id)
+            .where(ActivityEvent.at >= now - timedelta(days=7), Group.archived_at.is_(None)),
         ),
         expenses=_count(session, live_expenses),
         expenses_imported=_count(
