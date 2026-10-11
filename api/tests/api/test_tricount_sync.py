@@ -696,3 +696,31 @@ def test_the_worker_runs_as_its_own_process(client, seeded, tc):
         timeout=60,
     )
     assert probe.stdout.strip() == "ok", probe.stderr
+
+
+def test_a_placeholder_linked_to_an_account_is_the_same_tricount_person(client, seeded, tc):
+    from tests.api.conftest import register
+
+    h = login(client, "john")
+    group_id = _new_group(client, h)
+    reg = _trek(tc)
+    reg["members"].append(tc._member("Neha"))
+    tc.add_expense(reg, "Chai", "60.00", "Neha", {"Neha": "30.00", "John": "30.00"})
+    _link(client, h, group_id, reg)
+    members = client.get(f"{API}/groups/{group_id}", headers=h).json()["members"]
+    neha = next(m for m in members if m["user"]["name"] == "Neha")
+    # Neha signs up, and the placeholder is linked to her account.
+    register(client, "Neha Kapoor", "neha.k@example.com")
+    r = client.post(
+        f"{API}/groups/{group_id}/members/{neha['user']['id']}/link",
+        headers=h,
+        json={"email": "neha.k@example.com"},
+    )
+    assert r.status_code == 200, r.text
+    tc.writes.clear()
+    out = _sync(group_id)
+    # Not added to the tricount a second time, and nothing to send: she's the same person.
+    active = [m["name"] for m in reg["members"] if m["status"] == "ACTIVE"]
+    assert active.count("Neha") == 1 and "Neha Kapoor" not in active
+    assert (out.pushed, out.pulled, out.conflicts) == (0, 0, 0)
+    assert not [w for w in tc.writes if w[0] != "GET"]

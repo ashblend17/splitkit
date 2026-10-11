@@ -32,6 +32,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from app.core.db import SessionLocal
 from app.core.events import record
 from app.core.money import format_minor
+from app.modules.admin.models import AuditLog
 from app.modules.auth.deps import Actor
 from app.modules.categories.models import Category
 from app.modules.expenses import repository as expenses_repo
@@ -211,9 +212,10 @@ class _Pass:
     def _people(self) -> None:
         s, gid = self.s, self.group_id
         rows = list(s.scalars(select(TricountMember).where(TricountMember.group_id == gid)))
+        local = {u.id: (m, u) for m, u in groups_repo.active_members(s, gid)}
+        self._follow_merges(rows, local)
         self.member_of: dict[uuid.UUID, str] = {r.user_id: r.membership_uuid for r in rows}
         self.user_of: dict[str, uuid.UUID] = {r.membership_uuid: r.user_id for r in rows}
-        local = {u.id: (m, u) for m, u in groups_repo.active_members(s, gid)}
 
         for rm in self.remote.active_members():
             if rm.uuid in self.user_of:
@@ -242,6 +244,29 @@ class _Pass:
                 self._map_member(muid, user_id)
                 self.remote.members.append(wire.Member(muid, None, name))
         s.commit()
+
+    def _follow_merges(self, rows: list[TricountMember], local: dict) -> None:
+        """A placeholder from Tricount that was linked to an account (groups/linking.py) is
+        that account now: the Tricount member stays the same person, not a new one."""
+        mapped = {r.user_id for r in rows}
+        for r in rows:
+            if r.user_id in local:
+                continue
+            link = self.s.scalar(
+                select(AuditLog)
+                .where(
+                    AuditLog.action == "member.link",
+                    AuditLog.entity_id == self.group_id,
+                    AuditLog.diff_json["placeholder_id"].astext == str(r.user_id),
+                )
+                .order_by(AuditLog.at.desc())
+                .limit(1)
+            )
+            account = uuid.UUID(link.diff_json["user_id"]) if link else None
+            if account in local and account not in mapped:
+                mapped.discard(r.user_id)
+                r.user_id = account
+                mapped.add(account)
 
     def _map_member(self, membership_uuid: str, user_id: uuid.UUID) -> None:
         self.s.add(
