@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api.dart';
+import '../../core/layout/layout.dart';
 import '../../core/local/outbox.dart';
 import '../../core/local/providers.dart';
 import '../../core/local/writes.dart';
@@ -15,7 +16,19 @@ import '../tricount_sync/tricount_providers.dart';
 
 /// What every screen sits in (MaterialApp's builder): the view-as banner and frame, then the
 /// sync line. Above the navigator, so full-screen pages and sheets get the line too.
-Widget appChrome(BuildContext context, Widget? child) => ViewAsChrome(child: SyncBanner(child: child!));
+Widget appChrome(BuildContext context, Widget? child) {
+  final chrome = ViewAsChrome(child: SyncBanner(child: child!));
+  if (SkLayout.of(context) == SkLayout.compact) return chrome;
+  // Wider than a phone, a snackbar is a note at the bottom, not a bar across the whole window.
+  final theme = Theme.of(context);
+  return Theme(
+    data: theme.copyWith(snackBarTheme: theme.snackBarTheme.copyWith(width: snackBarWidth)),
+    child: chrome,
+  );
+}
+
+/// Snackbar width from tablet up.
+const snackBarWidth = 480.0;
 
 /// One line above every signed-in screen when something needs saying: offline (and how many
 /// changes are waiting), changes the server refused ("Needs your attention"), or entries

@@ -5,6 +5,7 @@ import 'package:splitkit/design_system/design_system.dart';
 import 'package:splitkit/features/common/common.dart';
 import 'package:splitkit/features/expenses/add_expense_page.dart';
 import 'package:splitkit/features/groups/group_detail_page.dart';
+import 'package:splitkit/features/shell/sync_banner.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';
@@ -42,6 +43,14 @@ void main() {
     await tester.tap(find.byType(AddSplitFab));
     await tester.pumpAndSettle();
     expect(tester.widget<AddExpensePage>(find.byType(AddExpensePage)).groupId, be.goa['id']);
+  });
+
+  testWidgets('from tablet up a snackbar is a note, not a bar across the window', (tester) async {
+    await pumpApp(tester, size: desktop);
+    showMessage(tester.element(find.byType(WebSidebar)), 'Flatmates is back');
+    await tester.pumpAndSettle();
+    final note = find.descendant(of: find.byType(SnackBar), matching: find.byType(Material)).first;
+    expect(tester.getSize(note).width, snackBarWidth);
   });
 
   testWidgets('tablet: rail, balance and friends beside the activity', (tester) async {
