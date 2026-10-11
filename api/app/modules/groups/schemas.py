@@ -55,15 +55,18 @@ class GroupOut(Schema):
 
 
 class AddMemberIn(Schema):
-    """Add an existing account by email, or a placeholder person by name (no account)."""
+    """Add an existing account by email, or a placeholder person by name (no account).
+
+    With both: the account if that email has one, otherwise a placeholder with this name,
+    invited by the email (signing up with it takes the placeholder's place)."""
 
     email: EmailStr | None = None
     name: Text(80) | None = None
 
     @model_validator(mode="after")
-    def _exactly_one(self):
-        if (self.email is None) == (self.name is None):
-            raise ValueError("Give either an email or a name")
+    def _one_at_least(self):
+        if self.email is None and self.name is None:
+            raise ValueError("Give an email or a name")
         return self
 
 

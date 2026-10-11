@@ -137,12 +137,14 @@ def update_group(
 def add_member(session: Session, actor: Actor, group_id: uuid.UUID, body: AddMemberIn) -> GroupOut:
     actor.require_write()
     require_member(session, group_id, actor.user_id)
-    if body.email is not None:
-        user = users.get_by_email(session, body.email)
-        if user is None:
-            raise ApiError(404, "no_account", "There's no Splitkit account with that email yet")
+    invite = None
+    user = users.get_by_email(session, body.email) if body.email is not None else None
+    if user is not None:
         placeholder_name = None
+    elif body.name is None:
+        raise ApiError(404, "no_account", "There's no Splitkit account with that email yet")
     else:
+        invite = body.email.lower() if body.email else None
         user = User(name=body.name.strip())
         session.add(user)
         session.flush()
@@ -156,7 +158,12 @@ def add_member(session: Session, actor: Actor, group_id: uuid.UUID, body: AddMem
         existing.left_at = None  # rejoining keeps their history
         member = existing
     else:
-        member = GroupMember(group_id=group_id, user_id=user.id, placeholder_name=placeholder_name)
+        member = GroupMember(
+            group_id=group_id,
+            user_id=user.id,
+            placeholder_name=placeholder_name,
+            invite_email=invite,
+        )
         session.add(member)
     record(
         session,
@@ -165,7 +172,7 @@ def add_member(session: Session, actor: Actor, group_id: uuid.UUID, body: AddMem
         "group",
         group_id,
         group_id,
-        {"user_id": str(user.id)},
+        {"user_id": str(user.id), **({"invite_email": invite} if invite else {})},
         obj=member,
     )
     session.commit()

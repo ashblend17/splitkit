@@ -61,6 +61,33 @@ void main() {
     expect((method, body['name'], body['currency']), ('POST', 'NYC conference', 'USD'));
   });
 
+  testWidgets('an email without an account can be invited by name', (tester) async {
+    final be = FakeBackend();
+    final path = '/api/v1/groups/${be.goa['id']}/members';
+    be.postResponses[path] = (404, {
+      'error': {'code': 'no_account', 'message': "There's no Splitkit account with that email yet"},
+    });
+    await pumpApp(tester, backend: be, size: const Size(1440, 900), location: '/groups/${be.goa['id']}');
+    await tester.tap(find.text('Invite'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, 'neha.k@example.com');
+    await tester.tap(find.text('Add to group'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining("There's no Splitkit account with that email yet. Add their name"), findsOneWidget);
+    expect(find.text('Add and invite'), findsOneWidget);
+
+    await tester.tap(find.text('Add and invite'));
+    await tester.pumpAndSettle();
+    expect(find.text('Enter their name'), findsOneWidget);
+
+    be.postResponses[path] = (201, be.goa);
+    await tester.enterText(find.byType(TextField).last, 'Neha');
+    await tester.tap(find.text('Add and invite'));
+    await tester.pumpAndSettle();
+    expect(be.writes.last.$3, {'email': 'neha.k@example.com', 'name': 'Neha'});
+    expect(find.text('Add and invite'), findsNothing, reason: 'the sheet closed');
+  });
+
   testWidgets('an unknown address gets a friendly page, not a router error', (tester) async {
     await pumpApp(tester, location: '/nowhere/at/all');
     expect(find.text("This page doesn't exist"), findsOneWidget);

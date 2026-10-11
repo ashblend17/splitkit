@@ -3,7 +3,7 @@ that signing up claims. Nobody's balance may move."""
 
 from app import validate
 from app.core.db import SessionLocal
-from tests.api.conftest import login, register, uid
+from tests.api.conftest import gid, login, register, uid
 
 API = "/api/v1"
 
@@ -198,3 +198,28 @@ def test_link_refusals(client, seeded):
     assert link(client, h, group, sam, "not an email").status_code == 422
     outsider = login(client, "rahul")
     assert link(client, outsider, group, sam, "x@example.com").status_code == 404
+
+
+def test_adding_by_email_and_name_invites_someone_without_an_account(client, seeded):
+    h = login(client, "john")
+    url = f"{API}/groups/{gid('goa')}/members"
+    # Email alone: there's no one to add.
+    r = client.post(url, headers=h, json={"email": "neha.k@example.com"})
+    assert r.status_code == 404 and r.json()["error"]["code"] == "no_account"
+    # With a name: a placeholder, invited by that email.
+    r = client.post(url, headers=h, json={"email": "Neha.K@example.com", "name": "Neha"})
+    assert r.status_code == 201, r.text
+    neha = next(m for m in r.json()["members"] if m["user"]["name"] == "Neha")
+    assert neha["user"]["is_placeholder"] and neha["invite_email"] == "neha.k@example.com"
+    # Signing up with the email takes the placeholder's place.
+    neha_h, account = register(client, "Neha Kapoor", "neha.k@example.com")
+    assert account["id"] == neha["user"]["id"]
+    assert client.get(f"{API}/groups/{gid('goa')}", headers=neha_h).status_code == 200
+    # An email that has an account adds the account; the name is ignored.
+    r = client.post(
+        f"{API}/groups/{gid('flat')}/members",
+        headers=h,
+        json={"email": "rahul.sharma@example.com", "name": "Someone else"},
+    )
+    assert r.status_code == 201
+    assert "Rahul Sharma" in [m["user"]["name"] for m in r.json()["members"]]
