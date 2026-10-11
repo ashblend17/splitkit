@@ -85,21 +85,32 @@ def trend_label(period: Period) -> str:
 MAX_MONTH_BARS = 24
 
 
+def bucket_kind(start: date, end: date) -> Literal["day", "week", "month", "year"]:
+    """What one bar of adaptive_buckets covers for this span."""
+    days = (end - start).days + 1
+    if days <= 14:
+        return "day"
+    if days <= 92:
+        return "week"
+    months = (end.year - start.year) * 12 + end.month - start.month + 1
+    return "month" if months <= MAX_MONTH_BARS else "year"
+
+
 def adaptive_buckets(start: date, end: date) -> list[Span]:
     """Buckets for a group's whole history: days up to 2 weeks, weeks up to ~3 months,
     months up to two years, then whole years (so the chart never gets more than 24 bars)."""
     days = (end - start).days + 1
-    if days <= 14:
+    kind = bucket_kind(start, end)
+    if kind == "day":
         return [Span(d, d, f"{d.day}") for d in (start + timedelta(days=i) for i in range(days))]
-    if days <= 92:
+    if kind == "week":
         spans, s = [], start
         while s <= end:
             e = min(s + timedelta(days=6), end)
             spans.append(Span(s, e, f"{s.day} {s:%b}"))
             s = e + timedelta(days=1)
         return spans
-    months = (end.year - start.year) * 12 + end.month - start.month + 1
-    if months > MAX_MONTH_BARS:
+    if kind == "year":
         return [
             Span(max(date(y, 1, 1), start), min(date(y, 12, 31), end), str(y))
             for y in range(start.year, end.year + 1)

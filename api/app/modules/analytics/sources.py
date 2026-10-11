@@ -12,6 +12,7 @@ from app.modules.analytics.periods import (
     Period,
     Span,
     adaptive_buckets,
+    bucket_kind,
     current,
     previous,
     range_label,
@@ -142,10 +143,18 @@ def group_daily(ctx: Context) -> CardData:
     peak = max(bars, key=lambda b: b.value_minor)
     peak.highlight = True
     peak_span = buckets[bars.index(peak)]
-    when = range_label(peak_span.start, peak_span.end)
+    # "on 12 Sep", "in the week of 29 Jul", "in July", "in 2025": as long as one bar.
+    kind = bucket_kind(span.start, span.end)
+    first = peak_span.start
+    when = {
+        "day": f"on {first.day} {first:%b}",
+        "week": f"in the week of {first.day} {first:%b}",
+        "month": f"in {first:%B}" + (f" {first.year}" if span.start.year != span.end.year else ""),
+        "year": f"in {first.year}",
+    }[kind]
     return CardData(
         period_label=span.label,
-        headline=f"Peak {format_minor(peak.value_minor, ctx.currency)} on {when}",
+        headline=f"Peak {format_minor(peak.value_minor, ctx.currency)} {when}",
         bars=bars,
     )
 
