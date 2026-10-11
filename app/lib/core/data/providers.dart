@@ -62,11 +62,27 @@ final groupBalancesProvider = FutureProvider.family<GroupBalancesOut, String>(
   (ref, id) => local(ref, (l) => GroupBalancesOut.fromJson(l.groupBalances(id))),
 );
 
+/// Rows a feed list shows at first; "Show older" adds as many again.
+const feedPage = 100;
+
+/// How many rows each feed list shows, by list: `home`, `activity`, `group:<id>`, `trash:<id>`.
+final feedLimitProvider = NotifierProvider.family<FeedLimit, int, String>(FeedLimit.new);
+
+class FeedLimit extends Notifier<int> {
+  FeedLimit(this.list);
+  final String list;
+
+  @override
+  int build() => feedPage;
+
+  void more() => state += feedPage;
+}
+
 /// Activity, newest first. `groupId` null means every group; `deleted` lists the trash.
-typedef FeedQuery = ({String? groupId, bool deleted});
+typedef FeedQuery = ({String? groupId, bool deleted, int limit});
 
 final feedProvider = FutureProvider.family<List<FeedItem>, FeedQuery>(
-  (ref, q) => local(ref, (l) => FeedItem.listFromJson(l.feed(groupId: q.groupId, deleted: q.deleted, limit: 100))),
+  (ref, q) => local(ref, (l) => FeedItem.listFromJson(l.feed(groupId: q.groupId, deleted: q.deleted, limit: q.limit))),
 );
 
 /// The desktop activity table: [FeedQuery] plus the toolbar filters. `search` is trimmed;
@@ -78,6 +94,7 @@ typedef ActivityQuery = ({
   DateTime? end,
   bool unsettled,
   String search,
+  int limit,
 });
 
 final activityProvider = FutureProvider.family<List<FeedItem>, ActivityQuery>(
@@ -93,7 +110,7 @@ final activityProvider = FutureProvider.family<List<FeedItem>, ActivityQuery>(
           openOnly: q.unsettled,
           search: q.search.isEmpty ? null : q.search,
         ),
-        limit: 100,
+        limit: q.limit,
       ),
     ),
   ),

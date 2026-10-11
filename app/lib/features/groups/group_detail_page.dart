@@ -221,7 +221,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
   }
 
   Widget _expenseTable(GroupOut g) {
-    final feed = ref.watch(feedProvider((groupId: g.id, deleted: false)));
+    final feed = ref.watch(feedProvider((groupId: g.id, deleted: false, limit: ref.watch(feedLimitProvider('group:${g.id}')))));
     return AsyncBody(
       value: feed,
       onRetry: () => ref.invalidate(feedProvider),
@@ -235,7 +235,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                 onAction: () => context.push('/expenses/new?group=${g.id}'),
               ),
             )
-          : ActivityTable(items: items, onHome: false),
+          : ActivityTable(items: items, onHome: false, footer: ShowOlder(list: 'group:${g.id}', shown: items.length)),
     );
   }
 
@@ -453,7 +453,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
   }
 
   Widget _expenses(GroupOut g) {
-    final feed = ref.watch(feedProvider((groupId: g.id, deleted: false)));
+    final feed = ref.watch(feedProvider((groupId: g.id, deleted: false, limit: ref.watch(feedLimitProvider('group:${g.id}')))));
     return AsyncBody(
       value: feed,
       onRetry: () => ref.invalidate(feedProvider),
@@ -471,7 +471,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
               actionLabel: 'Add split',
               onAction: () => context.push('/expenses/new?group=${g.id}'),
             )
-          : FeedList(items: items, onHome: false, byDay: false),
+          : Column(
+              children: [
+                FeedList(items: items, onHome: false, byDay: false),
+                ShowOlder(list: 'group:${g.id}', shown: items.length),
+              ],
+            ),
     );
   }
 

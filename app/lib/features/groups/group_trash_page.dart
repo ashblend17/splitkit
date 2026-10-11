@@ -10,6 +10,7 @@ import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import '../expenses/feed_list.dart';
 
 /// Deleted expenses and payments in a group, each restorable.
 class GroupTrashPage extends ConsumerWidget {
@@ -19,7 +20,7 @@ class GroupTrashPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
-    final items = ref.watch(feedProvider((groupId: groupId, deleted: true)));
+    final items = ref.watch(feedProvider((groupId: groupId, deleted: true, limit: ref.watch(feedLimitProvider('trash:$groupId')))));
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -64,6 +65,7 @@ class GroupTrashPage extends ConsumerWidget {
                         : Column(
                             children: [
                               for (final i in list) ...[_TrashRow(item: i, meId: me.id), const SizedBox(height: 8)],
+                              ShowOlder(list: 'trash:$groupId', shown: list.length),
                             ],
                           ),
                   ),

@@ -11,6 +11,32 @@ import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
 
+/// "Show older" under a feed list that may have more than it shows ([shown] reached the
+/// list's limit).
+class ShowOlder extends ConsumerWidget {
+  const ShowOlder({super.key, required this.list, required this.shown});
+
+  /// The [feedLimitProvider] key.
+  final String list;
+  final int shown;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (shown < ref.watch(feedLimitProvider(list))) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: SkButton(
+          'Show older',
+          variant: SkButtonVariant.secondary,
+          size: SkButtonSize.small,
+          onPressed: () => ref.read(feedLimitProvider(list).notifier).more(),
+        ),
+      ),
+    );
+  }
+}
+
 /// Transaction cards for feed items. [byDay] groups them under "TODAY" / "YESTERDAY" headers
 /// (Home); otherwise one flat list with the day in each card (group detail).
 class FeedList extends ConsumerWidget {

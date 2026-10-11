@@ -40,9 +40,17 @@ class ActivityFilters {
 
   bool get narrowed => groupId != null || category != null || period != ActivityPeriod.any || unsettled;
 
-  ActivityQuery query(DateTime today) {
+  ActivityQuery query(DateTime today, int limit) {
     final (start, end) = period.range(today);
-    return (groupId: groupId, category: category, start: start, end: end, unsettled: unsettled, search: search.trim());
+    return (
+      groupId: groupId,
+      category: category,
+      start: start,
+      end: end,
+      unsettled: unsettled,
+      search: search.trim(),
+      limit: limit,
+    );
   }
 
   ActivityFilters withGroup(String? id) =>

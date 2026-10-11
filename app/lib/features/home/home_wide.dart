@@ -142,7 +142,7 @@ class HomeTabletBody extends ConsumerWidget {
     final balances = ref.watch(overallBalancesProvider);
     final groups = ref.watch(groupsProvider);
     final groupId = ref.watch(activityFiltersProvider.select((f) => f.groupId));
-    final feed = ref.watch(feedProvider((groupId: groupId, deleted: false)));
+    final feed = ref.watch(feedProvider((groupId: groupId, deleted: false, limit: ref.watch(feedLimitProvider('home')))));
 
     final balancesColumn = AsyncBody(
       value: balances,
@@ -206,7 +206,12 @@ class HomeTabletBody extends ConsumerWidget {
           onRetry: () => ref.invalidate(feedProvider),
           builder: (items) => items.isEmpty
               ? homeEmpty(context, groups.value ?? const [])
-              : FeedList(items: items, onHome: true),
+              : Column(
+                  children: [
+                    FeedList(items: items, onHome: true),
+                    ShowOlder(list: 'home', shown: items.length),
+                  ],
+                ),
         ),
       ],
     );
@@ -472,7 +477,7 @@ class _ActivityCard extends ConsumerWidget {
     final notifier = ref.read(activityFiltersProvider.notifier);
     final groups = ref.watch(groupsProvider);
     final categories = ref.watch(groupCategoriesProvider);
-    final activity = ref.watch(activityProvider(filters.query(appClock.now())));
+    final activity = ref.watch(activityProvider(filters.query(appClock.now(), ref.watch(feedLimitProvider('activity')))));
     final categoryLabel = filters.category == null
         ? 'Any category'
         : categories.value?.where((c) => c.key == filters.category).firstOrNull?.label ?? 'Category';
@@ -537,7 +542,13 @@ class _ActivityCard extends ConsumerWidget {
               value: activity,
               onRetry: () => ref.invalidate(activityProvider),
               builder: (items) {
-                if (items.isNotEmpty) return ActivityTable(items: items, onHome: true);
+                if (items.isNotEmpty) {
+                  return ActivityTable(
+                    items: items,
+                    onHome: true,
+                    footer: ShowOlder(list: 'activity', shown: items.length),
+                  );
+                }
                 final Widget empty = filters.narrowed || filters.search.trim().isNotEmpty
                     ? EmptyState(
                         glyph: 'search',
