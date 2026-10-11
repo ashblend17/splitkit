@@ -583,6 +583,8 @@ def test_every_audit_line_is_words(client, seeded):
         f"{API}/expenses/{e['id']}", headers=h, json=expense_body(category_id=cat("travel"))
     )
     assert r.status_code == 200, r.text
+    renamed = expense_body(description="Parasailing x2", amount_minor=600000)
+    assert client.put(f"{API}/expenses/{e['id']}", headers=h, json=renamed).status_code == 200
 
     items = client.get(f"{API}/admin/audit?limit=200", headers=h).json()["items"]
     lines = {x["summary"] for x in items}
@@ -591,7 +593,9 @@ def test_every_audit_line_is_words(client, seeded):
         "Archived “Flatmates”",
         "Unarchived “Flatmates”",
         "Added Meera without an account",
-        "Changed the category of “Parasailing”",
+        "Changed the category of “Parasailing x2”",
+        "Added “Parasailing” · ₹3,000",  # as it was added, not as it is now
+        "Edited “Parasailing x2”",
     } <= lines
     raw = [x["summary"] for x in items if re.search(r"[a-z]_[a-z]|^[a-z]+\.[a-z]+$", x["summary"])]
     assert raw == []

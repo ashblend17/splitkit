@@ -523,14 +523,19 @@ def _summary(
     if r.entity == "expense":
         e = expenses.get(r.entity_id)
         title = f"“{e.description}”" if e else "an expense"
+        in_tricount = " in Tricount" if diff.get("via") == "tricount" else ""
         if what == "create" and e:
-            return f"Added {title} · {format_minor(e.amount_minor, e.currency)}"
+            # As it was added: it may have been renamed or changed since.
+            if isinstance(diff.get("description"), str):
+                title = f"“{diff['description']}”"
+            amount = diff.get("amount_minor")
+            amount = amount if isinstance(amount, int) else e.amount_minor
+            return f"Added {title}{in_tricount} · {format_minor(amount, e.currency)}"
         changed = set(diff) - {"via"}
         if what == "update" and changed and changed <= {"category", "category_id"}:
             return f"Changed the category of {title}"
         if what == "delete":
-            return f"Deleted {title} · restorable"
-        in_tricount = " in Tricount" if diff.get("via") == "tricount" else ""
+            return f"Deleted {title}{in_tricount} · restorable"
         return f"{past.get(what, what.capitalize())} {title}{in_tricount}"
     if r.entity == "settlement":
         s = settlements.get(r.entity_id)
