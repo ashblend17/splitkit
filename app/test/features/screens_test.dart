@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/data/providers.dart';
 import 'package:splitkit/design_system/design_system.dart';
 
 import '../fake_backend.dart';
@@ -160,6 +162,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Settle up with Aman'), findsOneWidget);
     expect(find.text('Full balance ₹1,170'), findsOneWidget);
+  });
+
+  testWidgets('settling with groups that go both ways says which way each goes', (tester) async {
+    final be = FakeBackend();
+    final plan = Map<String, dynamic>.from(fixture('settle_up_plan') as Map);
+    final groups = [for (final g in plan['groups'] as List) Map<String, dynamic>.from(g as Map)];
+    // Still ₹1,170 in all, but in Goa Trip you owe Aman ₹50.
+    groups[0]['net_minor'] = 122000;
+    groups[1]['net_minor'] = -5000;
+    final mixed = SettleUpPlanOut.fromJson({...plan, 'groups': groups})!;
+    await pumpApp(tester, backend: be, overrides: [settleUpPlanProvider.overrideWith((ref, key) async => mixed)]);
+    await tester.dragUntilVisible(find.text('Aman'), find.byType(SingleChildScrollView).first, const Offset(-200, 0));
+    await tester.tap(find.text('Aman'));
+    await tester.pumpAndSettle();
+    expect(find.text('Recorded in 2 groups: Aman pays you ₹1,220 in Flatmates · you pay ₹50 in Goa Trip'), findsOneWidget);
   });
 
   testWidgets('settle up with a friend across groups', (tester) async {
