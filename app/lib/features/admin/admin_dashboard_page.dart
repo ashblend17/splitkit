@@ -287,10 +287,11 @@ class _Tab extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
+          // No alignment: a Container with one fills the width it's given, and in the
+          // header's Wrap that put every tab on its own line.
           child: Container(
             height: 32,
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

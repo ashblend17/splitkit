@@ -85,6 +85,11 @@ void main() {
     expect(find.textContaining('PostgreSQL 16'), findsOneWidget);
     // The view-as picker lists people who can be viewed as: not the admin.
     expect(find.text('Open as Aman'), findsOneWidget);
+    // The activity tabs sit side by side, not one per line.
+    final all = tester.getCenter(find.text('All').first);
+    final imports = tester.getCenter(find.text('Imports'));
+    expect(imports.dy, all.dy);
+    expect(imports.dx, greaterThan(all.dx));
   });
 
   testWidgets('activity tabs ask the audit log for that kind', (tester) async {
