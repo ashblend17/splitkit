@@ -132,6 +132,15 @@ void main() {
     }
   });
 
+  testWidgets('BalanceCard: nothing either way is grey, and huge amounts stay on one line', (tester) async {
+    setViewport(tester, const Size(360, 800));
+    await tester.pumpWidget(wrap(const BalanceCard(netMinor: -999999999999, youOweMinor: 999999999999, youAreOwedMinor: 0)));
+    Color colorOf(String text) => tester.widget<Text>(find.text(text).last).style!.color!; // the tile
+    expect(colorOf('₹0'), SkColors.ink2);
+    expect(colorOf('₹9,99,99,99,999.99'), SkColors.owe);
+    expect(tester.getSize(find.text('₹9,99,99,99,999.99').last).height, lessThan(40), reason: 'one line');
+  });
+
   testWidgets('AmountInput groups digits the Indian way and reports minor units', (tester) async {
     int? value;
     await tester.pumpWidget(wrap(AmountInput(onChanged: (m) => value = m)));
