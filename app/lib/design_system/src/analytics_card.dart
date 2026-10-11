@@ -207,6 +207,11 @@ class BreakdownBars extends StatelessWidget {
   Widget build(BuildContext context) {
     final max = rows.fold(0, (m, r) => r.value > m ? r.value : m);
     final valueStyle = SkText.body(13, 600);
+    final labelStyle = SkText.body(13, 600);
+    // Labels get what the longest needs ("Uncategorised"), within reason; longer ones are cut.
+    final labelWidth = rows
+        .fold(84.0, (w, r) => math.max(w, _textWidth(context, r.label, labelStyle).ceilToDouble() + 1))
+        .clamp(84.0, 120.0);
     // One width for every amount (so the bars stay comparable), wide enough for the longest.
     final valueWidth = rows.fold(
       72.0,
@@ -223,8 +228,8 @@ class BreakdownBars extends StatelessWidget {
               child: Row(
                 children: [
                   SizedBox(
-                    width: 84,
-                    child: Text(r.label, style: SkText.body(13, 600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    width: labelWidth,
+                    child: Text(r.label, style: labelStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
