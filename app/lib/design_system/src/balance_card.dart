@@ -88,6 +88,9 @@ class BalanceCard extends StatelessWidget {
   Widget _tiles() {
     final owe = formatMinor(youOweMinor, currency: currency);
     final owed = formatMinor(youAreOwedMinor, currency: currency);
+    // Nothing either way is grey, not red or green.
+    final oweColor = youOweMinor == 0 ? SkColors.ink2 : SkColors.owe;
+    final owedColor = youAreOwedMinor == 0 ? SkColors.ink2 : SkColors.owed;
     switch (layout) {
       case BalanceCardLayout.hero:
       case BalanceCardLayout.compact:
@@ -101,16 +104,20 @@ class BalanceCard extends StatelessWidget {
               children: [
                 Text(label, style: SkText.body(hero ? 12 : 11, 600, color: labelColor)),
                 SizedBox(height: hero ? 2 : 0),
-                Text(value, style: SkText.display(hero ? 20 : 16, 700, color: valueColor)),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(value, maxLines: 1, style: SkText.display(hero ? 20 : 16, 700, color: valueColor)),
+                ),
               ],
             ),
           ),
         );
         return Row(
           children: [
-            tile('You owe', owe, SkColors.oweSoft, SkColors.oweInk, SkColors.owe),
+            tile('You owe', owe, SkColors.oweSoft, SkColors.oweInk, oweColor),
             SizedBox(width: hero ? 8 : 6),
-            tile(hero ? 'You are owed' : 'Owed', owed, SkColors.owedSoft, SkColors.owedInk, SkColors.owed),
+            tile(hero ? 'You are owed' : 'Owed', owed, SkColors.owedSoft, SkColors.owedInk, owedColor),
           ],
         );
       case BalanceCardLayout.stacked:
@@ -128,9 +135,9 @@ class BalanceCard extends StatelessWidget {
         );
         return Column(
           children: [
-            row('You owe', owe, SkColors.oweSoft, SkColors.oweInk, SkColors.owe),
+            row('You owe', owe, SkColors.oweSoft, SkColors.oweInk, oweColor),
             const SizedBox(height: 6),
-            row('You are owed', owed, SkColors.owedSoft, SkColors.owedInk, SkColors.owed),
+            row('You are owed', owed, SkColors.owedSoft, SkColors.owedInk, owedColor),
           ],
         );
     }
