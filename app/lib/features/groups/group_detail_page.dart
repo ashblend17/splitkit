@@ -690,13 +690,19 @@ class _AddMemberForm extends ConsumerStatefulWidget {
 
 class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
   final _text = TextEditingController();
+  final _name = TextEditingController();
   bool _byEmail = true;
+
+  /// The email has no account yet: ask for a name and invite them instead.
+  bool _invite = false;
   String? _error;
+  String? _nameError;
   bool _busy = false;
 
   @override
   void dispose() {
     _text.dispose();
+    _name.dispose();
     super.dispose();
   }
 
@@ -706,19 +712,35 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
       setState(() => _error = _byEmail ? 'Enter their email' : 'Enter their name');
       return;
     }
+    final name = _name.text.trim();
+    if (_byEmail && _invite && name.isEmpty) {
+      setState(() => _nameError = 'Enter their name');
+      return;
+    }
     setState(() => _busy = true);
     try {
       await ref
           .read(apiProvider)
           .groups
-          .addMember(widget.groupId, _byEmail ? AddMemberIn(email: value) : AddMemberIn(name: value));
+          .addMember(
+            widget.groupId,
+            !_byEmail
+                ? AddMemberIn(name: value)
+                : _invite
+                ? AddMemberIn(email: value, name: name)
+                : AddMemberIn(email: value),
+          );
       refreshLedger(ref.invalidate);
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
         setState(() {
           _busy = false;
-          _error = apiErrorMessage(e);
+          if (_byEmail && !_invite && apiErrorCode(e) == 'no_account') {
+            _invite = true; // ask who they are, then invite the email
+          } else {
+            _error = apiErrorMessage(e);
+          }
         });
       }
     }
@@ -747,20 +769,50 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
             keyboardType: _byEmail ? TextInputType.emailAddress : TextInputType.name,
             errorText: _error,
             onChanged: (_) {
-              if (_error != null) setState(() => _error = null);
+              if (_error != null || _invite) {
+                setState(() {
+                  _error = null;
+                  _invite = false; // a different email may have an account
+                });
+              }
             },
             onSubmitted: (_) => _submit(),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _byEmail
-                ? 'They see the group next time they open Splitkit.'
-                : 'They can be part of splits now and link an account later.',
-            style: SkText.body(13, 400, color: SkColors.ink2),
-          ),
+          if (_byEmail && _invite) ...[
+            const SizedBox(height: 10),
+            Text(
+              "There's no Splitkit account with that email yet. Add their name: they can be part of "
+              'splits now, and join the group when they sign up with this email.',
+              style: SkText.body(13, 400, color: SkColors.ink2, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            SkTextField(
+              label: 'Their name',
+              controller: _name,
+              autofocus: true,
+              keyboardType: TextInputType.name,
+              errorText: _nameError,
+              onChanged: (_) {
+                if (_nameError != null) setState(() => _nameError = null);
+              },
+              onSubmitted: (_) => _submit(),
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            Text(
+              _byEmail
+                  ? 'They see the group next time they open Splitkit.'
+                  : 'They can be part of splits now and link an account later.',
+              style: SkText.body(13, 400, color: SkColors.ink2),
+            ),
+          ],
           const SizedBox(height: 18),
           SkButton(
-            _busy ? 'Adding…' : 'Add to group',
+            _busy
+                ? 'Adding…'
+                : _byEmail && _invite
+                ? 'Add and invite'
+                : 'Add to group',
             onPressed: _busy ? null : _submit,
             size: SkButtonSize.large,
             expand: true,

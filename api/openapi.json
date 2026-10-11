@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AddMemberIn": {
-        "description": "Add an existing account by email, or a placeholder person by name (no account).",
+        "description": "Add an existing account by email, or a placeholder person by name (no account).\n\nWith both: the account if that email has one, otherwise a placeholder with this name,\ninvited by the email (signing up with it takes the placeholder's place).",
         "properties": {
           "email": {
             "anyOf": [

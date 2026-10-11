@@ -54,6 +54,19 @@ String apiErrorMessage(Object error) {
   return 'Something went wrong. Please try again.';
 }
 
+/// The `code` of an API error ("no_account", "version_conflict"…), or null.
+String? apiErrorCode(Object error) {
+  if (error is ApiException && error.message != null) {
+    try {
+      final body = jsonDecode(error.message!);
+      if (body is Map && body['error'] is Map) return (body['error'] as Map)['code'] as String?;
+    } on FormatException {
+      return null;
+    }
+  }
+  return null;
+}
+
 /// A calendar date for the API, in bodies and query strings alike. The generated client sends
 /// `date.toUtc()`, which turns local midnight in India into the previous day, so API dates
 /// must be built in UTC (the API accepts a timestamp at exactly midnight UTC as a date).
