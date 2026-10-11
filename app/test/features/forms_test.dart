@@ -110,6 +110,20 @@ void main() {
     expect(find.text('Added Meera to Goa Trip'), findsOneWidget);
   });
 
+  testWidgets("a group or expense that isn't there offers a way home, not a retry", (tester) async {
+    await pumpApp(tester, location: '/expenses/00000000-0000-4000-8000-000000000000');
+    expect(find.text("This isn't here"), findsOneWidget);
+    expect(find.text('Try again'), findsNothing);
+    expect(find.bySemanticsLabel('Edit expense'), findsNothing);
+    expect(find.bySemanticsLabel('Delete expense'), findsNothing);
+
+    await pumpApp(tester, location: '/groups/no-such-group');
+    expect(find.textContaining('Group not found. It may have been deleted'), findsOneWidget);
+    await tester.tap(find.text('Go home'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Hi, '), findsOneWidget);
+  });
+
   testWidgets('an unknown address gets a friendly page, not a router error', (tester) async {
     await pumpApp(tester, location: '/nowhere/at/all');
     expect(find.text("This page doesn't exist"), findsOneWidget);
