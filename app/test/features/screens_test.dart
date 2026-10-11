@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:splitkit/design_system/design_system.dart';
 
 import '../fake_backend.dart';
@@ -74,6 +75,22 @@ void main() {
     expect(find.text('Owes'), findsNWidgets(3));
     expect(find.text('Paid'), findsOneWidget);
     expect(find.text('Settle up'), findsOneWidget);
+  });
+
+  testWidgets('a deleted expense says what it was, with nothing to settle', (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/expenses/${be.dinnerId}');
+    final router = tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig as GoRouter;
+    await tester.tap(find.bySemanticsLabel('Delete expense'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete').last);
+    await tester.pumpAndSettle();
+    router.go('/expenses/${be.dinnerId}');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Deleted.'), findsOneWidget);
+    expect(find.text('You owed Rahul'), findsOneWidget);
+    expect(find.text('Settle up'), findsNothing);
+    expect(find.text('Owes'), findsNothing);
   });
 
   testWidgets('history says what changed in words, and Tricount edits say so', (tester) async {
