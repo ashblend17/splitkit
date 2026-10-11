@@ -76,6 +76,38 @@ void main() {
     expect(find.text('Settle up'), findsOneWidget);
   });
 
+  testWidgets('history says what changed in words, and Tricount edits say so', (tester) async {
+    final be = FakeBackend();
+    const tricount = {'id': '1a352678-7c38-5085-8131-bbcad6d0ae9d', 'name': 'Tricount', 'avatar_url': null, 'is_placeholder': true};
+    be.get['/api/v1/expenses/${be.dinnerId}/history'] = [
+      {
+        'action': 'expense.update',
+        'person': tricount,
+        'admin': null,
+        'at': '2026-09-24T10:00:00Z',
+        'diff': {
+          'amount_minor': {'from': 165000, 'to': 180000},
+          'description': {'from': 'Dinner', 'to': 'Dinner at Thalassa'},
+          'via': 'tricount',
+        },
+      },
+      {
+        // Older servers sent the new amount on its own.
+        'action': 'expense.update',
+        'person': tricount,
+        'admin': null,
+        'at': '2026-09-24T11:00:00Z',
+        'diff': {'via': 'tricount', 'amount_minor': 180000},
+      },
+    ];
+    await pumpApp(tester, backend: be, location: '/expenses/${be.dinnerId}');
+    await tester.scrollUntilVisible(find.textContaining('Edited in Tricount').first, 300, scrollable: find.byType(Scrollable).first);
+    expect(find.textContaining('Edited in Tricount · amount ₹1,650 → ₹1,800, description'), findsOneWidget);
+    expect(find.textContaining('Edited in Tricount · amount ·'), findsOneWidget);
+    expect(find.textContaining('via'), findsNothing);
+    expect(find.textContaining('amount_minor'), findsNothing);
+  });
+
   testWidgets('settling up uses the balance currency, not the profile one', (tester) async {
     final be = FakeBackend();
     final me = ((fixture('login') as Map)['user'] as Map)['id'];

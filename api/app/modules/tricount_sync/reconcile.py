@@ -36,6 +36,7 @@ from app.modules.admin.models import AuditLog
 from app.modules.auth.deps import Actor
 from app.modules.categories.models import Category
 from app.modules.expenses import repository as expenses_repo
+from app.modules.expenses import service as expenses
 from app.modules.expenses.models import Expense, ExpenseSplit
 from app.modules.groups import repository as groups_repo
 from app.modules.groups.models import Group, GroupMember
@@ -616,8 +617,11 @@ class _Pass:
             s.add(e)
             s.flush()
             action = "expense.create"
+            # Shaped like a create in the app: what it is and how much.
+            diff = {"description": e.description, "amount_minor": e.amount_minor}
         else:
             e = existing
+            before = expenses.snapshot(e)
             for k, v in fields.items():
                 setattr(e, k, v)
             e.deleted_at, e.acting_admin_id = None, None
@@ -625,6 +629,12 @@ class _Pass:
             expenses_repo.replace_splits(s, e, rows)
             s.flush()
             action = "expense.restore" if restored else "expense.update"
+            # Shaped like an edit in the app, so its history reads the same.
+            after = {
+                **expenses.snapshot(e),
+                "splits": {str(r.user_id): r.share_minor for r in rows},
+            }
+            diff = expenses.changes(before, after)
         record(
             s,
             self.actor,
@@ -632,7 +642,7 @@ class _Pass:
             "expense",
             e.id,
             self.group_id,
-            {"via": "tricount", "amount_minor": e.amount_minor},
+            {**diff, "via": "tricount"},
             obj=e,
         )
         self.locals[(row.entity, row.entity_id)] = e
