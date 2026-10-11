@@ -2,6 +2,7 @@ from datetime import date
 
 from app.modules.analytics.periods import (
     adaptive_buckets,
+    bucket_kind,
     current,
     previous,
     range_label,
@@ -57,3 +58,10 @@ def test_adaptive_buckets_long_histories():
     years = adaptive_buckets(date(2019, 6, 5), date(2026, 9, 23))
     assert [b.label for b in years] == [str(y) for y in range(2019, 2027)]
     assert years[0].start == date(2019, 6, 5) and years[-1].end == date(2026, 9, 23)
+
+
+def test_bucket_kind_matches_the_bars():
+    assert bucket_kind(date(2026, 9, 12), date(2026, 9, 20)) == "day"
+    assert bucket_kind(date(2026, 7, 1), date(2026, 9, 23)) == "week"
+    assert bucket_kind(date(2026, 1, 15), date(2026, 9, 23)) == "month"
+    assert bucket_kind(date(2019, 6, 5), date(2026, 9, 23)) == "year"
