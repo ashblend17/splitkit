@@ -116,6 +116,26 @@ void main() {
         'at': '2026-09-24T11:00:00Z',
         'diff': {'via': 'tricount', 'amount_minor': 180000},
       },
+      {
+        // An equal split's shares follow the amount: that's not a change to the split.
+        'action': 'expense.update',
+        'person': {'id': 'r', 'name': 'Rahul Sharma', 'avatar_url': null, 'is_placeholder': false},
+        'admin': null,
+        'at': '2026-09-24T12:00:00Z',
+        'diff': {
+          'splits': {'from': {'a': 1500, 'b': 1500, 'c': 1500}, 'to': {'a': 2000, 'b': 2000, 'c': 2000}},
+          'amount_minor': {'from': 4500, 'to': 6000},
+        },
+      },
+      {
+        'action': 'expense.update',
+        'person': {'id': 'r', 'name': 'Rahul Sharma', 'avatar_url': null, 'is_placeholder': false},
+        'admin': null,
+        'at': '2026-09-24T13:00:00Z',
+        'diff': {
+          'splits': {'from': {'a': 2000, 'b': 2000, 'c': 2000}, 'to': {'a': 3000, 'b': 1500, 'c': 1500}},
+        },
+      },
     ];
     await pumpApp(tester, backend: be, location: '/expenses/${be.dinnerId}');
     await tester.scrollUntilVisible(find.textContaining('Edited in Tricount').first, 300, scrollable: find.byType(Scrollable).first);
@@ -123,6 +143,8 @@ void main() {
     expect(find.textContaining('Edited in Tricount · amount ·'), findsOneWidget);
     expect(find.textContaining('via'), findsNothing);
     expect(find.textContaining('amount_minor'), findsNothing);
+    expect(find.textContaining('Edited by Rahul · amount ₹45 → ₹60 ·'), findsOneWidget);
+    expect(find.textContaining('Edited by Rahul · split ·'), findsOneWidget);
   });
 
   testWidgets('settling up uses the balance currency, not the profile one', (tester) async {
