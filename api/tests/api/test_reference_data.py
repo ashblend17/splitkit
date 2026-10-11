@@ -51,7 +51,7 @@ def test_an_unseeded_database_gets_categories_and_dashboards(client):
     keys = {c["key"] for c in client.get("/api/v1/categories", headers=h).json()}
     assert keys >= {"food", "other"}
     cards = client.get("/api/v1/analytics/personal?period=week", headers=h).json()["cards"]
-    assert [c["title"] for c in cards][0] == "Spending"
+    assert [c["title"] for c in cards][0] == "Spending over time"
 
 
 def test_reseeding_replaces_them_in_place(client):

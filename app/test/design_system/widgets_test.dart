@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/splits/split_engine.dart';
+import 'package:splitkit/core/money/money.dart';
 import 'package:splitkit/core/theme/theme.dart';
 import 'package:splitkit/design_system/design_system.dart';
 import 'package:splitkit/features/gallery/components_gallery_page.dart';
@@ -103,6 +104,45 @@ void main() {
     expect(label.width, greaterThan(30), reason: 'laid out whole, not squeezed into the bar and painted past it');
     expect(label.right, lessThanOrEqualTo(chart.right));
     expect(label.left, greaterThanOrEqualTo(chart.left));
+  });
+
+  testWidgets('22 month bars on a phone: whole labels every few bars, none clipped', (tester) async {
+    setViewport(tester, const Size(360, 400));
+    final labels = ['2025', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      '2026', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
+    await tester.pumpWidget(
+      wrap(
+        TrendBars(
+          bars: [for (final (i, l) in labels.indexed) (label: l, value: 1000 + i, highlight: false)],
+          formatTop: (v) => '$v',
+          formatTip: (b) => b.label,
+        ),
+      ),
+    );
+    final shown = tester.widgetList<Text>(find.descendant(of: find.byType(TrendBars), matching: find.byType(Text)));
+    expect(shown.length, lessThan(labels.length), reason: 'some labels skipped');
+    expect(find.text('2025'), findsOneWidget);
+    final chart = tester.getRect(find.byType(TrendBars));
+    for (final t in shown) {
+      final r = tester.getRect(find.byWidget(t));
+      expect(r.width, greaterThanOrEqualTo(14), reason: '"${t.data}" laid out whole');
+      expect((r.left >= chart.left - 0.5, r.right <= chart.right + 0.5), (true, true), reason: '"${t.data}" inside the chart');
+    }
+  });
+
+  testWidgets('breakdown amounts stay on one line, all the same width', (tester) async {
+    setViewport(tester, const Size(360, 400));
+    await tester.pumpWidget(
+      wrap(
+        BreakdownBars(
+          rows: const [(label: 'Rent', value: 41094505), (label: 'Food', value: 500)],
+          format: (v) => formatMinor(v, currency: 'INR'),
+        ),
+      ),
+    );
+    final big = tester.getSize(find.text('₹4,10,945.05'));
+    expect(big.height, lessThan(24), reason: 'one line');
+    expect(tester.getSize(find.text('₹5')).width, big.width);
   });
 
   testWidgets('split tabs come from the registry', (tester) async {

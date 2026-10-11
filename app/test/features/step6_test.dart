@@ -102,7 +102,7 @@ void main() {
 
   testWidgets('personal analytics renders every configured card by type', (tester) async {
     await pumpApp(tester, location: '/profile/analytics');
-    expect(find.text('Spending'), findsOneWidget);
+    expect(find.text('Spending over time'), findsOneWidget);
     expect(find.byType(TrendBars), findsOneWidget);
     expect(find.text('₹32.5k'), findsOneWidget); // top of the highlighted bar
     await tester.scrollUntilVisible(find.text('Average per day'), 300, scrollable: find.byType(Scrollable).first);

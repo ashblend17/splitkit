@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/theme.dart';
@@ -114,20 +116,37 @@ class TrendBars extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         ExcludeSemantics(
-          child: Row(
-            children: [
-              for (final (i, b) in bars.indexed) ...[
-                if (i > 0) SizedBox(width: gap),
-                Expanded(
-                  child: Text(
-                    b.label,
-                    textAlign: TextAlign.center,
-                    style: SkText.body(11, 400, color: SkColors.ink2),
-                    maxLines: 1,
-                  ),
-                ),
-              ],
-            ],
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final style = SkText.body(11, 400, color: SkColors.ink2);
+              // Labels wider than their bar show every few bars, whole, rather than each one clipped.
+              final column = (c.maxWidth - gap * (bars.length - 1)) / bars.length;
+              final widest = bars.fold(0.0, (w, b) => math.max(w, _textWidth(context, b.label, style)));
+              final every = widest <= column ? 1 : ((widest + 6) / (column + gap)).ceil();
+              return Row(
+                children: [
+                  for (final (i, b) in bars.indexed) ...[
+                    if (i > 0) SizedBox(width: gap),
+                    Expanded(
+                      child: i % every != 0
+                          ? const SizedBox.shrink()
+                          : SizedBox(
+                              height: style.fontSize! * 1.4,
+                              child: OverflowBox(
+                                maxWidth: double.infinity,
+                                alignment: every == 1 || (i > 0 && i < bars.length - every)
+                                    ? Alignment.center
+                                    : i == 0
+                                    ? Alignment.centerLeft
+                                    : Alignment.centerRight,
+                                child: Text(b.label, style: style, maxLines: 1, softWrap: false),
+                              ),
+                            ),
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
         ),
       ],
@@ -187,6 +206,12 @@ class BreakdownBars extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final max = rows.fold(0, (m, r) => r.value > m ? r.value : m);
+    final valueStyle = SkText.body(13, 600);
+    // One width for every amount (so the bars stay comparable), wide enough for the longest.
+    final valueWidth = rows.fold(
+      72.0,
+      (w, r) => math.max(w, _textWidth(context, format(r.value), valueStyle).ceilToDouble() + 1),
+    );
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -219,8 +244,8 @@ class BreakdownBars extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   SizedBox(
-                    width: 72,
-                    child: Text(format(r.value), textAlign: TextAlign.right, style: SkText.body(13, 600)),
+                    width: valueWidth,
+                    child: Text(format(r.value), textAlign: TextAlign.right, style: valueStyle, maxLines: 1, softWrap: false),
                   ),
                 ],
               ),
@@ -376,3 +401,10 @@ class _DashedBorder extends CustomPainter {
   @override
   bool shouldRepaint(_DashedBorder oldDelegate) => false;
 }
+
+double _textWidth(BuildContext context, String text, TextStyle style) => (TextPainter(
+  text: TextSpan(text: text, style: style),
+  textDirection: TextDirection.ltr,
+  textScaler: MediaQuery.textScalerOf(context),
+  maxLines: 1,
+)..layout()).width;
