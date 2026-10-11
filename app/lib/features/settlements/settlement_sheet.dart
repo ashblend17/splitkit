@@ -444,8 +444,18 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     final full = amount == p.netMinor.abs();
     final lines = <String>[];
     if (full) {
+      // When the groups go both ways, say which way each one goes: it isn't all one payment.
+      final mixed = p.groups.any((g) => (g.netMinor > 0) != (p.netMinor > 0));
+      final friend = firstName(p.friend.name);
       for (final g in p.groups) {
-        lines.add('${g.name} ${money(g.netMinor.abs(), c)}');
+        final m = money(g.netMinor.abs(), c);
+        lines.add(
+          !mixed
+              ? '${g.name} $m'
+              : g.netMinor > 0
+              ? '$friend pays you $m in ${g.name}'
+              : 'you pay $m in ${g.name}',
+        );
       }
       return 'Recorded in ${p.groups.length} groups: ${lines.join(' · ')}';
     }
