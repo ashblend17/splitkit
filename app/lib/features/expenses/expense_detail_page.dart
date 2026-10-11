@@ -458,26 +458,31 @@ class _Body extends ConsumerWidget {
   };
 
   /// " · amount ₹1,650 → ₹1,800", " · category, split". Keys it doesn't know (like "via")
-  /// are left out rather than shown raw.
+  /// are left out rather than shown raw, and so is "split" when the same people share the new
+  /// amount the same way (that's just the amount changing).
   String _changes(Map<String, Object> diff, String currency) {
-    final parts = <String>[];
-    for (final MapEntry(:key, :value) in diff.entries) {
-      if (key == 'amount_minor' && value is Map) {
-        parts.add('amount ${money(value['from'] as int, currency)} → ${money(value['to'] as int, currency)}');
-      } else {
-        final part = switch (key) {
-          'amount_minor' => 'amount',
-          'category_id' || 'category' => 'category',
-          'payer_id' => 'payer',
-          'splits' || 'split_method' => 'split',
-          'description' => 'description',
-          'date' => 'date',
-          'notes' => 'notes',
-          _ => null,
-        };
-        if (part != null) parts.add(part);
-      }
-    }
-    return parts.isEmpty ? '' : ' · ${parts.toSet().join(', ')}';
+    final amount = diff['amount_minor'];
+    final parts = <String>[
+      if (amount is Map) 'amount ${money(amount['from'] as int, currency)} → ${money(amount['to'] as int, currency)}',
+      if (amount != null && amount is! Map) 'amount',
+      if (diff.containsKey('description')) 'description',
+      if (diff.containsKey('payer_id')) 'payer',
+      if (diff.containsKey('split_method') || (diff.containsKey('splits') && !_onlyScaled(diff))) 'split',
+      if (diff.containsKey('category_id') || diff.containsKey('category')) 'category',
+      if (diff.containsKey('date')) 'date',
+      if (diff.containsKey('notes')) 'notes',
+    ];
+    return parts.isEmpty ? '' : ' · ${parts.join(', ')}';
+  }
+
+  /// The shares changed only because the amount did: same people, same proportions (to the paisa).
+  bool _onlyScaled(Map<String, Object> diff) {
+    final amount = diff['amount_minor'], splits = diff['splits'];
+    if (amount is! Map || splits is! Map) return false;
+    final from = Map<String, Object?>.from(splits['from'] as Map), to = Map<String, Object?>.from(splits['to'] as Map);
+    final before = amount['from'] as int, after = amount['to'] as int;
+    final samePeople = from.keys.toSet().containsAll(to.keys) && to.keys.toSet().containsAll(from.keys);
+    if (before == 0 || !samePeople) return false;
+    return from.keys.every((k) => ((to[k] as int) - (from[k] as int) * after / before).abs() <= 1);
   }
 }
