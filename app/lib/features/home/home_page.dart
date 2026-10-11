@@ -44,10 +44,8 @@ class _PhoneHome extends ConsumerWidget {
     final groupId = ref.watch(activityFiltersProvider.select((f) => f.groupId));
     final feed = ref.watch(feedProvider((groupId: groupId, deleted: false, limit: ref.watch(feedLimitProvider('home')))));
 
+    // The shell floats "Add split" over this page.
     return Scaffold(
-      floatingActionButton: AddSplitFab(
-        onPressed: () => context.push(groupId == null ? '/expenses/new' : '/expenses/new?group=$groupId'),
-      ),
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(

@@ -40,13 +40,8 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
         body: AsyncBody(value: group, onRetry: () => ref.invalidate(groupProvider(widget.groupId)), builder: _desktop),
       );
     }
+    // On phones the shell floats "Add split" over this page.
     return Scaffold(
-      floatingActionButton: group.hasValue && layout.showsFab
-          ? Semantics(
-              label: 'Add expense to ${group.value!.name}',
-              child: AddSplitFab(onPressed: () => context.push('/expenses/new?group=${widget.groupId}')),
-            )
-          : null,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
@@ -338,7 +333,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
         children: [
           Text(label, style: SkText.body(12, 600, color: SkColors.ink2)),
           const SizedBox(height: 2),
-          Text(value, style: SkText.display(20, weight, color: color)),
+          // Shrinks rather than wraps when three big amounts share a phone's width.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value, maxLines: 1, style: SkText.display(20, weight, color: color)),
+          ),
         ],
       ),
     );
