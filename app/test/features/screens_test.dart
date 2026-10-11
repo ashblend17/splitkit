@@ -179,6 +179,15 @@ void main() {
     expect(find.text('Recorded in 2 groups: Aman pays you ₹1,220 in Flatmates · you pay ₹50 in Goa Trip'), findsOneWidget);
   });
 
+  testWidgets("payment sheets open over the tab bar, from a group's balances too", (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}/balances');
+    await tester.tap(find.text('Settle').first);
+    await tester.pumpAndSettle();
+    final sheet = tester.element(find.text('Record a payment'));
+    expect(ModalRoute.of(sheet)!.navigator, Navigator.of(sheet, rootNavigator: true));
+  });
+
   testWidgets('settle up with a friend across groups', (tester) async {
     final be = FakeBackend();
     await pumpApp(tester, backend: be);
