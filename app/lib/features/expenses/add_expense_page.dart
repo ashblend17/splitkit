@@ -75,13 +75,16 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     } else if (!groups.hasValue || (expense != null && !expense.hasValue)) {
       body = const Padding(padding: EdgeInsets.all(16), child: LoadingSkeleton());
     } else if (groups.value!.isEmpty) {
-      body = Padding(
-        padding: const EdgeInsets.all(16),
-        child: EmptyState(
-          title: 'Make a group first',
-          body: 'Splits live in a group: your flat, a trip, a dinner.',
-          actionLabel: 'Create a group',
-          onAction: () => context.go('/groups?new=1'),
+      body = Align(
+        alignment: Alignment.topCenter, // not stretched to the page's height
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: EmptyState(
+            title: 'Make a group first',
+            body: 'Splits live in a group: your flat, a trip, a dinner.',
+            actionLabel: 'Create a group',
+            onAction: () => context.go('/groups?new=1'),
+          ),
         ),
       );
     } else {
