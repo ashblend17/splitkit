@@ -216,7 +216,7 @@
        {
         "position": 1,
         "type": "spending_trend",
-        "title": "Monthly spending",
+        "title": "Spending",
         "period": "last_6_months",
         "source": "personal_monthly",
         "params_json": {

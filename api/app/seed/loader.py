@@ -4,7 +4,7 @@ across reseeds, which keeps client fixtures and bookmarks working."""
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import text
+from sqlalchemy import delete, text
 from sqlalchemy.orm import Session
 
 from app.core.db import Base
@@ -74,6 +74,10 @@ def load(session: Session) -> dict[str, int]:
         )
         for u in d.USERS
     )
+    # Migration 0009 adds the system categories and default dashboards; the seed's replace them
+    # (nothing points at them yet: there are no users).
+    session.execute(delete(AnalyticsConfiguration).where(AnalyticsConfiguration.owner_id.is_(None)))
+    session.execute(delete(Category).where(Category.owner_id.is_(None)))
     session.add_all(
         Category(id=cat[c.key], key=c.key, label=c.label, icon=c.icon, scope=c.scope, sort=c.sort)
         for c in d.CATEGORIES

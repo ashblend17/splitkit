@@ -85,6 +85,26 @@ void main() {
     expect(controller.shares!.map((s) => s.shareMinor), [90000, 45000, 45000, 0]);
   });
 
+  testWidgets("the highlighted bar's figure stays inside a narrow chart", (tester) async {
+    setViewport(tester, const Size(330, 400));
+    await tester.pumpWidget(
+      wrap(
+        TrendBars(
+          bars: [
+            for (var i = 0; i < 12; i++) (label: 'M$i', value: i == 11 ? 25050 : 3000000, highlight: i == 11),
+          ],
+          formatTop: (v) => '₹250.50',
+          formatTip: (b) => b.label,
+        ),
+      ),
+    );
+    final chart = tester.getRect(find.byType(TrendBars));
+    final label = tester.getRect(find.text('₹250.50'));
+    expect(label.width, greaterThan(30), reason: 'laid out whole, not squeezed into the bar and painted past it');
+    expect(label.right, lessThanOrEqualTo(chart.right));
+    expect(label.left, greaterThanOrEqualTo(chart.left));
+  });
+
   testWidgets('split tabs come from the registry', (tester) async {
     await tester.pumpWidget(
       wrap(
