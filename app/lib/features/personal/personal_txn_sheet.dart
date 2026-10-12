@@ -46,16 +46,31 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
   late final _notes = TextEditingController(text: widget.existing?.notes ?? '');
   late int? _amount = widget.existing?.amountMinor;
   late String? _categoryId = widget.existing?.category?.id;
+
+  /// Once you pick (or when editing), the category stops following what you type.
+  late bool _categoryChosen = _editing;
   late String? _channel = widget.existing?.channel?.value;
   late DateTime _date = widget.existing?.date ?? appClock.now();
   bool _busy = false;
 
   bool get _editing => widget.existing != null;
 
+  void _suggestCategory() {
+    if (_categoryChosen) return;
+    _categoryId = suggestCategory(ref, _description.text, scope: 'personal', income: _type == 'income');
+  }
+
+  /// A tap on the suggested chip keeps it (it's what you meant); otherwise chips toggle.
+  void _pickCategory(String id) => setState(() {
+    final confirming = !_categoryChosen && id == _categoryId;
+    _categoryChosen = true;
+    if (!confirming) _categoryId = id == _categoryId ? null : id;
+  });
+
   @override
   void initState() {
     super.initState();
-    _description.addListener(() => setState(() {}));
+    _description.addListener(() => setState(_suggestCategory));
   }
 
   @override
@@ -143,13 +158,19 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                         label: 'Expense',
                         selected: !income,
                         accent: ChipAccent.personal,
-                        onTap: () => setState(() => _type = 'expense'),
+                        onTap: () => setState(() {
+                          _type = 'expense';
+                          _suggestCategory();
+                        }),
                       ),
                       SelectableChip(
                         label: 'Income',
                         selected: income,
                         accent: ChipAccent.personal,
-                        onTap: () => setState(() => _type = 'income'),
+                        onTap: () => setState(() {
+                          _type = 'income';
+                          _suggestCategory();
+                        }),
                       ),
                     ],
                   ),
@@ -190,7 +211,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                               icon: glyphOr(c.icon),
                               selected: c.id == _categoryId,
                               accent: ChipAccent.personal,
-                              onTap: () => setState(() => _categoryId = c.id == _categoryId ? null : c.id),
+                              onTap: () => _pickCategory(c.id),
                             ),
                         ],
                       );

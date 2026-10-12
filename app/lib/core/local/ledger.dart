@@ -798,6 +798,29 @@ class Ledger {
     return s == null ? null : (s['from_user'] == me ? s['to_user'] : s['from_user']) as String;
   }
 
+  /// The category you chose last for an entry ([scope] "personal") or a split you added
+  /// ("group") from the same [merchant] or with the same description as [text], if it's still
+  /// offered there (core/categorise). Entries the app added from SMS count once you've looked
+  /// at them; [income] keeps income and spending apart.
+  String? learnedCategory(String text, {String? merchant, required String scope, bool income = false}) {
+    final offered = {for (final c in categories(scope: scope)) c['id']};
+    final words = text.trim().toLowerCase();
+    final from = merchant?.trim().toLowerCase();
+    bool same(Json row) =>
+        (from != null && (row['merchant'] as String?)?.toLowerCase() == from) ||
+        (words.isNotEmpty && (row['description'] as String).toLowerCase() == words);
+    final chosen = [
+      if (scope == 'personal')
+        for (final t in _personal)
+          if (t['deleted_at'] == null && _reviewed(t) && (t['type'] == 'income') == income && same(t)) t
+      else
+        for (final e in _expenses.values)
+          if (e['deleted_at'] == null && e['created_by'] == me && same(e)) e,
+    ].where((row) => offered.contains(row['category_id'])).toList()
+      ..sort((a, b) => _time(b['created_at']).compareTo(_time(a['created_at'])));
+    return chosen.firstOrNull?['category_id'] as String?;
+  }
+
   /// Your live entry linked to expense [expenseId], as GET /personal/transactions/{id} answers.
   Json? personalLinkedTo(String expenseId) {
     final t = _personal.where((t) => t['expense_id'] == expenseId && t['deleted_at'] == null).firstOrNull;

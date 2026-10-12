@@ -189,7 +189,16 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   `/profile/analytics` redirect to Personal's tabs.
 - Every link between the two modes is a flag in `app/lib/core/integrations.dart`
   (`integrationsProvider`, overridden in tests), so a link can be tuned or cut in one place.
-  The server never reads them. `PersonalFeatures` there tunes Personal on its own.
+  The server never reads them. `Features` there tunes each mode on its own.
+- Categories are suggested on the device (`lib/core/categorise/`): what you chose before for
+  the same merchant or words, then keywords (`category_keywords.dart`), then a typo of one
+  (`fuzzywuzzy`). The personal sheet and Add split follow what you type until you pick one.
+- Bank SMS are read by `lib/core/sms/sms_parser.dart`, which is pure Dart and runs on the phone
+  only. It returns a payment (direction, amount, account label, mode, merchant, reference,
+  balance, date) or why it skipped the message: OTPs, things still to come, failures, refunds,
+  card bills, statements, own transfers, foreign currency, promotional and non-bank senders.
+  `test/fixtures/sms/corpus.json` is the bank formats it's checked against. `sms_ids.dart`
+  gives each SMS a fixed entry id.
 - A personal entry can become something in Split (`features/personal/txn_actions.dart`):
   - **Split it:** `/expenses/new?from_txn=<id>` opens Add split filled in from the entry, paid
     by you. Saving queues the expense and the entry's link together

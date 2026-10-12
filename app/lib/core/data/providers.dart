@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../api/api.dart';
 import '../clock.dart';
+import '../categorise/category_guesser.dart';
 import '../integrations.dart';
 import '../local/ledger.dart';
 import '../local/providers.dart';
@@ -232,6 +233,16 @@ final friendPaidBeforeProvider = FutureProvider.family<String?, String>(
 final personalLinkProvider = FutureProvider.family<PersonalLink?, String>(
   (ref, txnId) => localOrNull(ref, (l) => l.personalLink(txnId)),
 );
+
+/// A category for what's being typed into a personal entry ([scope] "personal") or a split
+/// ("group"), as core/categorise/category_guesser.dart picks it; null when nothing fits or
+/// suggestions are off. Reads the device's data as it is now, without waiting.
+String? suggestCategory(WidgetRef ref, String text, {required String scope, bool income = false}) {
+  final features = ref.read(featuresProvider);
+  final ledger = ref.read(localStoreProvider).value?.ledger;
+  if (!features.suggestCategories || ledger == null || ledger.isEmpty || text.trim().isEmpty) return null;
+  return categoryFor(ledger, text, scope: scope, income: income, learn: features.learnCategories);
+}
 
 /// The accounts and cards your entries went through, with their latest balance.
 final personalAccountsProvider = FutureProvider<List<AccountOut>>(

@@ -20,7 +20,7 @@ class JustIn extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final limit = ref.watch(personalFeaturesProvider).justInLimit;
+    final limit = ref.watch(featuresProvider).justInLimit;
     final list = ref.watch(personalListProvider(PersonalQuery(source: 'sms', reviewed: false, limit: limit))).value;
     if (list == null || list.items.isEmpty) return const SizedBox.shrink();
     return Padding(
