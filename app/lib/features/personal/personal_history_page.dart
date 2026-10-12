@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
 import '../../core/clock.dart';
@@ -12,7 +11,8 @@ import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import 'personal_txn_sheet.dart';
 
-/// Screen 12: filter by dates, type and category; totals; entries grouped by day.
+/// Screen 12, Personal's Transactions tab: filter by dates, type and category; totals;
+/// entries grouped by day.
 class PersonalHistoryPage extends ConsumerStatefulWidget {
   const PersonalHistoryPage({super.key});
 
@@ -45,29 +45,15 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          // Room at the bottom for the floating "Add entry".
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 120),
           children: [
             ContentWidth(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(
-                    height: 52,
-                    child: Row(
-                      children: [
-                        Transform.translate(
-                          offset: const Offset(-8, 0),
-                          child: HeaderIconButton(
-                            glyph: 'back',
-                            label: 'Back',
-                            onPressed: () => context.canPop() ? context.pop() : context.go('/personal'),
-                          ),
-                        ),
-                        Semantics(header: true, child: Text('Spending history', style: SkText.display(20, 700))),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
+                  Semantics(header: true, child: Text('Transactions', style: SkText.title)),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       _filterButton(

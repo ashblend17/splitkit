@@ -11,6 +11,7 @@ import 'package:sembast/sembast_memory.dart';
 import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/local/providers.dart';
 import 'package:splitkit/core/router/router.dart';
+import 'package:splitkit/features/shell/app_mode.dart';
 import 'package:splitkit/features/shell/sync_banner.dart';
 import 'package:splitkit/core/session/session.dart';
 import 'package:splitkit/core/theme/theme.dart';
@@ -154,8 +155,21 @@ class MemoryTokenStore extends TokenStore {
   }
 }
 
+/// Keeps the Split / Personal choice in memory instead of SharedPreferences.
+class MemoryModeStore implements AppModeStore {
+  MemoryModeStore([this.mode]);
+  AppMode? mode;
+
+  @override
+  Future<AppMode?> read() async => mode;
+
+  @override
+  Future<void> write(AppMode mode) async => this.mode = mode;
+}
+
 /// Pumps the whole app (router, shell, theme) at a phone size unless [size] says otherwise,
-/// signed in unless [token] is null.
+/// signed in unless [token] is null. [mode] is the mode saved from last time; [modes] sees
+/// what the app saves.
 Future<FakeBackend> pumpApp(
   WidgetTester tester, {
   String? location,
@@ -167,6 +181,8 @@ Future<FakeBackend> pumpApp(
   http.Client? client,
   List<Override> overrides = const [],
   Duration? syncInterval,
+  AppMode mode = AppMode.split,
+  MemoryModeStore? modes,
 }) async {
   final be = backend ?? FakeBackend();
   tester.view.physicalSize = size;
@@ -179,6 +195,8 @@ Future<FakeBackend> pumpApp(
       localDatabaseFactoryProvider.overrideWithValue(databaseFactoryMemory),
       localDatabasePathProvider.overrideWithValue((userId) async => database ?? 'test-${_databases++}-$userId'),
       syncIntervalProvider.overrideWithValue(syncInterval), // no timer unless asked for
+      savedAppModeProvider.overrideWithValue(mode),
+      appModeStoreProvider.overrideWithValue(modes ?? MemoryModeStore(mode)),
       ...overrides,
     ],
     retry: (_, _) => null,

@@ -160,7 +160,7 @@ void main() {
   });
 
   testWidgets('personal entries and deletes work offline too', (tester) async {
-    final be = await pumpApp(tester, location: '/personal/history');
+    final be = await pumpApp(tester, location: '/personal/transactions');
     be.offline = true;
     final writes = _container(tester).read(writesProvider);
     await _run(

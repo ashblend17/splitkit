@@ -95,12 +95,15 @@ class SkButton extends StatelessWidget {
   }
 }
 
-/// The one floating action per screen, always "Add split".
+/// The one floating action per screen: "Add split" in Split, "Add entry" in Personal.
 class AddSplitFab extends StatelessWidget {
-  const AddSplitFab({super.key, required this.onPressed, this.label = 'Add split'});
+  const AddSplitFab({super.key, required this.onPressed, this.label = 'Add split', this.color = SkColors.brand});
 
   final VoidCallback onPressed;
   final String label;
+
+  /// The mode's accent: brand in Split, personal in Personal.
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -110,10 +113,11 @@ class AddSplitFab extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(SkRadius.chip),
-          boxShadow: const [BoxShadow(color: SkPalette.fabShadow, blurRadius: 24, offset: Offset(0, 8))],
+          // The button's own colour at 35%: SkPalette.fabShadow for the brand one.
+          boxShadow: [BoxShadow(color: color.withAlpha(0x59), blurRadius: 24, offset: const Offset(0, 8))],
         ),
         child: Material(
-          color: SkColors.brand,
+          color: color,
           shape: const StadiumBorder(),
           clipBehavior: Clip.antiAlias,
           child: InkWell(

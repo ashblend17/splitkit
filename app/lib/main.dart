@@ -6,6 +6,7 @@ import 'core/config.dart';
 import 'core/router/router.dart';
 import 'core/session/session.dart';
 import 'core/theme/theme.dart';
+import 'features/shell/app_mode.dart';
 import 'features/shell/sync_banner.dart';
 
 Future<void> main() async {
@@ -14,10 +15,15 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // A server picked in the developer settings; builds without them always use API_ORIGIN.
   final savedOrigin = AppConfig.devTools ? await ApiOriginStore().read() : null;
+  // Split or Personal: the app opens in the mode it was left in.
+  final savedMode = await AppModeStore().read() ?? AppMode.split;
   // No automatic retries: failed requests show an error card with "Try again".
   runApp(ProviderScope(
     retry: (_, _) => null,
-    overrides: [savedApiOriginProvider.overrideWithValue(savedOrigin)],
+    overrides: [
+      savedApiOriginProvider.overrideWithValue(savedOrigin),
+      savedAppModeProvider.overrideWithValue(savedMode),
+    ],
     child: const SplitkitApp(),
   ));
 }

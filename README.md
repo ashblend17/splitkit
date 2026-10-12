@@ -165,8 +165,18 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   `python3 tool/gen_tokens.py` (a test fails if `tokens.g.dart` is stale).
 - Design-system widgets live in `app/lib/design_system/`; `/gallery` shows them all.
 - Layout follows `SkLayout` (`app/lib/core/layout/layout.dart`): tab bar under 600px, NavRail up
-  to 1279px, WebSidebar from 1280px. Only phones show the floating "Add split". Home and group
+  to 1279px, WebSidebar from 1280px. Only phones show the floating add button. Home and group
   detail have their own tablet and desktop layouts; other pages stay phone-width and centred.
+- The app has two modes, **Split** and **Personal** (`features/shell/app_mode.dart`), switched
+  with `ModeSwitch` at the top of every tab on a phone and in the rail and sidebar. Each has its
+  own tabs (Split: Home, Groups; Personal: Overview `/personal`, Transactions
+  `/personal/transactions`, Insights `/personal/insights`), add button ("Add split" in brand,
+  "Add entry" in the personal accent) and accent. Profile and Admin belong to both; the app
+  reopens in the mode it was left in. The old `/personal/history`, `/profile/history` and
+  `/profile/analytics` redirect to Personal's tabs.
+- Every link between the two modes is a flag in `app/lib/core/integrations.dart`
+  (`integrationsProvider`, overridden in tests), so a link can be tuned or cut in one place.
+  The server never reads them.
 - The API client in `app/packages/splitkit_api` is generated: after API changes run
   `(cd api && uv run python -m app.openapi) && tool/gen_api_client.sh` (needs Docker).
   Use `apiDate()` for date fields: the generated client converts dates to UTC.

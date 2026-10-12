@@ -31,7 +31,7 @@ void main() {
     be.postResponses['/api/v1/personal/transactions'] = (201, (fixture('personal_list') as Map)['items'][0]);
     await pumpApp(tester, backend: be, location: '/personal');
     expect(find.text('Spent in October'), findsOneWidget);
-    await tester.tap(find.text('Expense'));
+    await tester.tap(find.byType(AddSplitFab));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(0), '250');
     await tester.enterText(find.byType(TextField).at(1), 'Books');
@@ -49,7 +49,7 @@ void main() {
     final be = FakeBackend();
     be.postResponses['/api/v1/personal/transactions'] = (201, (fixture('personal_list') as Map)['items'][0]);
     await pumpApp(tester, backend: be, location: '/personal');
-    await tester.tap(find.text('Expense'));
+    await tester.tap(find.bySemanticsLabel('Add entry'));
     await tester.pumpAndSettle();
     expect(find.text('Add expense'), findsOneWidget);
     await tester.enterText(find.byType(TextField).at(0), '250');
@@ -65,10 +65,9 @@ void main() {
   });
 
   testWidgets('history filters by type and category on the device', (tester) async {
-    await pumpApp(tester, location: '/personal/history');
-    expect(find.text('Spending history'), findsOneWidget);
+    await pumpApp(tester, location: '/personal/transactions');
+    expect(find.bySemanticsLabel('Transactions'), findsWidgets); // the title and the tab
     expect(find.text('Expenses only'), findsOneWidget);
-    expect(find.text('Transactions'), findsOneWidget);
     expect(find.text('Rapido ride'), findsOneWidget);
     await tester.tap(find.text('Food').first);
     await tester.pumpAndSettle();
@@ -77,31 +76,28 @@ void main() {
     expect(find.text('Blue Tokai coffee'), findsOneWidget);
   });
 
-  testWidgets('profile overview', (tester) async {
+  testWidgets('profile is the account and settings, nothing from either mode', (tester) async {
     await pumpApp(tester, location: '/profile');
     expect(find.text('Ansh C'), findsOneWidget);
     expect(find.textContaining('Member since'), findsOneWidget);
-    expect(find.text('Personal spending'), findsOneWidget);
-    expect(find.text('Group spending'), findsOneWidget);
-    expect(find.text('You owe'), findsOneWidget);
-    expect(find.text('₹1,250'), findsOneWidget);
     expect(find.text('Import from Tricount'), findsOneWidget);
     expect(find.text('Soon'), findsNothing); // the importer is live (features/import_tricount)
+    // This month's spending lives in Personal, balances in Split.
+    expect(find.text('Personal spending'), findsNothing);
+    expect(find.text('You owe'), findsNothing);
   });
 
-  testWidgets("Profile's History tab stays in Profile, so Back returns there", (tester) async {
-    await pumpApp(tester, location: '/profile');
-    await tester.tap(find.text('History'));
-    await tester.pumpAndSettle();
-    expect(find.text('Spending history'), findsOneWidget);
-    expect(tester.widget<BottomNav>(find.byType(BottomNav)).current, 'profile');
-    await tester.tap(find.bySemanticsLabel('Back'));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Member since'), findsOneWidget);
+  testWidgets("Profile's old History and Analytics links open Personal's tabs", (tester) async {
+    await pumpApp(tester, location: '/profile/history');
+    expect(find.text('Expenses only'), findsOneWidget);
+    expect(tester.widget<BottomNav>(find.byType(BottomNav)).current, 'transactions');
+    await pumpApp(tester, location: '/profile/analytics');
+    expect(find.text('Spending over time'), findsOneWidget);
+    expect(tester.widget<BottomNav>(find.byType(BottomNav)).current, 'insights');
   });
 
   testWidgets('personal analytics renders every configured card by type', (tester) async {
-    await pumpApp(tester, location: '/profile/analytics');
+    await pumpApp(tester, location: '/personal/insights');
     expect(find.text('Spending over time'), findsOneWidget);
     expect(find.byType(TrendBars), findsOneWidget);
     expect(find.text('₹32.5k'), findsOneWidget); // top of the highlighted bar
@@ -121,7 +117,7 @@ void main() {
     expect(find.text('Peak ₹19,160 on 12 Sep'), findsOneWidget);
     expect(find.text('₹8,043 per person · your share ₹10,830'), findsOneWidget);
 
-    await pumpApp(tester, backend: be, location: '/profile/analytics');
+    await pumpApp(tester, backend: be, location: '/personal/insights');
     await tester.tap(find.text('Edit layout'));
     await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('Remove Personal vs group'));
@@ -140,7 +136,7 @@ void main() {
       {...(dash['cards'] as List).first as Map, 'type': 'savings_goal', 'title': 'Savings goal'},
     ];
     be.get['/api/v1/analytics/personal'] = dash;
-    await pumpApp(tester, backend: be, location: '/profile/analytics');
+    await pumpApp(tester, backend: be, location: '/personal/insights');
     expect(find.text('Savings goal'), findsOneWidget);
     expect(find.text('renderer for savings_goal'), findsOneWidget);
   });
