@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../api/api.dart';
 import '../clock.dart';
+import '../integrations.dart';
 import '../local/ledger.dart';
 import '../local/providers.dart';
 import '../session/session.dart';
@@ -41,6 +42,9 @@ Future<T> local<T>(Ref ref, T? Function(Ledger ledger) view) async {
     throw ApiException(404, jsonEncode({'error': {'code': 'not_found', 'message': '$e'}}));
   }
 }
+
+/// [local] for an answer that can be nothing.
+Future<T?> localOrNull<T>(Ref ref, T? Function(Ledger ledger) view) async => (await local(ref, (l) => (view(l),))).$1;
 
 /// For answers that come from the server rather than the device: ask again once a sync has
 /// sent this device's queued writes, or they'd still show the server's state from before them.
@@ -200,6 +204,33 @@ final personalListProvider = FutureProvider.family<PersonalListOut, PersonalQuer
       ),
     ),
   ),
+);
+
+final personalTxnProvider = FutureProvider.family<PersonalTxnOut, String>(
+  (ref, id) => local(ref, (l) => PersonalTxnOut.fromJson(l.personalTransaction(id))),
+);
+
+/// Splits you paid that could be the same spend as an entry ("Already split").
+final linkCandidatesProvider = FutureProvider.family<List<ExpenseOut>, String>(
+  (ref, txnId) => local(
+    ref,
+    (l) => ExpenseOut.listFromJson(l.linkCandidates(txnId, windowDays: ref.watch(integrationsProvider).linkWindowDays)),
+  ),
+);
+
+/// Your entry linked to an expense, if any: shown on the expense to you only.
+final personalLinkedToProvider = FutureProvider.family<PersonalTxnOut?, String>(
+  (ref, expenseId) => localOrNull(ref, (l) => PersonalTxnOut.fromJson(l.personalLinkedTo(expenseId))),
+);
+
+/// Who you paid (or were paid by) the last time an entry from this merchant was a payment.
+final friendPaidBeforeProvider = FutureProvider.family<String?, String>(
+  (ref, merchant) => localOrNull(ref, (l) => l.friendPaidBefore(merchant)),
+);
+
+/// What an entry became in Split, if anything.
+final personalLinkProvider = FutureProvider.family<PersonalLink?, String>(
+  (ref, txnId) => localOrNull(ref, (l) => l.personalLink(txnId)),
 );
 
 /// The accounts and cards your entries went through, with their latest balance.

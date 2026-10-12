@@ -195,10 +195,16 @@ class LocalStore {
   /// Queued writes, oldest first.
   List<OutboxOp> get outbox => List.unmodifiable(_ops);
 
-  Future<OutboxOp> enqueue(OutboxOp op) async {
-    final id = await _outbox.add(_db, op.toJson());
-    final saved = op.copyWith(id: id);
-    _ops.add(saved);
+  Future<OutboxOp> enqueue(OutboxOp op) async => (await enqueueAll([op])).single;
+
+  /// Queues [ops] in order, in one transaction and with one rebuild: writes that belong
+  /// together (a split and the personal entry linked to it) show at once or not at all, and a
+  /// big import doesn't rebuild the ledger once per entry.
+  Future<List<OutboxOp>> enqueueAll(List<OutboxOp> ops) async {
+    final saved = await _db.transaction((txn) async => [
+      for (final op in ops) op.copyWith(id: await _outbox.add(txn, op.toJson())),
+    ]);
+    _ops.addAll(saved);
     _notify();
     return saved;
   }

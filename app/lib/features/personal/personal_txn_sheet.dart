@@ -11,6 +11,7 @@ import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import 'txn_actions.dart';
 
 /// Add a personal expense or income, or edit/delete one ([existing]).
 Future<void> showPersonalTxnSheet(BuildContext context, {String type = 'expense', PersonalTxnOut? existing}) =>
@@ -130,6 +131,10 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                       ),
                     ],
                   ),
+                  if (widget.existing case final t? when t.source_ == PersonalTxnOutSource_Enum.sms) ...[
+                    const SizedBox(height: 6),
+                    Text(smsOrigin(t), style: SkText.body(13, 400, color: SkColors.ink2)),
+                  ],
                   const SizedBox(height: 14),
                   Wrap(
                     spacing: 8,
@@ -217,6 +222,10 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                       Expanded(child: _notesField()),
                     ],
                   ),
+                  if (widget.existing case final t?) ...[
+                    const SizedBox(height: 18),
+                    TxnInSplit(txn: t),
+                  ],
                   const SizedBox(height: 18),
                   SkButton(
                     _busy ? 'Saving…' : (_editing ? 'Save changes' : (income ? 'Save income' : 'Save expense')),

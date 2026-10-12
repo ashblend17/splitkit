@@ -177,7 +177,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/expenses/new',
         parentNavigatorKey: _rootKey,
-        builder: (_, s) => AddExpensePage(groupId: s.uri.queryParameters['group']),
+        // ?from_txn=<id>: split one of your personal entries, linked to it.
+        builder: (_, s) =>
+            AddExpensePage(groupId: s.uri.queryParameters['group'], fromTxnId: s.uri.queryParameters['from_txn']),
       ),
       GoRoute(
         path: '/expenses/:eid',

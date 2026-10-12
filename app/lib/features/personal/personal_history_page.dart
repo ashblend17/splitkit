@@ -251,9 +251,12 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
     ];
   }
 
+  /// Like the totals: entries that became a split or a payment aren't counted.
   String _dayTotal(List<PersonalTxnOut> list) {
-    final spent = list.where((t) => t.type == PersonalTxnOutTypeEnum.expense).fold(0, (a, t) => a + t.amountMinor);
-    final income = list.where((t) => t.type == PersonalTxnOutTypeEnum.income).fold(0, (a, t) => a + t.amountMinor);
+    final counted = list.where((t) => t.counted);
+    if (counted.isEmpty) return 'Not counted';
+    final spent = counted.where((t) => t.type == PersonalTxnOutTypeEnum.expense).fold(0, (a, t) => a + t.amountMinor);
+    final income = counted.where((t) => t.type == PersonalTxnOutTypeEnum.income).fold(0, (a, t) => a + t.amountMinor);
     final c = list.first.currency;
     if (spent > 0 && income > 0) return '${money(spent, c)} out · ${money(income, c)} in';
     return income > 0 ? '+${money(income, c)}' : money(spent, c);
@@ -286,7 +289,7 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
                 children: [
                   Text(t.description, style: SkText.body(15, 600), maxLines: 1, overflow: TextOverflow.ellipsis),
                   Text(
-                    t.category?.label ?? (income ? 'Income' : 'Uncategorised'),
+                    [t.category?.label ?? (income ? 'Income' : 'Uncategorised'), ?notCounted(t)].join(' · '),
                     style: SkText.body(12, 400, color: SkColors.ink2),
                   ),
                 ],
@@ -294,7 +297,15 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
             ),
             Text(
               income ? '+${money(t.amountMinor, t.currency)}' : money(t.amountMinor, t.currency),
-              style: SkText.display(16, 700, color: income ? SkColors.owed : SkColors.ink),
+              style: SkText.display(
+                16,
+                700,
+                color: !t.counted
+                    ? SkColors.ink3
+                    : income
+                    ? SkColors.owed
+                    : SkColors.ink,
+              ),
             ),
           ],
         ),

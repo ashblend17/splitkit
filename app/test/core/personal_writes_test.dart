@@ -80,13 +80,13 @@ void main() {
   testWidgets('editing an SMS entry in the sheet sends it back whole, as looked at', (tester) async {
     final be = await pumpApp(tester, location: '/personal');
     be.offline = true;
-    final swiggy = find.widgetWithText(TransactionCard, 'Swiggy order');
-    await tester.scrollUntilVisible(swiggy, 300, scrollable: find.byType(Scrollable).first);
-    expect(tester.widget<TransactionCard>(find.widgetWithText(TransactionCard, 'Swiggy order')).tag, 'From SMS');
-    await tester.tap(find.widgetWithText(TransactionCard, 'Swiggy order'));
+    // Unchecked, so it's in "Just in" at the top.
+    await tester.tap(find.text('Swiggy order').first);
     await tester.pumpAndSettle();
+    expect(find.text('From an SMS · HDFC ··4821 · balance after ₹42,276'), findsOneWidget);
     expect(tester.widget<SelectableChip>(find.widgetWithText(SelectableChip, 'UPI')).selected, isTrue);
     await tester.enterText(find.byType(TextField).at(1), 'Swiggy dinner');
+    await tester.ensureVisible(find.text('Save changes'));
     await tester.tap(find.text('Save changes'));
     await tester.pumpAndSettle();
     final body = appContainer(tester).read(outboxProvider).single.body as Map;
