@@ -6,12 +6,14 @@ import '../../core/api/api.dart';
 import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/integrations.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import 'personal_txn_sheet.dart';
 
-/// Your own income and spending, kept apart from groups (screen 11).
+/// Personal's Overview tab: your own income and spending, kept apart from groups (screen 11).
+/// Entries are added with the floating "Add entry" (or the rail and sidebar).
 class PersonalPage extends ConsumerStatefulWidget {
   const PersonalPage({super.key});
 
@@ -26,17 +28,19 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
   Widget build(BuildContext context) {
     final summary = ref.watch(personalSummaryProvider(_month));
     final recent = ref.watch(personalListProvider((start: null, end: null, type: null, categories: '', limit: 5)));
+    final groupShare = ref.watch(integrationsProvider).groupShareInPersonal;
     return Scaffold(
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: SkColors.brand,
+          color: SkColors.personal,
           onRefresh: () async {
             refreshPersonal(ref.invalidate);
             await ref.read(personalSummaryProvider(_month).future);
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+            // Room at the bottom for the floating "Add entry".
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 120),
             children: [
               ContentWidth(
                 child: Column(
@@ -45,7 +49,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: Semantics(header: true, child: Text('Personal', style: SkText.title)),
+                          child: Semantics(header: true, child: Text('Overview', style: SkText.title)),
                         ),
                         Container(
                           height: 30,
@@ -70,40 +74,16 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                       value: summary,
                       onRetry: () => ref.invalidate(personalSummaryProvider(_month)),
                       skeletonRows: 2,
-                      builder: _summaryCard,
+                      builder: (s) => _summaryCard(s, groupShare: groupShare),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: SkButton(
-                            'Expense',
-                            icon: 'plus',
-                            variant: SkButtonVariant.strong,
-                            expand: true,
-                            onPressed: () => showPersonalTxnSheet(context),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: SkButton(
-                            'Income',
-                            icon: 'plus',
-                            variant: SkButtonVariant.secondary,
-                            expand: true,
-                            onPressed: () => showPersonalTxnSheet(context, type: 'income'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Row(
                       children: [
                         Expanded(
                           child: Semantics(header: true, child: Text('Recent', style: SkText.section)),
                         ),
                         InkWell(
-                          onTap: () => context.go('/personal/history'),
+                          onTap: () => context.go('/personal/transactions'),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             child: Text('See all', style: SkText.body(14, 700, color: SkColors.brandInk)),
@@ -154,7 +134,9 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
     );
   }
 
-  Widget _summaryCard(PersonalSummaryOut s) {
+  /// [groupShare]: also show your share of group spending (an integration, see
+  /// integrations.dart).
+  Widget _summaryCard(PersonalSummaryOut s, {required bool groupShare}) {
     final c = s.currency;
     final top = s.byCategory.take(3).toList();
     final max = top.isEmpty ? 0 : top.first.amountMinor;
@@ -200,6 +182,20 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
               ),
             ],
           ),
+          if (groupShare && s.groupShareMinor > 0) ...[
+            const SizedBox(height: 12),
+            Semantics(
+              label: 'Your share in groups: ${money(s.groupShareMinor, c)}',
+              child: ExcludeSemantics(
+                child: Row(
+                  children: [
+                    Expanded(child: Text('Your share in groups', style: SkText.body(13, 600, color: SkColors.ink2))),
+                    Text(money(s.groupShareMinor, c), style: SkText.body(13, 700, color: SkColors.brandInk)),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (top.isNotEmpty) ...[
             const SizedBox(height: 14),
             for (final (i, t) in top.indexed) ...[

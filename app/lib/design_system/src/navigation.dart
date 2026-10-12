@@ -10,25 +10,60 @@ class NavDestination {
   final String label;
   final String glyph;
 
-  /// Home, Groups, Personal, Profile, plus Admin for admins.
-  static List<NavDestination> primary({bool admin = false}) => [
+  /// Split's tabs: Home, Groups, Profile, plus Admin for admins.
+  static List<NavDestination> split({bool admin = false}) => [
     const NavDestination(key: 'home', label: 'Home', glyph: 'home'),
     const NavDestination(key: 'groups', label: 'Groups', glyph: 'groups'),
-    const NavDestination(key: 'personal', label: 'Personal', glyph: 'wallet'),
+    ..._shared(admin),
+  ];
+
+  /// Personal's tabs: Overview, Transactions, Insights, Profile, plus Admin for admins.
+  static List<NavDestination> personal({bool admin = false}) => [
+    const NavDestination(key: 'overview', label: 'Overview', glyph: 'wallet'),
+    const NavDestination(key: 'transactions', label: 'Transactions', glyph: 'swap'),
+    const NavDestination(key: 'insights', label: 'Insights', glyph: 'chart'),
+    ..._shared(admin),
+  ];
+
+  static List<NavDestination> _shared(bool admin) => [
     const NavDestination(key: 'profile', label: 'Profile', glyph: 'user'),
     if (admin) const NavDestination(key: 'admin', label: 'Admin', glyph: 'shield'),
   ];
 }
 
-Color _fg(bool on) => on ? SkColors.brandInk : SkColors.ink2;
+/// A mode's colour in the navigation: brand for Split, personal for Personal.
+enum NavAccent {
+  brand(SkColors.brand, SkColors.brandInk, SkColors.brandSoft),
+  personal(SkColors.personal, SkColors.personalInk, SkColors.personalSoft);
+
+  const NavAccent(this.fill, this.ink, this.soft);
+
+  /// The add button.
+  final Color fill;
+
+  /// The selected tab's icon and label.
+  final Color ink;
+
+  /// The pill behind the selected tab.
+  final Color soft;
+
+  Color fg(bool on) => on ? ink : SkColors.ink2;
+}
 
 /// Mobile tab bar (under 600px): 84px, pill behind the active icon.
 class BottomNav extends StatelessWidget {
-  const BottomNav({super.key, required this.destinations, required this.current, required this.onSelected});
+  const BottomNav({
+    super.key,
+    required this.destinations,
+    required this.current,
+    required this.onSelected,
+    this.accent = NavAccent.brand,
+  });
 
   final List<NavDestination> destinations;
   final String current;
   final ValueChanged<String> onSelected;
+  final NavAccent accent;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +83,7 @@ class BottomNav extends StatelessWidget {
           children: [
             for (final d in destinations)
               Expanded(
-                child: _Tab(d, on: d.key == current, onTap: () => onSelected(d.key)),
+                child: _Tab(d, on: d.key == current, accent: accent, onTap: () => onSelected(d.key)),
               ),
           ],
         ),
@@ -58,9 +93,10 @@ class BottomNav extends StatelessWidget {
 }
 
 class _Tab extends StatelessWidget {
-  const _Tab(this.d, {required this.on, required this.onTap});
+  const _Tab(this.d, {required this.on, required this.accent, required this.onTap});
   final NavDestination d;
   final bool on;
+  final NavAccent accent;
   final VoidCallback onTap;
 
   @override
@@ -82,17 +118,17 @@ class _Tab extends StatelessWidget {
                 width: 56,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: on ? SkColors.brandSoft : Colors.transparent,
+                  color: on ? accent.soft : Colors.transparent,
                   borderRadius: BorderRadius.circular(SkRadius.chip),
                 ),
                 alignment: Alignment.center,
-                child: SkIcon(d.glyph, size: 22, color: _fg(on)),
+                child: SkIcon(d.glyph, size: 22, color: accent.fg(on)),
               ),
               const SizedBox(height: 4),
               // One line, shrunk rather than wrapped when five tabs share a narrow phone.
               FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(d.label, maxLines: 1, softWrap: false, style: SkText.body(11, on ? 700 : 500, color: _fg(on))),
+                child: Text(d.label, maxLines: 1, softWrap: false, style: SkText.body(11, on ? 700 : 500, color: accent.fg(on))),
               ),
             ],
           ),
@@ -120,7 +156,8 @@ class _BrandMark extends StatelessWidget {
   }
 }
 
-/// Tablet rail (600–1279px): logo, square "Add split", destinations with pills.
+/// Tablet rail (600–1279px): logo, the mode switch, a square add button, destinations with
+/// pills.
 class NavRail extends StatelessWidget {
   const NavRail({
     super.key,
@@ -128,12 +165,20 @@ class NavRail extends StatelessWidget {
     required this.current,
     required this.onSelected,
     required this.onAdd,
+    this.addLabel = 'Add split',
+    this.accent = NavAccent.brand,
+    this.modeSwitch,
   });
 
   final List<NavDestination> destinations;
   final String current;
   final ValueChanged<String> onSelected;
   final VoidCallback onAdd;
+  final String addLabel;
+  final NavAccent accent;
+
+  /// Shown between the logo and the add button.
+  final Widget? modeSwitch;
 
   @override
   Widget build(BuildContext context) {
@@ -151,11 +196,12 @@ class NavRail extends StatelessWidget {
           children: [
             const _BrandMark(size: 40, radius: 12, iconSize: 20),
             const SizedBox(height: 20),
+            if (modeSwitch case final modeSwitch?) ...[modeSwitch, const SizedBox(height: 16)],
             Semantics(
               button: true,
-              label: 'Add split',
+              label: addLabel,
               child: Material(
-                color: SkColors.brand,
+                color: accent.fill,
                 borderRadius: BorderRadius.circular(16),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
@@ -187,16 +233,21 @@ class NavRail extends StatelessWidget {
                               width: 56,
                               height: 32,
                               decoration: BoxDecoration(
-                                color: d.key == current ? SkColors.brandSoft : Colors.transparent,
+                                color: d.key == current ? accent.soft : Colors.transparent,
                                 borderRadius: BorderRadius.circular(SkRadius.chip),
                               ),
                               alignment: Alignment.center,
-                              child: SkIcon(d.glyph, size: 22, color: _fg(d.key == current)),
+                              child: SkIcon(d.glyph, size: 22, color: accent.fg(d.key == current)),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              d.label,
-                              style: SkText.body(12, d.key == current ? 700 : 500, color: _fg(d.key == current)),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                d.label,
+                                maxLines: 1,
+                                softWrap: false,
+                                style: SkText.body(12, d.key == current ? 700 : 500, color: accent.fg(d.key == current)),
+                              ),
                             ),
                           ],
                         ),
@@ -224,6 +275,9 @@ class WebSidebar extends StatelessWidget {
     required this.onAdd,
     required this.user,
     required this.role,
+    this.addLabel = 'Add split',
+    this.accent = NavAccent.brand,
+    this.modeSwitch,
   });
 
   final List<NavDestination> destinations;
@@ -231,6 +285,11 @@ class WebSidebar extends StatelessWidget {
   final ValueChanged<String> onSelected;
   final VoidCallback onAdd;
   final SkPerson user;
+  final String addLabel;
+  final NavAccent accent;
+
+  /// Shown between the logo and the add button.
+  final Widget? modeSwitch;
 
   /// "Administrator" or "Personal account".
   final String role;
@@ -258,8 +317,9 @@ class WebSidebar extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          if (modeSwitch case final modeSwitch?) ...[modeSwitch, const SizedBox(height: 16)],
           Material(
-            color: SkColors.brand,
+            color: accent.fill,
             borderRadius: BorderRadius.circular(12),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -271,7 +331,7 @@ class WebSidebar extends StatelessWidget {
                   children: [
                     const SkIcon('plus', size: 20, color: Colors.white),
                     const SizedBox(width: 8),
-                    Text('Add split', style: SkText.body(15, 700, color: Colors.white)),
+                    Text(addLabel, style: SkText.body(15, 700, color: Colors.white)),
                   ],
                 ),
               ),
@@ -284,7 +344,7 @@ class WebSidebar extends StatelessWidget {
             child: Column(
               children: [
                 for (final d in destinations) ...[
-                  _SidebarItem(d, on: d.key == current, onTap: () => onSelected(d.key)),
+                  _SidebarItem(d, on: d.key == current, accent: accent, onTap: () => onSelected(d.key)),
                   const SizedBox(height: 4),
                 ],
               ],
@@ -317,9 +377,10 @@ class WebSidebar extends StatelessWidget {
 }
 
 class _SidebarItem extends StatelessWidget {
-  const _SidebarItem(this.d, {required this.on, required this.onTap});
+  const _SidebarItem(this.d, {required this.on, required this.accent, required this.onTap});
   final NavDestination d;
   final bool on;
+  final NavAccent accent;
   final VoidCallback onTap;
 
   @override
@@ -329,7 +390,7 @@ class _SidebarItem extends StatelessWidget {
       selected: on,
       label: d.label,
       child: Material(
-        color: on ? SkColors.brandSoft : Colors.transparent,
+        color: on ? accent.soft : Colors.transparent,
         borderRadius: BorderRadius.circular(10),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -340,9 +401,9 @@ class _SidebarItem extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  SkIcon(d.glyph, size: 20, color: _fg(on)),
+                  SkIcon(d.glyph, size: 20, color: accent.fg(on)),
                   const SizedBox(width: 12),
-                  Text(d.label, style: SkText.body(15, on ? 700 : 500, color: _fg(on))),
+                  Text(d.label, style: SkText.body(15, on ? 700 : 500, color: accent.fg(on))),
                 ],
               ),
             ),

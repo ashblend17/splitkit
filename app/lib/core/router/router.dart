@@ -25,6 +25,7 @@ import '../../features/personal/personal_history_page.dart';
 import '../../features/personal/personal_page.dart';
 import '../../features/profile/categories_page.dart';
 import '../../features/profile/profile_page.dart';
+import '../../features/shell/app_mode.dart';
 import '../../features/shell/app_shell.dart';
 import '../../features/shell/not_found_page.dart';
 import '../../features/shell/splash_page.dart';
@@ -44,7 +45,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.onDispose(listenable.dispose);
   return GoRouter(
     navigatorKey: _rootKey,
-    initialLocation: '/home',
+    initialLocation: homeOf(ref.read(savedAppModeProvider)),
     refreshListenable: listenable,
     errorBuilder: (_, _) => const NotFoundPage(),
     redirect: (context, state) {
@@ -63,10 +64,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         return withFrom('/login');
       }
       if (path == '/login' || path == '/register' || path == '/splash' || path == '/') {
-        return from != null && from.startsWith('/') && !from.startsWith('/splash') ? from : '/home';
+        return from != null && from.startsWith('/') && !from.startsWith('/splash')
+            ? from
+            : homeOf(ref.read(appModeProvider));
       }
       // The admin area is for admins only (the API refuses everyone else too).
-      if ((path == '/admin' || path.startsWith('/admin/')) && !session.value!.isAdmin) return '/home';
+      if ((path == '/admin' || path.startsWith('/admin/')) && !session.value!.isAdmin) {
+        return homeOf(ref.read(appModeProvider));
+      }
       return null;
     },
     routes: [
@@ -74,6 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
       GoRoute(path: '/gallery', builder: (_, _) => const ComponentsGalleryPage()),
+      // Pages that moved into Personal's own tabs.
+      GoRoute(path: '/personal/history', redirect: (_, _) => '/personal/transactions'),
+      GoRoute(path: '/profile/history', redirect: (_, _) => '/personal/transactions'),
+      GoRoute(path: '/profile/analytics', redirect: (_, _) => '/personal/insights'),
       StatefulShellRoute.indexedStack(
         builder: (_, state, shell) => AppShell(shell: shell, location: state.uri.path),
         branches: [
@@ -113,14 +122,15 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
+          // Personal's tabs: Overview, Transactions, Insights. AppShell's keys follow this order.
           StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/personal',
-                builder: (_, _) => const PersonalPage(),
-                routes: [GoRoute(path: 'history', builder: (_, _) => const PersonalHistoryPage())],
-              ),
-            ],
+            routes: [GoRoute(path: '/personal', builder: (_, _) => const PersonalPage())],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/personal/transactions', builder: (_, _) => const PersonalHistoryPage())],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/personal/insights', builder: (_, _) => const PersonalAnalyticsPage())],
           ),
           StatefulShellBranch(
             routes: [
@@ -128,9 +138,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/profile',
                 builder: (_, _) => const ProfilePage(),
                 routes: [
-                  GoRoute(path: 'analytics', builder: (_, _) => const PersonalAnalyticsPage()),
-                  // Profile's History tab: the same page, but Back returns to Profile.
-                  GoRoute(path: 'history', builder: (_, _) => const PersonalHistoryPage()),
                   GoRoute(path: 'categories', builder: (_, _) => const CategoriesPage()),
                   // Tricount import (deletable module: features/import_tricount).
                   GoRoute(

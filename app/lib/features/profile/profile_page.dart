@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/api.dart';
-import '../../core/clock.dart';
-import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/local/providers.dart';
 import '../../core/money/money.dart';
@@ -15,16 +13,14 @@ import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import 'device_card.dart';
 
-/// Screen 13: who you are, this month at a glance, settings.
+/// Screen 13: who you are and your settings. Shared by both modes: this month's spending
+/// lives in Personal, balances in Split.
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
-    final month = monthOf(appClock.now());
-    final summary = ref.watch(personalSummaryProvider(month));
-    final balances = ref.watch(overallBalancesProvider);
     final categories = ref.watch(allCategoriesProvider);
     return Scaffold(
       body: SafeArea(
@@ -63,19 +59,7 @@ class ProfilePage extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  _Tabs(
-                    onHistory: () => context.go('/profile/history'),
-                    onAnalytics: () => context.go('/profile/analytics'),
-                  ),
-                  const SizedBox(height: 16),
-                  Semantics(
-                    header: true,
-                    child: Text(DateFormat('MMMM').format(month), style: SkText.display(18, 700)),
-                  ),
-                  const SizedBox(height: 10),
-                  _overview(summary, balances, me.currency),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   SkCard(
                     padding: EdgeInsets.zero,
                     child: Column(
@@ -128,89 +112,6 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _overview(AsyncValue<PersonalSummaryOut> summary, AsyncValue<OverallBalancesOut> balances, String currency) {
-    // Like Home: your currency's balances, else the first currency you have any in, so
-    // switching your currency doesn't make rupee debts look like $0.
-    final all = balances.value?.totals ?? const <CurrencyTotals>[];
-    final totals = all.where((t) => t.currency == currency).firstOrNull ?? all.firstOrNull;
-    final owedIn = totals?.currency ?? currency;
-    Widget tile(
-      Widget label,
-      String value, {
-      Color bg = SkColors.surface,
-      Color valueColor = SkColors.ink,
-      bool border = true,
-    }) => Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(14),
-          border: border ? Border.all(color: SkColors.line) : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            label,
-            const SizedBox(height: 4),
-            Text(value, style: SkText.display(22, 800, color: valueColor)),
-          ],
-        ),
-      ),
-    );
-    Widget swatch(String text, Color c, Color ink) => Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2)),
-        ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(text, style: SkText.body(12, 600, color: ink)),
-        ),
-      ],
-    );
-    final s = summary.value;
-    return Column(
-      children: [
-        Row(
-          children: [
-            tile(
-              swatch('Personal spending', SkColors.personal, SkColors.personalInk),
-              s == null ? '…' : money(s.spentMinor, currency),
-            ),
-            const SizedBox(width: 8),
-            tile(
-              swatch('Group spending', SkColors.brand, SkColors.brandInk),
-              s == null ? '…' : money(s.groupShareMinor, currency),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            tile(
-              Text('You owe', style: SkText.body(12, 600, color: SkColors.oweInk)),
-              money(totals?.youOweMinor ?? 0, owedIn),
-              bg: SkColors.oweSoft,
-              valueColor: (totals?.youOweMinor ?? 0) == 0 ? SkColors.ink2 : SkColors.owe,
-              border: false,
-            ),
-            const SizedBox(width: 8),
-            tile(
-              Text('Owed to you', style: SkText.body(12, 600, color: SkColors.owedInk)),
-              money(totals?.youAreOwedMinor ?? 0, owedIn),
-              bg: SkColors.owedSoft,
-              valueColor: (totals?.youAreOwedMinor ?? 0) == 0 ? SkColors.ink2 : SkColors.owed,
-              border: false,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _link(
     String glyph,
     String label,
@@ -247,48 +148,6 @@ class ProfilePage extends ConsumerWidget {
 }
 
 /// Overview / History / Analytics segmented control.
-class _Tabs extends StatelessWidget {
-  const _Tabs({required this.onHistory, required this.onAnalytics});
-  final VoidCallback onHistory;
-  final VoidCallback onAnalytics;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget tab(String label, bool on, VoidCallback? onTap) => Expanded(
-      child: Semantics(
-        selected: on,
-        button: true,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: on ? SkColors.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(9),
-              boxShadow: on ? const [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))] : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(label, style: SkText.body(14, on ? 700 : 600, color: on ? SkColors.brandInk : SkColors.ink2)),
-          ),
-        ),
-      ),
-    );
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: SkColors.sunken, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          tab('Overview', true, null),
-          const SizedBox(width: 4),
-          tab('History', false, onHistory),
-          const SizedBox(width: 4),
-          tab('Analytics', false, onAnalytics),
-        ],
-      ),
-    );
-  }
-}
-
 Future<void> showEditProfileSheet(BuildContext context) =>
     showAppBottomSheet<void>(context, title: 'Edit profile', child: const _EditProfile());
 

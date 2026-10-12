@@ -255,13 +255,13 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('bottom nav adds Admin only for admins', (tester) async {
+  testWidgets("both modes' tab bars add Admin only for admins", (tester) async {
     await tester.pumpWidget(
-      wrap(BottomNav(destinations: NavDestination.primary(), current: 'home', onSelected: (_) {})),
+      wrap(BottomNav(destinations: NavDestination.split(), current: 'home', onSelected: (_) {})),
     );
     expect(find.text('Admin'), findsNothing);
     await tester.pumpWidget(
-      wrap(BottomNav(destinations: NavDestination.primary(admin: true), current: 'admin', onSelected: (_) {})),
+      wrap(BottomNav(destinations: NavDestination.personal(admin: true), current: 'admin', onSelected: (_) {})),
     );
     expect(find.text('Admin'), findsOneWidget);
   });
@@ -278,6 +278,8 @@ void main() {
       'home',
       'groups',
       'wallet',
+      'swap',
+      'chart',
       'user',
       'shield',
       'food',

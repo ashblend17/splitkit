@@ -58,16 +58,20 @@ const cardRenderers = <String, CardRenderer>{
 
 /// The dashboard: loops over the cards the API returns (from analytics_configuration).
 class DashboardCards extends StatelessWidget {
-  const DashboardCards({super.key, required this.dashboard});
+  const DashboardCards({super.key, required this.dashboard, this.hideTypes = const {}});
   final DashboardOut dashboard;
+
+  /// Card types not shown here, though they stay in the layout (an integration that's off).
+  final Set<String> hideTypes;
 
   @override
   Widget build(BuildContext context) {
     final scope = dashboard.scope.value;
+    final cards = [for (final c in dashboard.cards) if (!hideTypes.contains(c.type)) c];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final c in dashboard.cards) ...[
+        for (final c in cards) ...[
           AnalyticsCard(
             title: c.title,
             period: c.periodLabel,
@@ -79,7 +83,7 @@ class DashboardCards extends StatelessWidget {
           ),
           const SizedBox(height: 14),
         ],
-        if (dashboard.cards.isEmpty)
+        if (cards.isEmpty)
           const EmptyState(glyph: 'chart', title: 'No cards', body: 'Use Edit layout to add some.'),
       ],
     );

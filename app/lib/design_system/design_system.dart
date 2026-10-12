@@ -13,6 +13,7 @@ export 'src/category_selector.dart';
 export 'src/filters.dart';
 export 'src/friend_balance.dart';
 export 'src/group_card.dart';
+export 'src/mode_switch.dart';
 export 'src/navigation.dart';
 export 'src/overlays.dart';
 export 'src/sk_icon.dart';
