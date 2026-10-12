@@ -28,8 +28,12 @@ def test_history_filters_match_history_mockup(client, seeded):
         headers=headers,
     ).json()
     assert r["spent_minor"] == 876000  # "Total ₹8,760"
-    assert r["count"] == 10 and r["income_minor"] == 0
-    assert r["items"][0]["description"] == "Swiggy order"
+    # The mockup's 10, plus Uber to airport and Groceries: split in Goa and Flatmates, so
+    # listed but not counted.
+    assert r["count"] == 12 and r["income_minor"] == 0
+    not_counted = [i["description"] for i in r["items"] if not i["counted"]]
+    assert not_counted == ["Groceries", "Uber to airport"]
+    assert r["items"][1]["description"] == "Swiggy order"
     assert {i["category"]["label"] for i in r["items"]} == {"Food", "Transport"}
 
 

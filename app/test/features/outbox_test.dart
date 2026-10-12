@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/data/providers.dart';
@@ -10,36 +8,8 @@ import 'package:splitkit/core/local/writes.dart';
 import '../fake_backend.dart';
 import '../helpers.dart';
 
-ProviderContainer _container(WidgetTester tester) =>
-    ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
-
-/// Runs a write started from the test body. Widget tests run on a fake clock and the local
-/// database waits on timers, so keep pumping until it finishes.
-Future<T> _run<T>(WidgetTester tester, Future<T> write) async {
-  var done = false;
-  Object? error;
-  late T value;
-  write.then(
-    (v) {
-      value = v;
-      done = true;
-    },
-    onError: (Object e) {
-      error = e;
-      done = true;
-    },
-  );
-  for (var i = 0; i < 200 && !done; i++) {
-    await tester.pump(const Duration(milliseconds: 20));
-  }
-  if (!done) throw StateError('write did not finish');
-  if (error != null) throw error!;
-  await tester.pumpAndSettle();
-  return value;
-}
-
 Future<void> _sync(WidgetTester tester) async {
-  refreshLedger(_container(tester).invalidate);
+  refreshLedger(appContainer(tester).invalidate);
   await tester.pumpAndSettle();
 }
 
@@ -63,9 +33,9 @@ void main() {
   testWidgets('offline: a new expense shows at once and is sent once when back online', (tester) async {
     final be = await pumpApp(tester, location: '/groups/${(fixture('groups') as List).first['id']}');
     be.offline = true;
-    final writes = _container(tester).read(writesProvider);
+    final writes = appContainer(tester).read(writesProvider);
     final goa = be.goa['id'] as String;
-    await _run(tester, writes.createExpense(goa, _dinner(be, description: 'Offline snacks', amount: 60000)));
+    await runWrite(tester, writes.createExpense(goa, _dinner(be, description: 'Offline snacks', amount: 60000)));
     await tester.pumpAndSettle();
 
     expect(find.text('Offline snacks'), findsOneWidget);
@@ -95,13 +65,13 @@ void main() {
         'error': {'code': 'unavailable', 'message': 'Try later'},
       },
     );
-    await _run(tester, _container(tester).read(writesProvider).createExpense(goa, _dinner(be, description: 'Retry me')));
+    await runWrite(tester, appContainer(tester).read(writesProvider).createExpense(goa, _dinner(be, description: 'Retry me')));
     await tester.pumpAndSettle();
     be.postResponses.remove('/api/v1/groups/$goa/expenses');
     await _sync(tester);
     expect(be.writes.length, 2);
     expect(be.writes[0].$3['id'], be.writes[1].$3['id']);
-    final ops = _container(tester).read(outboxProvider);
+    final ops = appContainer(tester).read(outboxProvider);
     expect(ops.single.status, OutboxStatus.sent);
   });
 
@@ -117,8 +87,8 @@ void main() {
         },
       },
     );
-    final writes = _container(tester).read(writesProvider);
-    await _run(tester, writes.updateExpense(be.dinnerId, _dinner(be, description: 'Dinner (my edit)')));
+    final writes = appContainer(tester).read(writesProvider);
+    await runWrite(tester, writes.updateExpense(be.dinnerId, _dinner(be, description: 'Dinner (my edit)')));
     await tester.pumpAndSettle();
     expect(be.writes.single.$3['version'], 1);
 
@@ -149,21 +119,21 @@ void main() {
         'error': {'code': 'version_conflict', 'message': 'Someone changed this while you were offline'},
       },
     );
-    await _run(tester, _container(tester).read(writesProvider).updateExpense(be.dinnerId, _dinner(be, description: 'Mine')));
+    await runWrite(tester, appContainer(tester).read(writesProvider).updateExpense(be.dinnerId, _dinner(be, description: 'Mine')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Review'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Keep theirs'));
     await tester.pumpAndSettle();
-    expect(_container(tester).read(outboxProvider), isEmpty);
+    expect(appContainer(tester).read(outboxProvider), isEmpty);
     expect(find.text('All your changes are saved.'), findsOneWidget);
   });
 
   testWidgets('personal entries and deletes work offline too', (tester) async {
     final be = await pumpApp(tester, location: '/personal/transactions');
     be.offline = true;
-    final writes = _container(tester).read(writesProvider);
-    await _run(
+    final writes = appContainer(tester).read(writesProvider);
+    await runWrite(
       tester,
       writes.createPersonal(
         PersonalTxnIn(
@@ -171,6 +141,7 @@ void main() {
           amountMinor: 25000,
           description: 'Offline books',
           date: DateTime.utc(2026, 9, 24),
+          source_: PersonalTxnInSource_Enum.manual,
         ),
       ),
     );
@@ -180,7 +151,7 @@ void main() {
     final swiggy =
         (fixture('personal_list') as Map)['items'].firstWhere((t) => t['description'] == 'Swiggy order')['id']
             as String;
-    await _run(tester, writes.deletePersonal(swiggy));
+    await runWrite(tester, writes.deletePersonal(swiggy));
     await tester.pumpAndSettle();
     expect(find.text('Swiggy order'), findsNothing);
     expect(find.text("You're offline. 2 changes will sync when you're back."), findsOneWidget);

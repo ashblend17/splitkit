@@ -218,3 +218,32 @@ Future<FakeBackend> pumpApp(
   }
   return be;
 }
+
+/// The provider container behind the app [pumpApp] built.
+ProviderContainer appContainer(WidgetTester tester) =>
+    ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
+
+/// Runs a write started from the test body. Widget tests run on a fake clock and the local
+/// database waits on timers, so keep pumping until it finishes.
+Future<T> runWrite<T>(WidgetTester tester, Future<T> write) async {
+  var done = false;
+  Object? error;
+  late T value;
+  write.then(
+    (v) {
+      value = v;
+      done = true;
+    },
+    onError: (Object e) {
+      error = e;
+      done = true;
+    },
+  );
+  for (var i = 0; i < 200 && !done; i++) {
+    await tester.pump(const Duration(milliseconds: 20));
+  }
+  if (!done) throw StateError('write did not finish');
+  if (error != null) throw error!;
+  await tester.pumpAndSettle();
+  return value;
+}

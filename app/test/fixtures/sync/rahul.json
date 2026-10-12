@@ -316,6 +316,7 @@
       "joined_at": "2026-09-10T14:30:00+00:00",
       "left_at": null,
       "placeholder_name": null,
+      "invite_email": null,
       "import_batch_id": null,
       "user": {
        "id": "49eaa721-4d30-5296-a193-d18818ade774",
@@ -336,6 +337,7 @@
       "joined_at": "2026-09-10T14:30:00+00:00",
       "left_at": null,
       "placeholder_name": null,
+      "invite_email": null,
       "import_batch_id": null,
       "user": {
        "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
@@ -356,6 +358,7 @@
       "joined_at": "2026-09-10T14:30:00+00:00",
       "left_at": null,
       "placeholder_name": null,
+      "invite_email": null,
       "import_batch_id": null,
       "user": {
        "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
@@ -376,6 +379,7 @@
       "joined_at": "2026-09-10T14:30:00+00:00",
       "left_at": null,
       "placeholder_name": null,
+      "invite_email": null,
       "import_batch_id": null,
       "user": {
        "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
@@ -396,6 +400,7 @@
       "joined_at": "2026-09-10T14:30:00+00:00",
       "left_at": null,
       "placeholder_name": null,
+      "invite_email": null,
       "import_batch_id": null,
       "user": {
        "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
@@ -416,6 +421,7 @@
       "joined_at": "2026-09-21T04:35:00+00:00",
       "left_at": null,
       "placeholder_name": "Kabir M.",
+      "invite_email": null,
       "import_batch_id": null,
       "user": {
        "id": "470aad14-41da-5c6e-863d-947a249fb114",
@@ -1374,7 +1380,8 @@
       },
       "role": "member",
       "joined_at": "2026-09-10T14:30:00Z",
-      "placeholder_name": null
+      "placeholder_name": null,
+      "invite_email": null
      },
      {
       "user": {
@@ -1385,7 +1392,8 @@
       },
       "role": "owner",
       "joined_at": "2026-09-10T14:30:00Z",
-      "placeholder_name": null
+      "placeholder_name": null,
+      "invite_email": null
      },
      {
       "user": {
@@ -1396,7 +1404,8 @@
       },
       "role": "member",
       "joined_at": "2026-09-10T14:30:00Z",
-      "placeholder_name": null
+      "placeholder_name": null,
+      "invite_email": null
      },
      {
       "user": {
@@ -1407,7 +1416,8 @@
       },
       "role": "member",
       "joined_at": "2026-09-10T14:30:00Z",
-      "placeholder_name": null
+      "placeholder_name": null,
+      "invite_email": null
      },
      {
       "user": {
@@ -1418,7 +1428,8 @@
       },
       "role": "member",
       "joined_at": "2026-09-10T14:30:00Z",
-      "placeholder_name": null
+      "placeholder_name": null,
+      "invite_email": null
      },
      {
       "user": {
@@ -1429,7 +1440,8 @@
       },
       "role": "member",
       "joined_at": "2026-09-21T04:35:00Z",
-      "placeholder_name": "Kabir M."
+      "placeholder_name": "Kabir M.",
+      "invite_email": null
      }
     ],
     "total_spent_minor": 4826000,
@@ -2293,7 +2305,8 @@
      },
      "role": "member",
      "joined_at": "2026-09-10T14:30:00Z",
-     "placeholder_name": null
+     "placeholder_name": null,
+     "invite_email": null
     },
     {
      "user": {
@@ -2304,7 +2317,8 @@
      },
      "role": "owner",
      "joined_at": "2026-09-10T14:30:00Z",
-     "placeholder_name": null
+     "placeholder_name": null,
+     "invite_email": null
     },
     {
      "user": {
@@ -2315,7 +2329,8 @@
      },
      "role": "member",
      "joined_at": "2026-09-10T14:30:00Z",
-     "placeholder_name": null
+     "placeholder_name": null,
+     "invite_email": null
     },
     {
      "user": {
@@ -2326,7 +2341,8 @@
      },
      "role": "member",
      "joined_at": "2026-09-10T14:30:00Z",
-     "placeholder_name": null
+     "placeholder_name": null,
+     "invite_email": null
     },
     {
      "user": {
@@ -2337,7 +2353,8 @@
      },
      "role": "member",
      "joined_at": "2026-09-10T14:30:00Z",
-     "placeholder_name": null
+     "placeholder_name": null,
+     "invite_email": null
     },
     {
      "user": {
@@ -2348,7 +2365,8 @@
      },
      "role": "member",
      "joined_at": "2026-09-21T04:35:00Z",
-     "placeholder_name": "Kabir M."
+     "placeholder_name": "Kabir M.",
+     "invite_email": null
     }
    ],
    "total_spent_minor": 4826000,
@@ -4650,6 +4668,25 @@
    "spent_minor": 0,
    "income_minor": 0,
    "count": 0
-  }
+  },
+  "personal_list:just_in": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "count": 0
+  },
+  "personal_list:upi": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "count": 0
+  },
+  "personal_list:hdfc": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "count": 0
+  },
+  "personal_accounts": []
  }
 }

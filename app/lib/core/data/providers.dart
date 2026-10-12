@@ -148,9 +148,40 @@ final personalSummaryProvider = FutureProvider.family<PersonalSummaryOut, DateTi
   (ref, month) => local(ref, (l) => PersonalSummaryOut.fromJson(l.personalSummary(month))),
 );
 
-/// History filters. `categories` is a comma-joined, sorted list of keys so the record
-/// compares by value.
-typedef PersonalQuery = ({DateTime? start, DateTime? end, String? type, String categories, int limit});
+/// Personal list filters, compared by value (they key the provider).
+class PersonalQuery {
+  const PersonalQuery({
+    this.start,
+    this.end,
+    this.type,
+    this.categories = '',
+    this.limit = 100,
+    this.account,
+    this.channel,
+    this.source,
+    this.reviewed,
+  });
+
+  final DateTime? start;
+  final DateTime? end;
+  final String? type;
+
+  /// Category keys, comma-joined and sorted.
+  final String categories;
+  final int limit;
+  final String? account;
+  final String? channel;
+  final String? source;
+  final bool? reviewed;
+
+  Object get _key => (start, end, type, categories, limit, account, channel, source, reviewed);
+
+  @override
+  bool operator ==(Object other) => other is PersonalQuery && other._key == _key;
+
+  @override
+  int get hashCode => _key.hashCode;
+}
 
 final personalListProvider = FutureProvider.family<PersonalListOut, PersonalQuery>(
   (ref, q) => local(
@@ -161,10 +192,19 @@ final personalListProvider = FutureProvider.family<PersonalListOut, PersonalQuer
         end: _day(q.end),
         type: q.type,
         categoryKeys: q.categories.isEmpty ? null : q.categories.split(','),
+        account: q.account,
+        channel: q.channel,
+        source: q.source,
+        reviewed: q.reviewed,
         limit: q.limit,
       ),
     ),
   ),
+);
+
+/// The accounts and cards your entries went through, with their latest balance.
+final personalAccountsProvider = FutureProvider<List<AccountOut>>(
+  (ref) => local(ref, (l) => AccountOut.listFromJson(l.personalAccounts())),
 );
 
 final personalCategoriesProvider = FutureProvider<List<CategoryOut>>(

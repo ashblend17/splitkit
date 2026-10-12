@@ -16,7 +16,8 @@
         },
         "role": "member",
         "joined_at": "2026-09-10T14:30:00Z",
-        "placeholder_name": null
+        "placeholder_name": null,
+        "invite_email": null
       },
       {
         "user": {
@@ -27,7 +28,8 @@
         },
         "role": "owner",
         "joined_at": "2026-09-10T14:30:00Z",
-        "placeholder_name": null
+        "placeholder_name": null,
+        "invite_email": null
       },
       {
         "user": {
@@ -38,7 +40,8 @@
         },
         "role": "member",
         "joined_at": "2026-09-10T14:30:00Z",
-        "placeholder_name": null
+        "placeholder_name": null,
+        "invite_email": null
       },
       {
         "user": {
@@ -49,7 +52,8 @@
         },
         "role": "member",
         "joined_at": "2026-09-10T14:30:00Z",
-        "placeholder_name": null
+        "placeholder_name": null,
+        "invite_email": null
       },
       {
         "user": {
@@ -60,7 +64,8 @@
         },
         "role": "member",
         "joined_at": "2026-09-10T14:30:00Z",
-        "placeholder_name": null
+        "placeholder_name": null,
+        "invite_email": null
       },
       {
         "user": {
@@ -71,7 +76,8 @@
         },
         "role": "member",
         "joined_at": "2026-09-21T04:35:00Z",
-        "placeholder_name": "Kabir M."
+        "placeholder_name": "Kabir M.",
+        "invite_email": null
       }
     ],
     "total_spent_minor": 4826000,
@@ -96,7 +102,8 @@
         },
         "role": "member",
         "joined_at": "2026-06-28T13:30:00Z",
-        "placeholder_name": null
+        "placeholder_name": null,
+        "invite_email": null
       },
       {
         "user": {
@@ -107,7 +114,8 @@
         },
         "role": "owner",
         "joined_at": "2026-06-28T13:30:00Z",
-        "placeholder_name": null
+        "placeholder_name": null,
+        "invite_email": null
       },
       {
         "user": {
@@ -118,7 +126,8 @@
         },
         "role": "member",
         "joined_at": "2026-06-28T13:30:00Z",
-        "placeholder_name": null
+        "placeholder_name": null,
+        "invite_email": null
       }
     ],
     "total_spent_minor": 6148000,

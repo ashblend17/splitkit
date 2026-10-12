@@ -98,11 +98,28 @@ class SeedPersonal:
     user: str
     type: str
     amount: int
-    category: str
+    category: str | None
     day: date
     description: str
     notes: str | None = None
     created: datetime | None = None
+    channel: str | None = None
+    sms: "SeedSms | None" = None
+    expense: str | None = None
+    """The seed expense (key) this was split into."""
+    settlement: str | None = None
+    """The seed payment (key) this was."""
+
+
+@dataclass(frozen=True)
+class SeedSms:
+    """What the app read from a bank SMS. The entry's `created` is when the SMS arrived."""
+
+    merchant: str
+    account: str
+    reference: str | None = None
+    balance: int | None = None
+    reviewed: bool = True
 
 
 @dataclass(frozen=True)
@@ -242,10 +259,14 @@ AUDIT = [
 # ---- John's personal finances ----
 
 
-def _month(m: int, items: list[tuple[str, int, int, str]]) -> list[SeedPersonal]:
+HDFC = "HDFC ··4821"
+ICICI_CARD = "ICICI Credit card ··9012"
+
+
+def _month(m: int, items: list[tuple[str, int, int, str]], salary: SeedSms | None = None) -> list[SeedPersonal]:
     return [
-        SeedPersonal("john", "income", 85000, "income", date(2026, m, 1), "Salary", "Bank transfer"),
-        SeedPersonal("john", "expense", 18000, "rent", date(2026, m, 1), "House rent", "Bank transfer"),
+        SeedPersonal("john", "income", 85000, "income", date(2026, m, 1), "Salary", channel="bank", sms=salary),
+        SeedPersonal("john", "expense", 18000, "rent", date(2026, m, 1), "House rent", channel="bank"),
         *(SeedPersonal("john", "expense", amt, cat, date(2026, m, d), desc) for cat, amt, d, desc in items),
     ]
 
@@ -267,12 +288,27 @@ PERSONAL = [
     *_month(9, [("transport", 380, 2, "Uber to office"), ("bills", 719, 2, "Mobile recharge"), ("food", 642, 3, "Zomato order"),
                 ("shopping", 699, 4, "Phone case"), ("entertainment", 649, 5, "Movie tickets"), ("food", 1212, 6, "Vegetables and fruit"),
                 ("health", 611, 6, "Pharmacy"), ("transport", 1660, 7, "Petrol"), ("shopping", 1611, 8, "Decathlon shorts"),
-                ("bills", 401, 9, "Netflix"), ("food", 1280, 10, "Office lunch"), ("entertainment", 1000, 11, "Bowling")]),
-    SeedPersonal("john", "expense", 1860, "food",      sep(19), "Weekend groceries", "UPI", at(sep(19), 11, 30)),
-    SeedPersonal("john", "expense", 500,  "transport", sep(21), "Metro card top-up", None,  at(sep(21), 9, 10)),
-    SeedPersonal("john", "expense", 340,  "food",      sep(21), "Blue Tokai coffee", "UPI", at(sep(21), 10, 45)),
-    SeedPersonal("john", "expense", 400,  "transport", sep(21), "Rapido ride",       "UPI", at(sep(21), 19, 5)),
-    SeedPersonal("john", "expense", 486,  "food",      sep(23), "Swiggy order",      "UPI", at(sep(23), 13, 10)),
+                ("bills", 401, 9, "Netflix"), ("food", 1280, 10, "Office lunch"), ("entertainment", 1000, 11, "Bowling")],
+            salary=SeedSms("ACME CORP", HDFC, "CITIN26091234567", 112480)),
+    # Read from bank SMS: HDFC's balance falls with each one, the card reports none. The Swiggy
+    # order is the one "Just in" (not looked at yet).
+    SeedPersonal("john", "expense", 1860, "food",      sep(19), "Weekend groceries", None, at(sep(19), 11, 30), "upi"),
+    SeedPersonal("john", "expense", 500,  "transport", sep(21), "Metro card top-up", None, at(sep(21), 9, 10)),
+    SeedPersonal("john", "expense", 340,  "food",      sep(21), "Blue Tokai coffee", None, at(sep(21), 10, 45), "card",
+                 SeedSms("BLUE TOKAI COFFEE", ICICI_CARD)),
+    SeedPersonal("john", "expense", 400,  "transport", sep(21), "Rapido ride",       None, at(sep(21), 19, 5), "upi",
+                 SeedSms("RAPIDO", HDFC, "426401938271", 43882)),
+    SeedPersonal("john", "expense", 486,  "food",      sep(23), "Swiggy order",      None, at(sep(23), 13, 10), "upi",
+                 SeedSms("SWIGGY", HDFC, "426613374520", 42276, reviewed=False)),
+    # Spends that became a split or a payment in Split: listed, but not counted here (John's
+    # share of the two expenses counts as group spending). Appended, since seed ids follow the
+    # order of this list.
+    SeedPersonal("john", "expense", 500,  None,        sep(22), "Paid Rahul",        None, at(sep(22), 6, 50), "upi",
+                 SeedSms("RAHUL SHARMA", HDFC, "426502117394", 43382), settlement="goa_pay_rahul"),
+    SeedPersonal("john", "expense", 620,  "transport", sep(22), "Uber to airport",   None, at(sep(22), 7, 5), "upi",
+                 SeedSms("UBER", HDFC, "426502281145", 42762), expense="goa_uber"),
+    SeedPersonal("john", "expense", 2340, "food",      sep(23), "Groceries",         None, at(sep(23), 18, 15), "upi",
+                 SeedSms("BIGBASKET", HDFC, "426614590032", 39936), expense="flat_groceries"),
 ]
 
 # Default dashboards (owner_id NULL). Titles from PersonalAnalytics / GroupAnalytics, except

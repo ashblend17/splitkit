@@ -259,6 +259,9 @@ class LocalWrites {
 
   // ---- personal finance ----
 
+  /// The entry as the server will store it. Where it came from (source, reference, balance,
+  /// SMS time) is set when it's made: on an edit the server ignores those, so they're kept
+  /// from [before].
   Json _personalData(Ledger l, String id, PersonalTxnIn body, Json? before) => {
     'id': id,
     'user_id': l.me,
@@ -269,6 +272,16 @@ class LocalWrites {
     'date': _day(body.date),
     'description': body.description.trim(),
     'notes': body.notes,
+    'channel': body.channel?.value,
+    'merchant': _text(body.merchant),
+    'account': _text(body.account),
+    'source': before == null ? body.source_.value : before['source'] ?? 'manual',
+    'reference': before == null ? _text(body.reference) : before['reference'],
+    'balance_minor': before == null ? body.balanceMinor : before['balance_minor'],
+    'sms_at': before == null ? body.smsAt?.toUtc().toIso8601String() : before['sms_at'],
+    'reviewed': body.reviewed,
+    'expense_id': body.expenseId,
+    'settlement_id': body.settlementId,
     'acting_admin_id': _ref.read(sessionProvider).value?.adminId,
     'created_at': before?['created_at'] ?? _now(),
     'deleted_at': null,
@@ -277,9 +290,16 @@ class LocalWrites {
 
   String _personalLabel(Json t) => '${t['description']} · ${formatMinor(t['amount_minor'] as int, currency: t['currency'] as String)}';
 
-  Future<String> createPersonal(PersonalTxnIn body) async {
+  /// Trimmed, and blank as none (personal/service.py _text).
+  static String? _text(String? value) {
+    final t = value?.trim() ?? '';
+    return t.isEmpty ? null : t;
+  }
+
+  /// [id]: one made from the entry itself (a bank SMS), so making it twice gives the same row.
+  Future<String> createPersonal(PersonalTxnIn body, {String? id}) async {
     final l = await _ledger();
-    final id = _uuid.v4();
+    id ??= _uuid.v4();
     final data = _personalData(l, id, body, null);
     body.id = id;
     await _queue(OutboxOp(
@@ -445,3 +465,24 @@ bool _hasToJson(Object o) {
     return false;
   }
 }
+
+/// The full PUT body for an entry as it is now. The API applies every field it's sent, so an
+/// edit starts from this and changes only what it means to.
+PersonalTxnIn personalBody(PersonalTxnOut t) => PersonalTxnIn(
+  type: PersonalTxnInTypeEnum.fromJson(t.type.value)!,
+  amountMinor: t.amountMinor,
+  description: t.description,
+  date: apiDate(t.date),
+  categoryId: t.category?.id,
+  notes: t.notes,
+  channel: PersonalTxnInChannelEnum.fromJson(t.channel?.value),
+  merchant: t.merchant,
+  account: t.account,
+  expenseId: t.expenseId,
+  settlementId: t.settlementId,
+  reviewed: t.reviewed,
+  source_: PersonalTxnInSource_Enum.fromJson(t.source_.value)!,
+  reference: t.reference,
+  balanceMinor: t.balanceMinor,
+  smsAt: t.smsAt,
+);

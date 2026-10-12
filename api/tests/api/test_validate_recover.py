@@ -51,6 +51,14 @@ def test_planted_problems_are_found(client, seeded):
                 "UPDATE expenses SET version = version + 5 WHERE description = 'Dinner at Thalassa'"
             )
         )
+        # John's Uber entry, linked to a split Rahul paid.
+        session.execute(
+            text(
+                "UPDATE personal_transactions SET expense_id = "
+                "(SELECT id FROM expenses WHERE description = 'Dinner at Thalassa' LIMIT 1) "
+                "WHERE description = 'Uber to airport'"
+            )
+        )
     with SessionLocal() as session:
         found = failing(session)
     assert {
@@ -58,6 +66,7 @@ def test_planted_problems_are_found(client, seeded):
         "versions_start_at_one",
         "accounts_are_sane",
         "sync_log_matches_tables",
+        "personal_links_are_the_owners",
     } <= found
     assert validate.main(["--json"]) == 1
 

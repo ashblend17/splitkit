@@ -27,7 +27,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
   @override
   Widget build(BuildContext context) {
     final summary = ref.watch(personalSummaryProvider(_month));
-    final recent = ref.watch(personalListProvider((start: null, end: null, type: null, categories: '', limit: 5)));
+    final recent = ref.watch(personalListProvider(const PersonalQuery(limit: 5)));
     final groupShare = ref.watch(integrationsProvider).groupShareInPersonal;
     return Scaffold(
       body: SafeArea(

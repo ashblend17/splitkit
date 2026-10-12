@@ -13,6 +13,7 @@ The app's parity test rebuilds each answer from the snapshots alone and compares
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -60,6 +61,7 @@ def main():
         "personal_summary": call("/personal/summary?month=2026-09-23", token=token),
         "personal_list": call("/personal/transactions?start=2026-09-01&end=2026-09-23", token=token),
         "personal_categories": call("/categories?scope=personal", token=token),
+        "personal_accounts": call("/personal/accounts", token=token),
         "analytics_personal": call("/analytics/personal?period=month&on=2026-09-23", token=token),
         "analytics_group": call(f"/analytics/groups/{goa['id']}?on=2026-09-23", token=token),
         "analytics_layout": call("/analytics/layout/personal", token=token),
@@ -124,6 +126,12 @@ def capture_sync():
             "/personal/transactions?start=2026-09-01&end=2026-09-30&type=expense&limit=500", token=token
         )
         answers["personal_deleted"] = call("/personal/transactions?deleted=true&limit=500", token=token)
+        # Bank SMS entries: "Just in", by payment mode and by account (local_parity_test's names).
+        answers["personal_list:just_in"] = call("/personal/transactions?source=sms&reviewed=false&limit=500", token=token)
+        answers["personal_list:upi"] = call("/personal/transactions?channel=upi&limit=500", token=token)
+        hdfc = urllib.parse.quote("HDFC ··4821")
+        answers["personal_list:hdfc"] = call(f"/personal/transactions?account={hdfc}&limit=500", token=token)
+        answers["personal_accounts"] = call("/personal/accounts", token=token)
         out = {"user": key, "email": email, "snapshots": snapshots, "answers": answers}
         (SYNC_OUT / f"{key}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 

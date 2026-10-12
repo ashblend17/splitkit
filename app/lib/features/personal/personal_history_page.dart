@@ -30,7 +30,7 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
 
   PersonalQuery get _query {
     final keys = _categories.toList()..sort();
-    return (start: _start, end: _end, type: _type, categories: keys.join(','), limit: 500);
+    return PersonalQuery(start: _start, end: _end, type: _type, categories: keys.join(','), limit: 500);
   }
 
   @override

@@ -107,6 +107,24 @@ CHECKS: list[Check] = [
         """),
     ),
     Check(
+        "personal_links_are_the_owners",
+        "warning",
+        "A personal entry linked to a split is its payer's; one linked to a payment is the "
+        "sender's (spending) or the receiver's (income).",
+        "Expected if the expense's payer was changed after linking. The link only changes what "
+        "the owner's totals count: unlink it in the app (or PUT expense_id / settlement_id null).",
+        _sql("""
+            SELECT t.id, t.user_id, 'expense' AS link FROM personal_transactions t
+            JOIN expenses e ON e.id = t.expense_id
+            WHERE e.payer_id <> t.user_id OR t.type <> 'expense'
+            UNION ALL
+            SELECT t.id, t.user_id, 'settlement' FROM personal_transactions t
+            JOIN settlements s ON s.id = t.settlement_id
+            WHERE (t.type = 'expense' AND s.from_user <> t.user_id)
+               OR (t.type = 'income' AND s.to_user <> t.user_id)
+        """),
+    ),
+    Check(
         "currency_matches_group",
         "error",
         "Expenses and payments are in their group's currency (no conversion in the MVP).",

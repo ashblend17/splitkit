@@ -28,6 +28,7 @@ lib/auth/authentication.dart
 lib/auth/http_basic_auth.dart
 lib/auth/http_bearer_auth.dart
 lib/auth/oauth.dart
+lib/model/account_out.dart
 lib/model/add_member_in.dart
 lib/model/admin_dashboard_out.dart
 lib/model/admin_session_in.dart

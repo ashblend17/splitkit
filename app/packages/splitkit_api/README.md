@@ -107,6 +107,7 @@ Class | Method | HTTP request | Description
 *PersonalApi* | [**deletePersonal**](doc//PersonalApi.md#deletepersonal) | **DELETE** /api/v1/personal/transactions/{txn_id} | Delete Personal
 *PersonalApi* | [**getPersonal**](doc//PersonalApi.md#getpersonal) | **GET** /api/v1/personal/transactions/{txn_id} | Get Personal
 *PersonalApi* | [**listPersonal**](doc//PersonalApi.md#listpersonal) | **GET** /api/v1/personal/transactions | List Personal
+*PersonalApi* | [**personalAccounts**](doc//PersonalApi.md#personalaccounts) | **GET** /api/v1/personal/accounts | Personal Accounts
 *PersonalApi* | [**personalSummary**](doc//PersonalApi.md#personalsummary) | **GET** /api/v1/personal/summary | Personal Summary
 *PersonalApi* | [**restorePersonal**](doc//PersonalApi.md#restorepersonal) | **POST** /api/v1/personal/transactions/{txn_id}/restore | Restore Personal
 *PersonalApi* | [**updatePersonal**](doc//PersonalApi.md#updatepersonal) | **PUT** /api/v1/personal/transactions/{txn_id} | Update Personal
@@ -135,6 +136,7 @@ Class | Method | HTTP request | Description
 
 ## Documentation For Models
 
+ - [AccountOut](doc//AccountOut.md)
  - [AddMemberIn](doc//AddMemberIn.md)
  - [AdminDashboardOut](doc//AdminDashboardOut.md)
  - [AdminSessionIn](doc//AdminSessionIn.md)
