@@ -97,7 +97,8 @@ def test_expenses_shown_in_mockups(key, shares):
 def test_personal_matches_personal_analytics_mockup():
     monthly, sep_by_cat = defaultdict(int), defaultdict(int)
     for p in d.PERSONAL:
-        if p.type != "expense":
+        # Entries that became a split or a payment aren't counted.
+        if p.type != "expense" or p.expense or p.settlement:
             continue
         monthly[p.day.month] += p.amount
         if p.day.month == 9:
@@ -118,7 +119,8 @@ def test_personal_matches_personal_analytics_mockup():
 def test_personal_history_days_match_mockup():
     days = defaultdict(int)
     for p in d.PERSONAL:
-        if p.type == "expense" and p.day.month == 9 and p.day.day >= 19:
+        counted = not (p.expense or p.settlement)
+        if p.type == "expense" and counted and p.day.month == 9 and p.day.day >= 19:
             days[p.day.day] += p.amount
     assert dict(days) == {23: 486, 21: 1240, 19: 1860}
 
@@ -126,4 +128,16 @@ def test_personal_history_days_match_mockup():
 def test_category_keys_exist():
     keys = {c.key for c in d.CATEGORIES}
     assert {e.category for e in d.EXPENSES} <= keys
-    assert {p.category for p in d.PERSONAL} <= keys
+    assert {p.category for p in d.PERSONAL if p.category} <= keys  # None: uncategorised
+
+
+def test_linked_personal_rows_match_what_ansh_paid():
+    """Each linked entry is the same spend as the split or payment it points at."""
+    expenses = {e.key: e for e in d.EXPENSES}
+    payments = {s.key: s for s in d.SETTLEMENTS}
+    linked = [p for p in d.PERSONAL if p.expense or p.settlement]
+    assert len(linked) == 3
+    for p in linked:
+        other = expenses[p.expense] if p.expense else payments[p.settlement]
+        paid_by = other.payer if p.expense else other.from_user
+        assert (p.user, p.amount, p.day) == (paid_by, other.amount, other.day)

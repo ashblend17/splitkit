@@ -166,7 +166,7 @@ void main() {
     final container = ProviderScope.containerOf(tester.element(find.byType(AdminBanner)));
     await expectLater(
       container.read(writesProvider).createPersonal(
-        PersonalTxnIn(type: PersonalTxnInTypeEnum.expense, amountMinor: 100, description: 'x', date: DateTime.utc(2026, 9, 25)),
+        PersonalTxnIn(type: PersonalTxnInTypeEnum.expense, amountMinor: 100, description: 'x', date: DateTime.utc(2026, 9, 25), source_: PersonalTxnInSource_Enum.manual),
       ),
       throwsA(isA<WriteRefused>().having(apiErrorMessage, 'message', 'You are viewing as this user in read-only mode')),
     );

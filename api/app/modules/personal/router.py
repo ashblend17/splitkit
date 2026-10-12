@@ -7,10 +7,13 @@ from fastapi import APIRouter, Query
 from app.modules.auth.deps import CurrentActor, DbSession
 from app.modules.personal import service
 from app.modules.personal.schemas import (
+    AccountOut,
+    Channel,
     PersonalListOut,
     PersonalSummaryOut,
     PersonalTxnIn,
     PersonalTxnOut,
+    Source,
 )
 
 router = APIRouter(prefix="/personal", tags=["personal"])
@@ -25,10 +28,15 @@ def list_personal(
     type: Literal["income", "expense"] | None = None,
     category: Annotated[list[str] | None, Query(description="Category keys, repeatable")] = None,
     deleted: bool = False,
+    account: Annotated[str | None, Query(description='As labelled, e.g. "HDFC ··4821"')] = None,
+    channel: Channel | None = None,
+    source: Source | None = None,
+    reviewed: bool | None = None,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
-    """Your own income and spending (only you see these), newest first, with totals."""
+    """Your own income and spending (only you see these), newest first, with totals.
+    `reviewed=false&source=sms` is what the app shows as "Just in"."""
     return service.list_transactions(
         session,
         actor,
@@ -39,7 +47,18 @@ def list_personal(
         deleted=deleted,
         limit=limit,
         offset=offset,
+        account=account,
+        channel=channel,
+        source=source,
+        reviewed=reviewed,
     )
+
+
+@router.get("/accounts", response_model=list[AccountOut])
+def personal_accounts(actor: CurrentActor, session: DbSession):
+    """The accounts and cards your entries went through, most recently used first, each with
+    the latest balance its bank reported."""
+    return service.accounts(session, actor)
 
 
 @router.get("/summary", response_model=PersonalSummaryOut)

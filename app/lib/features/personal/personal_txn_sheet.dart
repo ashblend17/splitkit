@@ -45,6 +45,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
   late final _notes = TextEditingController(text: widget.existing?.notes ?? '');
   late int? _amount = widget.existing?.amountMinor;
   late String? _categoryId = widget.existing?.category?.id;
+  late String? _channel = widget.existing?.channel?.value;
   late DateTime _date = widget.existing?.date ?? appClock.now();
   bool _busy = false;
 
@@ -191,6 +192,24 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                     },
                   ),
                   const SizedBox(height: 16),
+                  Text(income ? 'Received by' : 'Paid with', style: SkText.body(14, 600)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final MapEntry(key: key, value: label) in channelLabels.entries)
+                        // ATM is what bank SMS say for cash withdrawals; not offered otherwise.
+                        if (key != 'atm' || _channel == 'atm')
+                          SelectableChip(
+                            label: label,
+                            selected: key == _channel,
+                            accent: ChipAccent.personal,
+                            onTap: () => setState(() => _channel = key == _channel ? null : key),
+                          ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(child: _dateButton()),
@@ -277,7 +296,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
         border: InputBorder.none,
         enabledBorder: InputBorder.none,
         focusedBorder: InputBorder.none,
-        hintText: 'Note (UPI, card…)',
+        hintText: 'Note',
         hintStyle: SkText.body(14, 400, color: SkColors.ink3),
       ),
     ),
@@ -285,14 +304,27 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
 
   Future<void> _save() async {
     setState(() => _busy = true);
-    final body = PersonalTxnIn(
-      type: PersonalTxnInTypeEnum.fromJson(_type)!,
-      amountMinor: _amount!,
-      description: _description.text.trim(),
-      date: apiDate(_date),
-      categoryId: _categoryId,
-      notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-    );
+    // An edit starts from the entry as it is, so what this sheet doesn't show (where it came
+    // from, a link to a split) goes back unchanged. Saving it counts as having looked at it.
+    final existing = widget.existing;
+    final body =
+        (existing == null
+              ? PersonalTxnIn(
+                  type: PersonalTxnInTypeEnum.expense,
+                  amountMinor: 0,
+                  description: '',
+                  date: apiDate(_date),
+                  source_: PersonalTxnInSource_Enum.manual,
+                )
+              : personalBody(existing))
+          ..type = PersonalTxnInTypeEnum.fromJson(_type)!
+          ..amountMinor = _amount!
+          ..description = _description.text.trim()
+          ..date = apiDate(_date)
+          ..categoryId = _categoryId
+          ..notes = _notes.text.trim().isEmpty ? null : _notes.text.trim()
+          ..channel = PersonalTxnInChannelEnum.fromJson(_channel)
+          ..reviewed = true;
     try {
       final api = ref.read(writesProvider);
       _editing ? await api.updatePersonal(widget.existing!.id, body) : await api.createPersonal(body);

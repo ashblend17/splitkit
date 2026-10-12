@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.modules.categories.models import Category
 from app.modules.expenses.models import Expense, ExpenseSplit
+from app.modules.groups.models import GroupMember
 from app.modules.personal.models import PersonalTransaction
+from app.modules.settlements.models import Settlement
 
 
 def query(
@@ -18,6 +20,10 @@ def query(
     type: str | None = None,
     category_keys: list[str] | None = None,
     deleted: bool = False,
+    account: str | None = None,
+    channel: str | None = None,
+    source: str | None = None,
+    reviewed: bool | None = None,
 ) -> list[PersonalTransaction]:
     q = select(PersonalTransaction).where(PersonalTransaction.user_id == user_id)
     q = q.where(
@@ -31,6 +37,14 @@ def query(
         q = q.where(PersonalTransaction.date <= end)
     if type:
         q = q.where(PersonalTransaction.type == type)
+    if account:
+        q = q.where(PersonalTransaction.account == account)
+    if channel:
+        q = q.where(PersonalTransaction.channel == channel)
+    if source:
+        q = q.where(PersonalTransaction.source == source)
+    if reviewed is not None:
+        q = q.where(PersonalTransaction.reviewed.is_(reviewed))
     if category_keys:
         q = q.join(Category, Category.id == PersonalTransaction.category_id).where(
             Category.key.in_(category_keys)
@@ -61,3 +75,31 @@ def group_share(session: Session, user_id: uuid.UUID, start: date, end: date, cu
         )
     )
     return int(total)
+
+
+def covered_ids(session: Session, user_id: uuid.UUID) -> set[uuid.UUID]:
+    """Your entries linked to a live expense or payment in a group you're still in. They're
+    listed but not counted: your share of the expense counts as group spending, and a payment
+    isn't spending. A group you've left drops out, as it does from your device."""
+    groups = select(GroupMember.group_id).where(
+        GroupMember.user_id == user_id, GroupMember.left_at.is_(None)
+    )
+    via_expense = (
+        select(PersonalTransaction.id)
+        .join(Expense, Expense.id == PersonalTransaction.expense_id)
+        .where(
+            PersonalTransaction.user_id == user_id,
+            Expense.deleted_at.is_(None),
+            Expense.group_id.in_(groups),
+        )
+    )
+    via_payment = (
+        select(PersonalTransaction.id)
+        .join(Settlement, Settlement.id == PersonalTransaction.settlement_id)
+        .where(
+            PersonalTransaction.user_id == user_id,
+            Settlement.deleted_at.is_(None),
+            Settlement.group_id.in_(groups),
+        )
+    )
+    return set(session.scalars(via_expense.union(via_payment)))

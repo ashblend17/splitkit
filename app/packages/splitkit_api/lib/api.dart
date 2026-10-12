@@ -44,6 +44,7 @@ part 'api/system_api.dart';
 part 'api/tricount_api.dart';
 part 'api/users_api.dart';
 
+part 'model/account_out.dart';
 part 'model/add_member_in.dart';
 part 'model/admin_dashboard_out.dart';
 part 'model/admin_session_in.dart';

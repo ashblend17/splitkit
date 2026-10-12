@@ -171,15 +171,27 @@ String compactMoney(int minor, String currency) {
 }
 
 /// A personal entry as a [TransactionCard]: "Swiggy order · Food · UPI · spent ₹486".
+/// How a personal entry was paid (personal_transactions.channel), in the order the sheet
+/// offers them. ATM only comes from bank SMS.
+const channelLabels = {
+  'upi': 'UPI',
+  'card': 'Card',
+  'bank': 'Bank transfer',
+  'cash': 'Cash',
+  'other': 'Other',
+  'atm': 'ATM',
+};
+
 TxnView personalView(PersonalTxnOut t) {
   final income = t.type == PersonalTxnOutTypeEnum.income;
+  final paidWith = channelLabels[t.channel?.value];
   return TxnView(
     title: t.description,
     subtitle: [
       t.category?.label ?? (income ? 'Income' : 'Uncategorised'),
-      if ((t.notes ?? '').isNotEmpty) t.notes!,
+      if (paidWith != null) paidWith else if ((t.notes ?? '').isNotEmpty) t.notes!,
     ].join(' · '),
-    tag: 'Personal',
+    tag: t.source_ == PersonalTxnOutSource_Enum.sms ? 'From SMS' : 'Personal',
     label: income ? 'received' : 'spent',
     amount: income ? formatMinor(t.amountMinor, currency: t.currency, signed: true) : money(t.amountMinor, t.currency),
     glyph: glyphOr(t.category?.icon, income ? 'income' : 'other'),

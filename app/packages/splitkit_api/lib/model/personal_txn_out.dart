@@ -21,6 +21,17 @@ class PersonalTxnOut {
     required this.date,
     this.category,
     this.notes,
+    this.channel,
+    this.merchant,
+    this.account,
+    required this.source_,
+    this.reference,
+    this.balanceMinor,
+    this.smsAt,
+    required this.reviewed,
+    this.expenseId,
+    this.settlementId,
+    required this.counted,
     this.actingAdminId,
     required this.createdAt,
     this.deletedAt,
@@ -43,6 +54,28 @@ class PersonalTxnOut {
 
   String? notes;
 
+  PersonalTxnOutChannelEnum? channel;
+
+  String? merchant;
+
+  String? account;
+
+  PersonalTxnOutSource_Enum source_;
+
+  String? reference;
+
+  int? balanceMinor;
+
+  DateTime? smsAt;
+
+  bool reviewed;
+
+  String? expenseId;
+
+  String? settlementId;
+
+  bool counted;
+
   String? actingAdminId;
 
   DateTime createdAt;
@@ -61,6 +94,17 @@ class PersonalTxnOut {
     other.date == date &&
     other.category == category &&
     other.notes == notes &&
+    other.channel == channel &&
+    other.merchant == merchant &&
+    other.account == account &&
+    other.source_ == source_ &&
+    other.reference == reference &&
+    other.balanceMinor == balanceMinor &&
+    other.smsAt == smsAt &&
+    other.reviewed == reviewed &&
+    other.expenseId == expenseId &&
+    other.settlementId == settlementId &&
+    other.counted == counted &&
     other.actingAdminId == actingAdminId &&
     other.createdAt == createdAt &&
     other.deletedAt == deletedAt &&
@@ -77,13 +121,24 @@ class PersonalTxnOut {
     (date.hashCode) +
     (category == null ? 0 : category!.hashCode) +
     (notes == null ? 0 : notes!.hashCode) +
+    (channel == null ? 0 : channel!.hashCode) +
+    (merchant == null ? 0 : merchant!.hashCode) +
+    (account == null ? 0 : account!.hashCode) +
+    (source_.hashCode) +
+    (reference == null ? 0 : reference!.hashCode) +
+    (balanceMinor == null ? 0 : balanceMinor!.hashCode) +
+    (smsAt == null ? 0 : smsAt!.hashCode) +
+    (reviewed.hashCode) +
+    (expenseId == null ? 0 : expenseId!.hashCode) +
+    (settlementId == null ? 0 : settlementId!.hashCode) +
+    (counted.hashCode) +
     (actingAdminId == null ? 0 : actingAdminId!.hashCode) +
     (createdAt.hashCode) +
     (deletedAt == null ? 0 : deletedAt!.hashCode) +
     (version.hashCode);
 
   @override
-  String toString() => 'PersonalTxnOut[id=$id, type=$type, amountMinor=$amountMinor, currency=$currency, description=$description, date=$date, category=$category, notes=$notes, actingAdminId=$actingAdminId, createdAt=$createdAt, deletedAt=$deletedAt, version=$version]';
+  String toString() => 'PersonalTxnOut[id=$id, type=$type, amountMinor=$amountMinor, currency=$currency, description=$description, date=$date, category=$category, notes=$notes, channel=$channel, merchant=$merchant, account=$account, source_=$source_, reference=$reference, balanceMinor=$balanceMinor, smsAt=$smsAt, reviewed=$reviewed, expenseId=$expenseId, settlementId=$settlementId, counted=$counted, actingAdminId=$actingAdminId, createdAt=$createdAt, deletedAt=$deletedAt, version=$version]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -103,6 +158,49 @@ class PersonalTxnOut {
     } else {
       json[r'notes'] = null;
     }
+    if (this.channel != null) {
+      json[r'channel'] = this.channel;
+    } else {
+      json[r'channel'] = null;
+    }
+    if (this.merchant != null) {
+      json[r'merchant'] = this.merchant;
+    } else {
+      json[r'merchant'] = null;
+    }
+    if (this.account != null) {
+      json[r'account'] = this.account;
+    } else {
+      json[r'account'] = null;
+    }
+      json[r'source'] = this.source_;
+    if (this.reference != null) {
+      json[r'reference'] = this.reference;
+    } else {
+      json[r'reference'] = null;
+    }
+    if (this.balanceMinor != null) {
+      json[r'balance_minor'] = this.balanceMinor;
+    } else {
+      json[r'balance_minor'] = null;
+    }
+    if (this.smsAt != null) {
+      json[r'sms_at'] = this.smsAt!.toUtc().toIso8601String();
+    } else {
+      json[r'sms_at'] = null;
+    }
+      json[r'reviewed'] = this.reviewed;
+    if (this.expenseId != null) {
+      json[r'expense_id'] = this.expenseId;
+    } else {
+      json[r'expense_id'] = null;
+    }
+    if (this.settlementId != null) {
+      json[r'settlement_id'] = this.settlementId;
+    } else {
+      json[r'settlement_id'] = null;
+    }
+      json[r'counted'] = this.counted;
     if (this.actingAdminId != null) {
       json[r'acting_admin_id'] = this.actingAdminId;
     } else {
@@ -145,6 +243,17 @@ class PersonalTxnOut {
         date: mapDateTime(json, r'date', r'')!,
         category: CategoryOut.fromJson(json[r'category']),
         notes: mapValueOfType<String>(json, r'notes'),
+        channel: PersonalTxnOutChannelEnum.fromJson(json[r'channel']),
+        merchant: mapValueOfType<String>(json, r'merchant'),
+        account: mapValueOfType<String>(json, r'account'),
+        source_: PersonalTxnOutSource_Enum.fromJson(json[r'source'])!,
+        reference: mapValueOfType<String>(json, r'reference'),
+        balanceMinor: mapValueOfType<int>(json, r'balance_minor'),
+        smsAt: mapDateTime(json, r'sms_at', r''),
+        reviewed: mapValueOfType<bool>(json, r'reviewed')!,
+        expenseId: mapValueOfType<String>(json, r'expense_id'),
+        settlementId: mapValueOfType<String>(json, r'settlement_id'),
+        counted: mapValueOfType<bool>(json, r'counted')!,
         actingAdminId: mapValueOfType<String>(json, r'acting_admin_id'),
         createdAt: mapDateTime(json, r'created_at', r'')!,
         deletedAt: mapDateTime(json, r'deleted_at', r''),
@@ -202,6 +311,9 @@ class PersonalTxnOut {
     'currency',
     'description',
     'date',
+    'source',
+    'reviewed',
+    'counted',
     'created_at',
     'version',
   };
@@ -278,6 +390,166 @@ class PersonalTxnOutTypeEnumTypeTransformer {
 
   /// Singleton [PersonalTxnOutTypeEnumTypeTransformer] instance.
   static PersonalTxnOutTypeEnumTypeTransformer? _instance;
+}
+
+
+
+class PersonalTxnOutChannelEnum {
+  /// Instantiate a new enum with the provided [value].
+  const PersonalTxnOutChannelEnum._(this.value);
+
+  /// The underlying value of this enum member.
+  final String value;
+
+  @override
+  String toString() => value;
+
+  String toJson() => value;
+
+  static const upi = PersonalTxnOutChannelEnum._(r'upi');
+  static const card = PersonalTxnOutChannelEnum._(r'card');
+  static const bank = PersonalTxnOutChannelEnum._(r'bank');
+  static const atm = PersonalTxnOutChannelEnum._(r'atm');
+  static const cash = PersonalTxnOutChannelEnum._(r'cash');
+  static const other = PersonalTxnOutChannelEnum._(r'other');
+
+  /// List of all possible values in this [enum][PersonalTxnOutChannelEnum].
+  static const values = <PersonalTxnOutChannelEnum>[
+    upi,
+    card,
+    bank,
+    atm,
+    cash,
+    other,
+  ];
+
+  static PersonalTxnOutChannelEnum? fromJson(dynamic value) => PersonalTxnOutChannelEnumTypeTransformer().decode(value);
+
+  static List<PersonalTxnOutChannelEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <PersonalTxnOutChannelEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = PersonalTxnOutChannelEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [PersonalTxnOutChannelEnum] to String,
+/// and [decode] dynamic data back to [PersonalTxnOutChannelEnum].
+class PersonalTxnOutChannelEnumTypeTransformer {
+  factory PersonalTxnOutChannelEnumTypeTransformer() => _instance ??= const PersonalTxnOutChannelEnumTypeTransformer._();
+
+  const PersonalTxnOutChannelEnumTypeTransformer._();
+
+  String encode(PersonalTxnOutChannelEnum data) => data.value;
+
+  /// Decodes a [dynamic value][data] to a PersonalTxnOutChannelEnum.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  PersonalTxnOutChannelEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data != null) {
+      switch (data) {
+        case r'upi': return PersonalTxnOutChannelEnum.upi;
+        case r'card': return PersonalTxnOutChannelEnum.card;
+        case r'bank': return PersonalTxnOutChannelEnum.bank;
+        case r'atm': return PersonalTxnOutChannelEnum.atm;
+        case r'cash': return PersonalTxnOutChannelEnum.cash;
+        case r'other': return PersonalTxnOutChannelEnum.other;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// Singleton [PersonalTxnOutChannelEnumTypeTransformer] instance.
+  static PersonalTxnOutChannelEnumTypeTransformer? _instance;
+}
+
+
+
+class PersonalTxnOutSource_Enum {
+  /// Instantiate a new enum with the provided [value].
+  const PersonalTxnOutSource_Enum._(this.value);
+
+  /// The underlying value of this enum member.
+  final String value;
+
+  @override
+  String toString() => value;
+
+  String toJson() => value;
+
+  static const manual = PersonalTxnOutSource_Enum._(r'manual');
+  static const sms = PersonalTxnOutSource_Enum._(r'sms');
+
+  /// List of all possible values in this [enum][PersonalTxnOutSource_Enum].
+  static const values = <PersonalTxnOutSource_Enum>[
+    manual,
+    sms,
+  ];
+
+  static PersonalTxnOutSource_Enum? fromJson(dynamic value) => PersonalTxnOutSource_EnumTypeTransformer().decode(value);
+
+  static List<PersonalTxnOutSource_Enum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <PersonalTxnOutSource_Enum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = PersonalTxnOutSource_Enum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [PersonalTxnOutSource_Enum] to String,
+/// and [decode] dynamic data back to [PersonalTxnOutSource_Enum].
+class PersonalTxnOutSource_EnumTypeTransformer {
+  factory PersonalTxnOutSource_EnumTypeTransformer() => _instance ??= const PersonalTxnOutSource_EnumTypeTransformer._();
+
+  const PersonalTxnOutSource_EnumTypeTransformer._();
+
+  String encode(PersonalTxnOutSource_Enum data) => data.value;
+
+  /// Decodes a [dynamic value][data] to a PersonalTxnOutSource_Enum.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  PersonalTxnOutSource_Enum? decode(dynamic data, {bool allowNull = true}) {
+    if (data != null) {
+      switch (data) {
+        case r'manual': return PersonalTxnOutSource_Enum.manual;
+        case r'sms': return PersonalTxnOutSource_Enum.sms;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// Singleton [PersonalTxnOutSource_EnumTypeTransformer] instance.
+  static PersonalTxnOutSource_EnumTypeTransformer? _instance;
 }
 
 

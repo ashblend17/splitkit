@@ -169,6 +169,9 @@ def load(session: Session) -> dict[str, int]:
         )
         for s in d.SETTLEMENTS
     )
+    # Personal entries point at expenses and payments, and with no relationship() between them
+    # the flush doesn't know to insert those first.
+    session.flush()
     session.add_all(
         PersonalTransaction(
             # Deterministic ids, so captured fixtures don't change on every reseed.
@@ -177,11 +180,27 @@ def load(session: Session) -> dict[str, int]:
             type=p.type,
             amount_minor=rupees(p.amount),
             currency=CURRENCY,
-            category_id=cat[p.category],
+            category_id=cat[p.category] if p.category else None,
             date=p.day,
             description=p.description,
             notes=p.notes,
+            channel=p.channel,
             created_at=p.created or d.at(p.day, 9, 0),
+            **(
+                {
+                    "source": "sms",
+                    "merchant": p.sms.merchant,
+                    "account": p.sms.account,
+                    "reference": p.sms.reference,
+                    "balance_minor": None if p.sms.balance is None else rupees(p.sms.balance),
+                    "sms_at": p.created or d.at(p.day, 9, 0),
+                    "reviewed": p.sms.reviewed,
+                }
+                if p.sms
+                else {}
+            ),
+            expense_id=eid[p.expense] if p.expense else None,
+            settlement_id=sid[p.settlement] if p.settlement else None,
         )
         for i, p in enumerate(d.PERSONAL)
     )

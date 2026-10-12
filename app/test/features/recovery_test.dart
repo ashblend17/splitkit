@@ -34,7 +34,7 @@ void main() {
     final write = container
         .read(writesProvider)
         .createPersonal(
-          PersonalTxnIn(type: PersonalTxnInTypeEnum.expense, amountMinor: 900, description: 'Kept', date: DateTime.utc(2026, 9, 25)),
+          PersonalTxnIn(type: PersonalTxnInTypeEnum.expense, amountMinor: 900, description: 'Kept', date: DateTime.utc(2026, 9, 25), source_: PersonalTxnInSource_Enum.manual),
         );
     for (var i = 0; i < 50; i++) {
       await tester.pump(const Duration(milliseconds: 20));
@@ -71,7 +71,7 @@ void main() {
     final write = container
         .read(writesProvider)
         .createPersonal(
-          PersonalTxnIn(type: PersonalTxnInTypeEnum.expense, amountMinor: 900, description: 'Kept', date: DateTime.utc(2026, 9, 25)),
+          PersonalTxnIn(type: PersonalTxnInTypeEnum.expense, amountMinor: 900, description: 'Kept', date: DateTime.utc(2026, 9, 25), source_: PersonalTxnInSource_Enum.manual),
         );
     for (var i = 0; i < 50; i++) {
       await tester.pump(const Duration(milliseconds: 20));

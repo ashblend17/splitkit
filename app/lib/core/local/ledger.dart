@@ -526,14 +526,28 @@ class Ledger {
 
   // ---- personal finance (personal/service.py, personal/repository.py) ----
 
-  List<Json> _personalRows({String? start, String? end, String? type, List<String>? categoryKeys, bool deleted = false}) {
+  List<Json> _personalRows({
+    String? start,
+    String? end,
+    String? type,
+    List<String>? categoryKeys,
+    bool deleted = false,
+    String? account,
+    String? channel,
+    String? source,
+    bool? reviewed,
+  }) {
     final rows = [
       for (final t in _personal)
         if ((t['deleted_at'] != null) == deleted &&
             (start == null || (t['date'] as String).compareTo(start) >= 0) &&
             (end == null || (t['date'] as String).compareTo(end) <= 0) &&
             (type == null || t['type'] == type) &&
-            (categoryKeys == null || categoryKeys.isEmpty || categoryKeys.contains(_categories[t['category_id']]?['key'])))
+            (categoryKeys == null || categoryKeys.isEmpty || categoryKeys.contains(_categories[t['category_id']]?['key'])) &&
+            (account == null || t['account'] == account) &&
+            (channel == null || t['channel'] == channel) &&
+            (source == null || _source(t) == source) &&
+            (reviewed == null || _reviewed(t) == reviewed))
           t,
     ];
     rows.sort((a, b) {
@@ -544,6 +558,21 @@ class Ledger {
     });
     return rows;
   }
+
+  // Rows synced before these columns existed (migration 0010) have no such keys.
+  static String _source(Json t) => t['source'] as String? ?? 'manual';
+  static bool _reviewed(Json t) => t['reviewed'] as bool? ?? true;
+
+  /// Entries linked to a live expense or payment in a group you're in
+  /// (personal/repository.py covered_ids): listed, but not counted.
+  late final Set<String> _covered = {
+    for (final t in _personal)
+      if (_linkedLive(_expenses[t['expense_id']]) || _linkedLive(_settlements[t['settlement_id']])) t['id'] as String,
+  };
+
+  bool _linkedLive(Json? row) => row != null && row['deleted_at'] == null && _isMember(row['group_id'] as String, me);
+
+  bool _counted(Json t) => !_covered.contains(t['id']);
 
   Json _txnOut(Json t) {
     final c = _categories[t['category_id']];
@@ -556,6 +585,17 @@ class Ledger {
       'date': t['date'],
       'category': c == null ? null : _categoryOut(c),
       'notes': t['notes'],
+      'channel': t['channel'],
+      'merchant': t['merchant'],
+      'account': t['account'],
+      'source': _source(t),
+      'reference': t['reference'],
+      'balance_minor': t['balance_minor'],
+      'sms_at': t['sms_at'],
+      'reviewed': _reviewed(t),
+      'expense_id': t['expense_id'],
+      'settlement_id': t['settlement_id'],
+      'counted': _counted(t),
       'acting_admin_id': t['acting_admin_id'],
       'created_at': t['created_at'],
       'deleted_at': t['deleted_at'],
@@ -564,13 +604,37 @@ class Ledger {
   }
 
   /// GET /personal/transactions
-  Json personalList({String? start, String? end, String? type, List<String>? categoryKeys, bool deleted = false, int limit = 100, int offset = 0}) {
-    final rows = _personalRows(start: start, end: end, type: type, categoryKeys: categoryKeys, deleted: deleted);
+  Json personalList({
+    String? start,
+    String? end,
+    String? type,
+    List<String>? categoryKeys,
+    bool deleted = false,
+    String? account,
+    String? channel,
+    String? source,
+    bool? reviewed,
+    int limit = 100,
+    int offset = 0,
+  }) {
+    final rows = _personalRows(
+      start: start,
+      end: end,
+      type: type,
+      categoryKeys: categoryKeys,
+      deleted: deleted,
+      account: account,
+      channel: channel,
+      source: source,
+      reviewed: reviewed,
+    );
     final page = rows.skip(offset).take(limit);
-    // Entries in another currency (from before you changed yours) are listed but not counted.
+    // Entries in another currency (from before you changed yours) are listed but not counted,
+    // nor are entries that became a group expense or payment.
     final currency = userOut()['currency'];
-    int sum(String kind) =>
-        rows.where((t) => t['type'] == kind && t['currency'] == currency).fold(0, (a, t) => a + (t['amount_minor'] as int));
+    int sum(String kind) => rows
+        .where((t) => t['type'] == kind && t['currency'] == currency && _counted(t))
+        .fold(0, (a, t) => a + (t['amount_minor'] as int));
     return {'items': [for (final t in page) _txnOut(t)], 'spent_minor': sum('expense'), 'income_minor': sum('income'), 'count': rows.length};
   }
 
@@ -587,7 +651,7 @@ class Ledger {
     final last = DateTime(month.year, month.month + 1, 0);
     final s = _day(start), e = _day(last);
     final currency = userOut()['currency'];
-    final rows = _personalRows(start: s, end: e).where((t) => t['currency'] == currency);
+    final rows = _personalRows(start: s, end: e).where((t) => t['currency'] == currency && _counted(t));
     var spent = 0, income = 0;
     final byCat = <String?, int>{};
     for (final t in rows) {
@@ -628,6 +692,48 @@ class Ledger {
       'group_share_minor': groupShare,
       'by_category': totals,
     };
+  }
+
+  /// GET /personal/accounts: each account or card your entries went through, most recently
+  /// used first, with the latest balance its bank reported (personal/service.py accounts).
+  List<Json> personalAccounts() {
+    final byAccount = <String, List<Json>>{};
+    for (final t in _personalRows()) {
+      final account = t['account'] as String?;
+      if (account != null) (byAccount[account] ??= []).add(t);
+    }
+    int when(Json a, Json b) {
+      final at = _time(a['sms_at'] ?? a['created_at']).compareTo(_time(b['sms_at'] ?? b['created_at']));
+      if (at != 0) return at;
+      final made = _time(a['created_at']).compareTo(_time(b['created_at']));
+      return made != 0 ? made : (a['id'] as String).compareTo(b['id'] as String);
+    }
+
+    Json latest(Iterable<Json> rows) => rows.reduce((a, b) => when(a, b) >= 0 ? a : b);
+    final out = [
+      for (final MapEntry(key: name, value: rows) in byAccount.entries)
+        (
+          last: latest(rows),
+          reported: rows.where((t) => t['balance_minor'] != null).isEmpty
+              ? null
+              : latest(rows.where((t) => t['balance_minor'] != null)),
+          name: name,
+          count: rows.length,
+        ),
+    ]..sort((a, b) {
+        final byTime = when(b.last, a.last);
+        return byTime != 0 ? byTime : a.name.compareTo(b.name);
+      });
+    return [
+      for (final a in out)
+        {
+          'account': a.name,
+          'currency': a.last['currency'],
+          'balance_minor': a.reported?['balance_minor'],
+          'balance_at': a.reported == null ? null : a.reported!['sms_at'] ?? a.reported!['created_at'],
+          'count': a.count,
+        },
+    ];
   }
 
   // ---- raw entities, for building writes ----

@@ -47,6 +47,7 @@ Some are enforced by PostgreSQL and can't be broken by the app; the rest are che
 | `amounts_positive` | error | No zero/negative amounts or shares | Edit the row; amounts are integer paise |
 | `expense_people_are_members` | error | Payer and everyone in a split are (or were) members of the group | Add the person back to the group, or edit the expense |
 | `settlements_are_between_members` | error | Both sides of a payment are members of its group | Delete the payment (restorable) and record it again |
+| `personal_links_are_the_owners` | warning | A personal entry linked to a split is its payer's; one linked to a payment is the sender's (spending) or receiver's (income) | Expected after a payer edit; unlink the entry |
 | `currency_matches_group` | error | Expenses and payments are in the group's currency | Bad import or manual SQL; fix the row |
 | `categories_fit_their_use` | error | Expenses use group categories; personal entries use personal ones (built in or their owner's) | Pick another category in the app |
 | `accounts_are_sane` | error | Placeholders have no password or personal entries; no duplicate emails | Merge the accounts, or move the rows |
@@ -69,7 +70,7 @@ to be found (`api/tests/api/test_validate_recover.py`).
 |---|---|
 | Every API route, including permissions, read-only view-as, conflicts (409), idempotent client ids, the sync log | `api/tests/` |
 | The split engine and balance engine give the same answers in Python and Dart | `shared/split_vectors.json`, `shared/balance_vectors.json` (both suites run them) |
-| Every answer the app computes on the device (groups, balances, feed, expense detail, settle-up, personal list and summary, categories) equals the API's, for two seeded users | `app/test/core/local_parity_test.dart` with `app/test/fixtures/sync/` |
+| Every answer the app computes on the device (groups, balances, feed, expense detail, settle-up, personal list, summary and accounts, categories) equals the API's, for two seeded users | `app/test/core/local_parity_test.dart` with `app/test/fixtures/sync/` |
 | Syncing: snapshots, incremental changes, tombstones, paging, lost access, crash-safe cursors, offline | `app/test/core/sync_engine_test.dart`, `app/test/features/offline_test.dart` |
 | Offline writes: shown at once, sent once, retried with the same id, conflicts, keep mine / keep theirs | `app/test/features/outbox_test.dart` |
 | View-as: banner and frame, target's data, read-only refused on the device, allow edits, exit | `app/test/features/admin_test.dart` |

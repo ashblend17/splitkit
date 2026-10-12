@@ -43,11 +43,18 @@ void main() {
               SettleUpPlanOut.fromJson,
             ),
             'personal_summary' => (ledger.personalSummary(DateTime.parse(arg!)), PersonalSummaryOut.fromJson),
-            'personal_list' when arg == null => (ledger.personalList(limit: 500), PersonalListOut.fromJson),
             'personal_list' => (
-              ledger.personalList(start: '2026-09-01', end: '2026-09-30', type: 'expense', limit: 500),
+              switch (arg) {
+                null => ledger.personalList(limit: 500),
+                'sep_expense' => ledger.personalList(start: '2026-09-01', end: '2026-09-30', type: 'expense', limit: 500),
+                'just_in' => ledger.personalList(source: 'sms', reviewed: false, limit: 500),
+                'upi' => ledger.personalList(channel: 'upi', limit: 500),
+                'hdfc' => ledger.personalList(account: 'HDFC ··4821', limit: 500),
+                _ => throw StateError('No local view for ${entry.key}'),
+              },
               PersonalListOut.fromJson,
             ),
+            'personal_accounts' => (ledger.personalAccounts(), AccountOut.listFromJson),
             'personal_deleted' => (ledger.personalList(deleted: true, limit: 500), PersonalListOut.fromJson),
             _ => throw StateError('No local view for ${entry.key}'),
           };

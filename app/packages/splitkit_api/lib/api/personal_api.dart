@@ -184,7 +184,7 @@ class PersonalApi {
 
   /// List Personal
   ///
-  /// Your own income and spending (only you see these), newest first, with totals.
+  /// Your own income and spending (only you see these), newest first, with totals. `reviewed=false&source=sms` is what the app shows as \"Just in\".
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -201,10 +201,19 @@ class PersonalApi {
   ///
   /// * [bool] deleted:
   ///
+  /// * [String] account:
+  ///   As labelled, e.g. \"HDFC ··4821\"
+  ///
+  /// * [String] channel:
+  ///
+  /// * [String] source_:
+  ///
+  /// * [bool] reviewed:
+  ///
   /// * [int] limit:
   ///
   /// * [int] offset:
-  Future<Response> listPersonalWithHttpInfo({ DateTime? start, DateTime? end, String? type, List<String>? category, bool? deleted, int? limit, int? offset, }) async {
+  Future<Response> listPersonalWithHttpInfo({ DateTime? start, DateTime? end, String? type, List<String>? category, bool? deleted, String? account, String? channel, String? source_, bool? reviewed, int? limit, int? offset, }) async {
     // ignore: prefer_const_declarations
     final path = r'/api/v1/personal/transactions';
 
@@ -230,6 +239,18 @@ class PersonalApi {
     if (deleted != null) {
       queryParams.addAll(_queryParams('', 'deleted', deleted));
     }
+    if (account != null) {
+      queryParams.addAll(_queryParams('', 'account', account));
+    }
+    if (channel != null) {
+      queryParams.addAll(_queryParams('', 'channel', channel));
+    }
+    if (source_ != null) {
+      queryParams.addAll(_queryParams('', 'source', source_));
+    }
+    if (reviewed != null) {
+      queryParams.addAll(_queryParams('', 'reviewed', reviewed));
+    }
     if (limit != null) {
       queryParams.addAll(_queryParams('', 'limit', limit));
     }
@@ -253,7 +274,7 @@ class PersonalApi {
 
   /// List Personal
   ///
-  /// Your own income and spending (only you see these), newest first, with totals.
+  /// Your own income and spending (only you see these), newest first, with totals. `reviewed=false&source=sms` is what the app shows as \"Just in\".
   ///
   /// Parameters:
   ///
@@ -268,11 +289,20 @@ class PersonalApi {
   ///
   /// * [bool] deleted:
   ///
+  /// * [String] account:
+  ///   As labelled, e.g. \"HDFC ··4821\"
+  ///
+  /// * [String] channel:
+  ///
+  /// * [String] source_:
+  ///
+  /// * [bool] reviewed:
+  ///
   /// * [int] limit:
   ///
   /// * [int] offset:
-  Future<PersonalListOut?> listPersonal({ DateTime? start, DateTime? end, String? type, List<String>? category, bool? deleted, int? limit, int? offset, }) async {
-    final response = await listPersonalWithHttpInfo( start: start, end: end, type: type, category: category, deleted: deleted, limit: limit, offset: offset, );
+  Future<PersonalListOut?> listPersonal({ DateTime? start, DateTime? end, String? type, List<String>? category, bool? deleted, String? account, String? channel, String? source_, bool? reviewed, int? limit, int? offset, }) async {
+    final response = await listPersonalWithHttpInfo( start: start, end: end, type: type, category: category, deleted: deleted, account: account, channel: channel, source_: source_, reviewed: reviewed, limit: limit, offset: offset, );
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -282,6 +312,57 @@ class PersonalApi {
     if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
       return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PersonalListOut',) as PersonalListOut;
     
+    }
+    return null;
+  }
+
+  /// Personal Accounts
+  ///
+  /// The accounts and cards your entries went through, most recently used first, each with the latest balance its bank reported.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> personalAccountsWithHttpInfo() async {
+    // ignore: prefer_const_declarations
+    final path = r'/api/v1/personal/accounts';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      path,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Personal Accounts
+  ///
+  /// The accounts and cards your entries went through, most recently used first, each with the latest balance its bank reported.
+  Future<List<AccountOut>?> personalAccounts() async {
+    final response = await personalAccountsWithHttpInfo();
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      final responseBody = await _decodeBodyBytes(response);
+      return (await apiClient.deserializeAsync(responseBody, 'List<AccountOut>') as List)
+        .cast<AccountOut>()
+        .toList(growable: false);
+
     }
     return null;
   }

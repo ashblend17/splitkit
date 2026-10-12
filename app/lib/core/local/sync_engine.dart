@@ -152,7 +152,8 @@ class SyncEngine {
     return server != null && (e.version == null || (server.version ?? 0) >= e.version!);
   });
 
-  static const _volatile = {'version', 'created_at', 'updated_at', 'deleted_at', 'last_activity_at', 'category'};
+  // sms_at: the server writes "+00:00", Dart "Z" with milliseconds; the same instant either way.
+  static const _volatile = {'version', 'created_at', 'updated_at', 'deleted_at', 'last_activity_at', 'category', 'sms_at'};
 
   bool _alreadyOnServer(OutboxOp op) => op.entities.every((e) {
     final server = store.serverEntity(e.key)?.data;

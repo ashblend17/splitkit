@@ -80,6 +80,19 @@ file, and confirm with `uv run alembic check`.
   `q` (description or a person's name). `category` and `unsettled` leave payments out.
 - Personal finance (`/personal/...`) is private to its owner: transactions with filters and
   totals, plus a monthly summary that includes your share of group spending.
+  - An entry can say how it was paid (`channel`: upi, card, bank, atm, cash, other), who was paid
+    (`merchant`) and the `account` ("HDFC ··4821"). Entries the app read from a bank SMS on the
+    phone have `source: sms`, the bank's `reference`, the `balance_minor` it reported, `sms_at`,
+    and `reviewed: false` until looked at. The message itself never leaves the phone.
+  - An entry can be linked to the group expense it was split into (`expense_id`, one you paid)
+    or the payment it was (`settlement_id`). While that expense or payment is live in a group
+    you're in, the entry is listed with `counted: false` and left out of every personal total
+    and personal analytics: your share counts as group spending, and a payment isn't spending.
+  - On PUT, `channel`, `merchant`, `account`, the links and `reviewed` keep their value when
+    the body leaves them out. `source`, `reference`, `balance_minor` and `sms_at` are set on
+    create only.
+  - `GET /personal/transactions` also filters by `account`, `channel`, `source` and `reviewed`.
+    `GET /personal/accounts` lists accounts with the latest balance their bank reported.
 - Analytics is config-driven: `GET /analytics/personal` and `GET /analytics/groups/{id}` loop over
   `analytics_configuration` rows (yours if you saved a layout, else the defaults). Each row's
   `source` maps to one function in `app/modules/analytics/sources.py`; each `type` maps to one

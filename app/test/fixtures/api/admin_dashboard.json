@@ -3,7 +3,7 @@
   "admins": 1,
   "placeholders": 0,
   "groups": 2,
-  "groups_active_week": 2,
+  "groups_active_week": 0,
   "expenses": 26,
   "expenses_imported": 13,
   "expense_volume": [
@@ -19,12 +19,12 @@
       "currency": "INR"
     }
   ],
-  "personal_transactions": 53,
+  "personal_transactions": 56,
   "personal_users": 1,
   "open_sessions": 0,
   "recent": [
     {
-      "id": "f575f12d-639f-4d61-8938-b4bd913e8205",
+      "id": "80cd04f9-d598-4c76-a463-d857da55a8fb",
       "at": "2026-09-23T16:10:00Z",
       "action": "expense.create",
       "entity": "expense",
@@ -47,7 +47,7 @@
       }
     },
     {
-      "id": "e252f0cf-c93a-4510-b294-43721dcbc368",
+      "id": "f06aa7f3-e2ea-4ad8-b68d-f5160b392400",
       "at": "2026-09-23T15:45:00Z",
       "action": "expense.update",
       "entity": "expense",
@@ -78,7 +78,7 @@
       }
     },
     {
-      "id": "52089c9d-6797-4e9a-bf3b-6aca5842be3d",
+      "id": "c701c15a-69ba-449b-a0c0-a083e8a1e20c",
       "at": "2026-09-23T12:45:00Z",
       "action": "expense.create",
       "entity": "expense",
@@ -101,7 +101,7 @@
       }
     },
     {
-      "id": "60fe19ae-fcd6-4305-85f8-a7fa9dedeb72",
+      "id": "e6b07e0c-9e67-4765-b533-7251f1e5cab5",
       "at": "2026-09-22T04:30:00Z",
       "action": "import.complete",
       "entity": "import_batch",
@@ -120,7 +120,7 @@
       }
     },
     {
-      "id": "3040635a-da66-4bae-a653-85528e5b606c",
+      "id": "55b451cd-6177-4ded-b055-b82d5b215e3c",
       "at": "2026-09-22T01:20:00Z",
       "action": "settlement.create",
       "entity": "settlement",
@@ -143,7 +143,7 @@
       }
     },
     {
-      "id": "aeb07aef-922e-4a0a-942b-48eb7b19c2d7",
+      "id": "bc35d9c6-0d34-49da-a012-5d1d12e32969",
       "at": "2026-09-21T13:00:00Z",
       "action": "expense.delete",
       "entity": "expense",
@@ -164,7 +164,7 @@
       "diff": {}
     },
     {
-      "id": "efd8d21a-b797-4248-8190-abef494fb51b",
+      "id": "40d25c82-a9c8-4212-aefe-cfad7dcd9004",
       "at": "2026-09-21T04:35:00Z",
       "action": "member.join",
       "entity": "group",
@@ -190,7 +190,7 @@
   "system": {
     "api_version": "0.1.0",
     "database": "PostgreSQL 16.14",
-    "database_bytes": 8969239,
+    "database_bytes": 9313303,
     "last_import_at": "2026-09-22T04:30:00Z",
     "last_import_source": "tricount"
   }

@@ -21,6 +21,7 @@ from app.modules.categories.models import Category
 from app.modules.expenses.models import Expense, ExpenseSplit
 from app.modules.groups import repository as groups
 from app.modules.groups.service import require_member
+from app.modules.personal import repository as personal_repo
 from app.modules.personal.models import PersonalTransaction
 from app.modules.sync import log as sync_log
 from app.modules.users.models import User
@@ -77,6 +78,8 @@ def _labels(session: Session) -> dict[uuid.UUID, str]:
 def personal_dashboard(session: Session, actor: Actor, period: Period, on: date) -> DashboardOut:
     me, currency = actor.user_id, actor.user.currency
     labels = _labels(session)
+    # Entries that became a group expense or payment aren't counted, as in the summary.
+    covered = personal_repo.covered_ids(session, me)
     personal = [
         sources.Entry(t.date, t.amount_minor, labels.get(t.category_id, "Uncategorised"))
         for t in session.scalars(
@@ -87,6 +90,7 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
                 PersonalTransaction.deleted_at.is_(None),
             )
         )
+        if t.id not in covered
     ]
     shares = [
         sources.Entry(d, share)

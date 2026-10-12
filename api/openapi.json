@@ -1,6 +1,54 @@
 {
   "components": {
     "schemas": {
+      "AccountOut": {
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "balance_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance At"
+          },
+          "balance_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance Minor"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account",
+          "currency",
+          "balance_minor",
+          "balance_at",
+          "count"
+        ],
+        "title": "AccountOut",
+        "type": "object"
+      },
       "AddMemberIn": {
         "description": "Add an existing account by email, or a placeholder person by name (no account).\n\nWith both: the account if that email has one, otherwise a placeholder with this name,\ninvited by the email (signing up with it takes the placeholder's place).",
         "properties": {
@@ -2537,11 +2585,36 @@
       },
       "PersonalTxnIn": {
         "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
           "amount_minor": {
             "exclusiveMinimum": 0.0,
             "maximum": 9999999999.0,
             "title": "Amount Minor",
             "type": "integer"
+          },
+          "balance_minor": {
+            "anyOf": [
+              {
+                "maximum": 1000000000000000.0,
+                "minimum": -1000000000000000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance Minor"
           },
           "category_id": {
             "anyOf": [
@@ -2555,6 +2628,25 @@
             ],
             "title": "Category Id"
           },
+          "channel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "upi",
+                  "card",
+                  "bank",
+                  "atm",
+                  "cash",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
           "date": {
             "format": "date",
             "title": "Date",
@@ -2565,6 +2657,18 @@
             "minLength": 1,
             "title": "Description",
             "type": "string"
+          },
+          "expense_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expense Id"
           },
           "id": {
             "anyOf": [
@@ -2578,6 +2682,18 @@
             ],
             "title": "Id"
           },
+          "merchant": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant"
+          },
           "notes": {
             "anyOf": [
               {
@@ -2589,6 +2705,56 @@
               }
             ],
             "title": "Notes"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "reviewed": {
+            "default": true,
+            "title": "Reviewed",
+            "type": "boolean"
+          },
+          "settlement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settlement Id"
+          },
+          "sms_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sms At"
+          },
+          "source": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "sms"
+            ],
+            "title": "Source",
+            "type": "string"
           },
           "type": {
             "enum": [
@@ -2621,6 +2787,17 @@
       },
       "PersonalTxnOut": {
         "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account"
+          },
           "acting_admin_id": {
             "anyOf": [
               {
@@ -2637,6 +2814,17 @@
             "title": "Amount Minor",
             "type": "integer"
           },
+          "balance_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance Minor"
+          },
           "category": {
             "anyOf": [
               {
@@ -2646,6 +2834,29 @@
                 "type": "null"
               }
             ]
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "upi",
+                  "card",
+                  "bank",
+                  "atm",
+                  "cash",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
           },
           "created_at": {
             "format": "date-time",
@@ -2677,10 +2888,33 @@
             "title": "Description",
             "type": "string"
           },
+          "expense_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expense Id"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "merchant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant"
           },
           "notes": {
             "anyOf": [
@@ -2692,6 +2926,53 @@
               }
             ],
             "title": "Notes"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "boolean"
+          },
+          "settlement_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settlement Id"
+          },
+          "sms_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sms At"
+          },
+          "source": {
+            "enum": [
+              "manual",
+              "sms"
+            ],
+            "title": "Source",
+            "type": "string"
           },
           "type": {
             "enum": [
@@ -2715,6 +2996,17 @@
           "date",
           "category",
           "notes",
+          "channel",
+          "merchant",
+          "account",
+          "source",
+          "reference",
+          "balance_minor",
+          "sms_at",
+          "reviewed",
+          "expense_id",
+          "settlement_id",
+          "counted",
           "acting_admin_id",
           "created_at",
           "deleted_at",
@@ -9197,6 +9489,87 @@
         ]
       }
     },
+    "/api/v1/personal/accounts": {
+      "get": {
+        "description": "The accounts and cards your entries went through, most recently used first, each with\nthe latest balance its bank reported.",
+        "operationId": "personal_accounts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccountOut"
+                  },
+                  "title": "Response Personal Accounts",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Personal Accounts",
+        "tags": [
+          "personal"
+        ]
+      }
+    },
     "/api/v1/personal/summary": {
       "get": {
         "description": "One month at a glance. `month` is any date inside it (default: this month).",
@@ -9295,7 +9668,7 @@
     },
     "/api/v1/personal/transactions": {
       "get": {
-        "description": "Your own income and spending (only you see these), newest first, with totals.",
+        "description": "Your own income and spending (only you see these), newest first, with totals.\n`reviewed=false&source=sms` is what the app shows as \"Just in\".",
         "operationId": "list_personal",
         "parameters": [
           {
@@ -9381,6 +9754,84 @@
               "default": false,
               "title": "Deleted",
               "type": "boolean"
+            }
+          },
+          {
+            "description": "As labelled, e.g. \"HDFC ··4821\"",
+            "in": "query",
+            "name": "account",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "As labelled, e.g. \"HDFC ··4821\"",
+              "title": "Account"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "upi",
+                    "card",
+                    "bank",
+                    "atm",
+                    "cash",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Channel"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "manual",
+                    "sms"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "reviewed",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reviewed"
             }
           },
           {
