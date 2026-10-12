@@ -36,9 +36,28 @@ Future<void> showGroupPaymentSheet(BuildContext context, GroupPaymentTarget targ
     _show(context, _PaymentSheet(group: target));
 
 /// "Settle up with Aman": one payment across every group you share in [currency], saved as one
-/// settlement per group so each group's balance stays right.
-Future<void> showFriendSettleUpSheet(BuildContext context, UserBrief friend, {required String currency}) =>
-    _show(context, _PaymentSheet(friend: friend, currency: currency));
+/// settlement per group so each group's balance stays right. [from]: start from a payment your
+/// bank told you about (a personal entry).
+Future<void> showFriendSettleUpSheet(
+  BuildContext context,
+  UserBrief friend, {
+  required String currency,
+  PaymentFrom? from,
+}) => _show(context, _PaymentSheet(friend: friend, currency: currency, from: from));
+
+/// A payment the sheet starts from: one read from your bank (a personal entry), which gets
+/// linked to it once it's saved.
+class PaymentFrom {
+  const PaymentFrom({required this.amountMinor, required this.date, required this.method, required this.onSaved});
+  final int amountMinor;
+  final DateTime date;
+
+  /// upi, bank, cash or other.
+  final String method;
+
+  /// Called with the payments recorded (one per group), before the sheet closes.
+  final Future<void> Function(List<String> ids) onSaved;
+}
 
 Future<void> _show(BuildContext context, Widget sheet) => showModalBottomSheet<void>(
   context: context,
@@ -49,9 +68,10 @@ Future<void> _show(BuildContext context, Widget sheet) => showModalBottomSheet<v
 );
 
 class _PaymentSheet extends ConsumerStatefulWidget {
-  const _PaymentSheet({this.group, this.friend, this.currency});
+  const _PaymentSheet({this.group, this.friend, this.currency, this.from});
   final GroupPaymentTarget? group;
   final UserBrief? friend;
+  final PaymentFrom? from;
 
   /// Friend settle-up only: the currency of the balance being settled.
   final String? currency;
@@ -67,8 +87,8 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   int? _amountMinor;
   bool _full = true;
   bool _initialised = false;
-  String _method = 'upi';
-  DateTime _date = appClock.now();
+  late String _method = widget.from?.method ?? 'upi';
+  late DateTime _date = widget.from?.date ?? appClock.now();
   bool _busy = false;
 
   @override
@@ -102,6 +122,15 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             if (!_initialised) {
               _initialised = true;
               _setFull(full, p.currency);
+              // What the bank says was paid, unless that's everything owed anyway.
+              if (widget.from case final from? when from.amountMinor != full) {
+                _full = false;
+                _amountMinor = from.amountMinor;
+                _amount.text = formatMinor(
+                  from.amountMinor,
+                  currency: p.currency,
+                ).substring(currencySymbol(p.currency).length);
+              }
             }
             final from = youPay ? _meBrief(me) : p.friend;
             final to = youPay ? p.friend : _meBrief(me);
@@ -613,6 +642,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
           ),
         ];
       }
+      await widget.from?.onSaved(createdIds);
       refreshLedger(ref.invalidate);
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);

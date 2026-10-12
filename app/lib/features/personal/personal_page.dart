@@ -10,6 +10,7 @@ import '../../core/integrations.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import 'just_in.dart';
 import 'personal_txn_sheet.dart';
 
 /// Personal's Overview tab: your own income and spending, kept apart from groups (screen 11).
@@ -77,6 +78,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                       builder: (s) => _summaryCard(s, groupShare: groupShare),
                     ),
                     const SizedBox(height: 20),
+                    const JustIn(),
                     Row(
                       children: [
                         Expanded(

@@ -182,6 +182,17 @@ const channelLabels = {
   'atm': 'ATM',
 };
 
+/// "From an SMS · HDFC ··4821 · balance after ₹42,276": where an entry the app read came from.
+String smsOrigin(PersonalTxnOut t) => [
+  'From an SMS',
+  ?t.account,
+  if (t.balanceMinor case final b?) 'balance after ${money(b, t.currency)}',
+].join(' · ');
+
+/// "Split, not counted": an entry that became a split or a payment, left out of the totals.
+String? notCounted(PersonalTxnOut t) =>
+    t.counted ? null : (t.settlementId != null ? 'Payment, not counted' : 'Split, not counted');
+
 TxnView personalView(PersonalTxnOut t) {
   final income = t.type == PersonalTxnOutTypeEnum.income;
   final paidWith = channelLabels[t.channel?.value];
@@ -189,7 +200,9 @@ TxnView personalView(PersonalTxnOut t) {
     title: t.description,
     subtitle: [
       t.category?.label ?? (income ? 'Income' : 'Uncategorised'),
-      if (paidWith != null) paidWith else if ((t.notes ?? '').isNotEmpty) t.notes!,
+      if (notCounted(t) case final note?) note
+      else if (paidWith != null) paidWith
+      else if ((t.notes ?? '').isNotEmpty) t.notes!,
     ].join(' · '),
     tag: t.source_ == PersonalTxnOutSource_Enum.sms ? 'From SMS' : 'Personal',
     label: income ? 'received' : 'spent',

@@ -48,9 +48,11 @@ class LocalWrites {
   String _now() => appClock.now().toUtc().toIso8601String();
   static String _day(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
-  Future<void> _queue(OutboxOp op) async {
+  Future<void> _queue(OutboxOp op) => _queueAll([op]);
+
+  Future<void> _queueAll(List<OutboxOp> ops) async {
     final store = await _ref.read(localStoreProvider.future);
-    await store.enqueue(op);
+    await store.enqueueAll(ops);
     final engine = await _ref.read(syncEngineProvider.future);
     engine.pull().ignore();
   }
@@ -105,18 +107,22 @@ class LocalWrites {
   /// Returns the new expense's id (made here, so the screen can open it right away).
   Future<String> createExpense(String groupId, ExpenseIn body) async {
     final l = await _ledger();
-    final id = _uuid.v4();
+    await _queue(_createExpenseOp(l, groupId, body));
+    return body.id!;
+  }
+
+  /// Gives [body] its id.
+  OutboxOp _createExpenseOp(Ledger l, String groupId, ExpenseIn body) {
+    final id = body.id = _uuid.v4();
     final data = _expenseData(l, id: id, groupId: groupId, body: body);
-    body.id = id;
-    await _queue(OutboxOp(
+    return OutboxOp(
       method: 'POST',
       path: '/api/v1/groups/$groupId/expenses',
       body: _json(body.toJson()),
       label: 'Added ${_expenseLabel(data)}',
       entities: [_entity('group:$groupId', 'expense', id, data['version'], data)],
       createdAt: _now(),
-    ));
-    return id;
+    );
   }
 
   Future<void> updateExpense(String id, ExpenseIn body) async {
@@ -315,17 +321,65 @@ class LocalWrites {
 
   Future<void> updatePersonal(String id, PersonalTxnIn body) async {
     final l = await _ledger();
+    await _queue(_updatePersonalOp(l, id, body));
+  }
+
+  OutboxOp _updatePersonalOp(Ledger l, String id, PersonalTxnIn body) {
     final before = _required(l.rawPersonal(id), 'Transaction');
     final data = _personalData(l, id, body, before);
     body.version = before['version'] as int;
-    await _queue(OutboxOp(
+    return OutboxOp(
       method: 'PUT',
       path: '/api/v1/personal/transactions/$id',
       body: _json(body.toJson()),
       label: 'Edited ${_personalLabel(data)}',
       entities: [_entity('user:${l.me}', 'personal_transaction', id, data['version'], data)],
       createdAt: _now(),
-    ));
+    );
+  }
+
+  // ---- personal entries in Split (core/integrations.dart) ----
+
+  PersonalTxnIn _bodyOf(Ledger l, String id) => personalBody(PersonalTxnOut.fromJson(l.personalTransaction(id))!);
+
+  /// Splits personal entry [txnId] into a group expense: the expense, then the entry linked to
+  /// it (and so looked at). Queued together, so neither shows without the other. Returns the
+  /// expense's id.
+  Future<String> splitPersonal(String txnId, String groupId, ExpenseIn body) async {
+    final l = await _ledger();
+    final expense = _createExpenseOp(l, groupId, body);
+    final link = _updatePersonalOp(
+      l,
+      txnId,
+      _bodyOf(l, txnId)
+        ..expenseId = body.id
+        ..settlementId = null
+        ..reviewed = true,
+    );
+    await _queueAll([expense, link]);
+    return body.id!;
+  }
+
+  /// Links entry [txnId] to a split you paid ([expenseId]) or a payment ([settlementId]), or
+  /// unlinks it when both are null. Either way it has been looked at.
+  Future<void> linkPersonal(String txnId, {String? expenseId, String? settlementId}) async {
+    final l = await _ledger();
+    await _queue(
+      _updatePersonalOp(
+        l,
+        txnId,
+        _bodyOf(l, txnId)
+          ..expenseId = expenseId
+          ..settlementId = settlementId
+          ..reviewed = true,
+      ),
+    );
+  }
+
+  /// "Looks right": an entry the app added from a bank SMS has been looked at.
+  Future<void> reviewPersonal(String txnId) async {
+    final l = await _ledger();
+    await _queue(_updatePersonalOp(l, txnId, _bodyOf(l, txnId)..reviewed = true));
   }
 
   Future<void> deletePersonal(String id) => _setPersonalDeleted(id, true);

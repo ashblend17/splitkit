@@ -189,7 +189,19 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   `/profile/analytics` redirect to Personal's tabs.
 - Every link between the two modes is a flag in `app/lib/core/integrations.dart`
   (`integrationsProvider`, overridden in tests), so a link can be tuned or cut in one place.
-  The server never reads them.
+  The server never reads them. `PersonalFeatures` there tunes Personal on its own.
+- A personal entry can become something in Split (`features/personal/txn_actions.dart`):
+  - **Split it:** `/expenses/new?from_txn=<id>` opens Add split filled in from the entry, paid
+    by you. Saving queues the expense and the entry's link together
+    (`LocalWrites.splitPersonal`, one `enqueueAll`).
+  - **Already split:** links the entry to a split you paid with the same amount, dated within
+    `linkWindowDays` (`Ledger.linkCandidates`).
+  - **Paid a friend / From a friend:** a settle-up with someone you owe (or who owes you),
+    started from the entry and linked to its first payment.
+  - Overview's **Just in** (`just_in.dart`) lists SMS entries not looked at yet, with Split
+    it, Looks right and Not mine (a delete; the SMS's fixed id keeps it deleted).
+  - A linked entry says what it became and can be unlinked. The split shows its owner, and only
+    its owner, which account paid.
 - The API client in `app/packages/splitkit_api` is generated: after API changes run
   `(cd api && uv run python -m app.openapi) && tool/gen_api_client.sh` (needs Docker).
   Use `apiDate()` for date fields: the generated client converts dates to UTC.

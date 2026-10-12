@@ -69,6 +69,9 @@ class FeedFilters {
 
 typedef Json = Map<String, dynamic>;
 
+/// What a personal entry became in Split (Ledger.personalLink).
+typedef PersonalLink = ({bool payment, String id, String? group, String? person, bool live});
+
 /// The "Tricount" user (SYSTEM_USER_ID in api/app/modules/tricount_sync/reconcile.py).
 const tricountUserId = '1a352678-7c38-5085-8131-bbcad6d0ae9d';
 
@@ -734,6 +737,71 @@ class Ledger {
           'count': a.count,
         },
     ];
+  }
+
+  // ---- personal entries in Split (on the device only; no API answer to match) ----
+
+  /// Splits you paid that could be the same spend as entry [txnId]: the same amount and
+  /// currency, dated within [windowDays] of it, live in a group you're in, and not linked to
+  /// another entry. Closest date first; each as GET /expenses/{id} answers.
+  List<Json> linkCandidates(String txnId, {int windowDays = 3}) {
+    final t = rawPersonal(txnId) ?? (throw const LocalNotFound('Transaction'));
+    final day = DateTime.parse(t['date'] as String);
+    int apart(Json e) => DateTime.parse(e['date'] as String).difference(day).inDays.abs();
+    final taken = {
+      for (final p in _personal)
+        if (p['deleted_at'] == null && p['id'] != txnId && p['expense_id'] != null) p['expense_id'],
+    };
+    final found = [
+      for (final e in _expenses.values)
+        if (e['deleted_at'] == null &&
+            e['payer_id'] == me &&
+            e['amount_minor'] == t['amount_minor'] &&
+            e['currency'] == t['currency'] &&
+            _isMember(e['group_id'] as String, me) &&
+            !taken.contains(e['id']) &&
+            apart(e) <= windowDays)
+          e,
+    ]..sort((a, b) {
+        final byDay = apart(a).compareTo(apart(b));
+        return byDay != 0 ? byDay : _time(b['created_at']).compareTo(_time(a['created_at']));
+      });
+    return [for (final e in found) expense(e['id'] as String)];
+  }
+
+  /// What entry [txnId] became in Split, or null: a split or a payment, its group, the other
+  /// person for a payment, and whether it still stands (live, in a group you're in; only then
+  /// is the entry not counted).
+  PersonalLink? personalLink(String txnId) {
+    final t = rawPersonal(txnId);
+    final expenseId = t?['expense_id'] as String?, paymentId = t?['settlement_id'] as String?;
+    if (expenseId == null && paymentId == null) return null;
+    final row = expenseId != null ? _expenses[expenseId] : _settlements[paymentId];
+    String? other;
+    if (paymentId != null && row != null) other = row['from_user'] == me ? row['to_user'] as String : row['from_user'] as String;
+    return (
+      payment: paymentId != null,
+      id: (expenseId ?? paymentId)!,
+      group: row == null ? null : _groups[row['group_id']]?['name'] as String?,
+      person: other == null ? null : _brief(other)['name'] as String,
+      live: _linkedLive(row),
+    );
+  }
+
+  /// Who you paid, or were paid by, the last time an entry from [merchant] became a payment.
+  String? friendPaidBefore(String merchant) {
+    final earlier = [
+      for (final t in _personal)
+        if (t['merchant'] == merchant && t['deleted_at'] == null && _settlements[t['settlement_id']] != null) t,
+    ]..sort((a, b) => _time(b['created_at']).compareTo(_time(a['created_at'])));
+    final s = earlier.isEmpty ? null : _settlements[earlier.first['settlement_id']]!;
+    return s == null ? null : (s['from_user'] == me ? s['to_user'] : s['from_user']) as String;
+  }
+
+  /// Your live entry linked to expense [expenseId], as GET /personal/transactions/{id} answers.
+  Json? personalLinkedTo(String expenseId) {
+    final t = _personal.where((t) => t['expense_id'] == expenseId && t['deleted_at'] == null).firstOrNull;
+    return t == null ? null : _txnOut(t);
   }
 
   // ---- raw entities, for building writes ----

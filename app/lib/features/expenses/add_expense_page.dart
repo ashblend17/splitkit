@@ -6,6 +6,7 @@ import '../../core/api/api.dart';
 import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/integrations.dart';
 import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
@@ -16,9 +17,12 @@ import 'split_config_page.dart';
 
 /// Add split, or edit one when [editExpenseId] is set.
 class AddExpensePage extends ConsumerStatefulWidget {
-  const AddExpensePage({super.key, this.groupId, this.editExpenseId});
+  const AddExpensePage({super.key, this.groupId, this.editExpenseId, this.fromTxnId});
   final String? groupId;
   final String? editExpenseId;
+
+  /// Split this personal entry: filled in from it, paid by you, and linked to it on save.
+  final String? fromTxnId;
 
   @override
   ConsumerState<AddExpensePage> createState() => _AddExpensePageState();
@@ -62,22 +66,26 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final groups = ref.watch(groupsProvider);
     final archived = ref.watch(archivedGroupsProvider);
     final expense = _editing ? ref.watch(expenseProvider(widget.editExpenseId!)) : null;
+    final txn = widget.fromTxnId == null ? null : ref.watch(personalTxnProvider(widget.fromTxnId!));
     // An archived group's own "Add split", and edits to its expenses, stay in it; the picker
     // offers only active groups.
     final known = [...?groups.value, ...?archived.value];
     final wanted = _groupId ?? expense?.value?.groupId ?? widget.groupId;
 
     Widget body;
-    if (groups.hasError || archived.hasError || (expense?.hasError ?? false)) {
+    if (groups.hasError || archived.hasError || (expense?.hasError ?? false) || (txn?.hasError ?? false)) {
       body = Padding(
         padding: const EdgeInsets.all(16),
         child: ErrorState(
           title: "Couldn't load this",
-          body: apiErrorMessage(groups.error ?? archived.error ?? expense!.error!),
+          body: apiErrorMessage(groups.error ?? archived.error ?? expense?.error ?? txn!.error!),
           onRetry: () => refreshLedger(ref.invalidate),
         ),
       );
-    } else if (!groups.hasValue || !archived.hasValue || (expense != null && !expense.hasValue)) {
+    } else if (!groups.hasValue ||
+        !archived.hasValue ||
+        (expense != null && !expense.hasValue) ||
+        (txn != null && !txn.hasValue)) {
       body = const Padding(padding: EdgeInsets.all(16), child: LoadingSkeleton());
     } else if (groups.value!.isEmpty && !known.any((g) => g.id == wanted)) {
       body = Align(
@@ -93,7 +101,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         ),
       );
     } else {
-      _prepare(me, groups.value!, known, expense?.value);
+      _prepare(me, groups.value!, known, expense?.value, txn?.value);
       body = _form(me, known.firstWhere((g) => g.id == _groupId));
     }
 
@@ -139,10 +147,13 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     );
   }
 
-  /// Picks the group, builds the split for its members, and pre-fills when editing.
-  /// [known] is [active] plus the archived groups.
-  void _prepare(UserOut me, List<GroupOut> active, List<GroupOut> known, ExpenseOut? editing) {
-    _groupId ??= editing?.groupId ?? widget.groupId ?? _mostRecent(active).id;
+  /// Picks the group, builds the split for its members, and pre-fills when editing or
+  /// splitting a personal entry ([txn]). [known] is [active] plus the archived groups.
+  void _prepare(UserOut me, List<GroupOut> active, List<GroupOut> known, ExpenseOut? editing, PersonalTxnOut? txn) {
+    // An entry goes to the latest group in its currency, if there's one.
+    final sameCurrency = txn == null ? const <GroupOut>[] : active.where((g) => g.currency == txn.currency).toList();
+    _groupId ??=
+        editing?.groupId ?? widget.groupId ?? _mostRecent(sameCurrency.isEmpty ? active : sameCurrency).id;
     if (!known.any((g) => g.id == _groupId)) _groupId = _mostRecent(active).id;
     final group = known.firstWhere((g) => g.id == _groupId);
     if (_splitGroupId == group.id) return;
@@ -192,7 +203,19 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
               },
       );
     } else {
-      _payerId = people.any((p) => p.id == _payerId) ? _payerId : me.id;
+      if (txn != null && !_prefilled) {
+        _prefilled = true;
+        _amount = txn.amountMinor;
+        _amountText.text = money(txn.amountMinor, txn.currency).substring(currencySymbol(txn.currency).length);
+        _description.text = txn.description;
+        _date = txn.date;
+        final scope = txn.category?.scope;
+        if (ref.read(integrationsProvider).carryCategoryToSplit && (scope == 'group' || scope == 'all')) {
+          _categoryId = txn.category!.id;
+        }
+      }
+      // You paid what your bank says you paid.
+      _payerId = txn != null || !people.any((p) => p.id == _payerId) ? me.id : _payerId;
       _split = SplitController(people: people, totalMinor: _amount ?? 0, currency: group.currency);
     }
     _split!.addListener(() => setState(() {}));
@@ -218,6 +241,23 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (widget.fromTxnId != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(color: SkColors.personalSoft, borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    children: [
+                      const SkIcon('lock', size: 16, color: SkColors.personalInk),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'From your Personal entry. Only you see the link; the group sees a split.',
+                          style: SkText.body(13, 600, color: SkColors.personalInk),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 4),
                 child: AmountInput(
@@ -284,7 +324,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   children: [
                     _row(
                       label: 'Paid by',
-                      onTap: () => _pickPayer(me),
+                      onTap: widget.fromTxnId == null ? () => _pickPayer(me) : null,
                       child: Row(
                         children: [
                           Avatar(payer, size: 28, fontSize: 11),
@@ -292,7 +332,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                           Expanded(child: Text(payer.name, style: SkText.body(15, 600))),
                         ],
                       ),
-                      trailing: const SkIcon('next', size: 18),
+                      trailing: widget.fromTxnId == null ? const SkIcon('next', size: 18) : null,
                     ),
                     _row(
                       label: 'Split',
@@ -602,6 +642,8 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
       if (_editing) {
         id = widget.editExpenseId!;
         await writes.updateExpense(id, body);
+      } else if (widget.fromTxnId case final txnId?) {
+        id = await writes.splitPersonal(txnId, group.id, body);
       } else {
         id = await writes.createExpense(group.id, body);
       }

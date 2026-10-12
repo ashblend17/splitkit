@@ -6,11 +6,13 @@ import 'package:intl/intl.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/integrations.dart';
 import '../../core/local/writes.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import '../personal/personal_txn_sheet.dart';
 import '../settlements/settlement_sheet.dart';
 
 class ExpenseDetailPage extends ConsumerWidget {
@@ -168,6 +170,11 @@ class _Body extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _yourPart(context, ref, me, myShare, iPaid),
+        if (ref.watch(integrationsProvider).personalNoteOnSplit)
+          if (ref.watch(personalLinkedToProvider(e.id)).value case final t?) ...[
+            const SizedBox(height: 8),
+            _fromPersonal(context, t),
+          ],
         const SizedBox(height: 16),
         _splitCard(me),
         if ((e.notes ?? '').isNotEmpty) ...[
@@ -192,6 +199,32 @@ class _Body extends ConsumerWidget {
       ],
     );
   }
+
+  /// To you only: the personal entry this split was made from (and which account paid).
+  Widget _fromPersonal(BuildContext context, PersonalTxnOut t) => Semantics(
+    button: true,
+    child: InkWell(
+      onTap: () => showPersonalTxnSheet(context, existing: t),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: SkColors.personalSoft, borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            const SkIcon('lock', size: 16, color: SkColors.personalInk),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                t.account == null ? 'From your Personal entry' : 'From your ${t.account}',
+                style: SkText.body(13, 600, color: SkColors.personalInk),
+              ),
+            ),
+            Text('Only you', style: SkText.body(12, 600, color: SkColors.personalInk)),
+          ],
+        ),
+      ),
+    ),
+  );
 
   Widget _pill(String text, Color bg, Color fg) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
