@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 ///
 /// [Integrations] are the links between them: each is one flag, so a link can be tuned or cut
 /// without touching the screens, and with every flag off the two share nothing but your
-/// account. [PersonalFeatures] tunes Personal on its own.
+/// account. [Features] tunes each half on its own.
 ///
 /// The server never reads these: it stores and returns everything, and the app decides what
 /// to show. Tests override the providers to check each flag.
@@ -44,13 +44,21 @@ class Integrations {
   final int linkWindowDays;
 }
 
-/// Personal on its own.
-class PersonalFeatures {
-  const PersonalFeatures({this.justInLimit = 5});
+/// Each half on its own.
+class Features {
+  const Features({this.justInLimit = 5, this.suggestCategories = true, this.learnCategories = true});
 
   /// How many unchecked bank SMS entries Overview's "Just in" shows at once.
   final int justInLimit;
+
+  /// Personal entries and splits get a category from their words as you type (until you pick
+  /// one), and entries read from bank SMS get one too (core/categorise).
+  final bool suggestCategories;
+
+  /// Suggestions start from what you chose before for the same merchant or words, before
+  /// the built-in keywords.
+  final bool learnCategories;
 }
 
 final integrationsProvider = Provider<Integrations>((_) => const Integrations());
-final personalFeaturesProvider = Provider<PersonalFeatures>((_) => const PersonalFeatures());
+final featuresProvider = Provider<Features>((_) => const Features());

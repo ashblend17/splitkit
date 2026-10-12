@@ -64,6 +64,38 @@ void main() {
     expect(body['category_id'], isNotNull);
   });
 
+  testWidgets('a category is suggested as you type, and tapping it keeps it (ISS-001)', (tester) async {
+    final be = FakeBackend();
+    be.postResponses['/api/v1/personal/transactions'] = (201, (fixture('personal_list') as Map)['items'][0]);
+    await pumpApp(tester, backend: be, location: '/personal');
+    await tester.tap(find.byType(AddSplitFab));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), '320');
+    await tester.enterText(find.byType(TextField).at(1), 'zomatoo');
+    await tester.pumpAndSettle();
+    bool selected(String label) => tester.widget<SelectableChip>(find.widgetWithText(SelectableChip, label)).selected;
+    expect(selected('Food'), isTrue);
+    await tester.enterText(find.byType(TextField).at(1), 'ubar ride');
+    await tester.pumpAndSettle();
+    expect((selected('Food'), selected('Transport')), (false, true));
+    await tester.tap(find.widgetWithText(SelectableChip, 'Transport')); // keeps it
+    await tester.enterText(find.byType(TextField).at(1), 'ubar ride to dinner');
+    await tester.pumpAndSettle();
+    expect(selected('Transport'), isTrue); // chosen now, so it no longer follows the words
+    await tester.tap(find.text('Save expense'));
+    await tester.pumpAndSettle();
+    final transport = (fixture('personal_categories') as List).firstWhere((c) => c['key'] == 'transport')['id'];
+    expect(be.writes.single.$3['category_id'], transport);
+  });
+
+  testWidgets('Add split suggests a category from the description too', (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/expenses/new?group=${be.goa['id']}');
+    await tester.enterText(find.byType(TextField).at(1), 'Petrol for the scooter');
+    await tester.pumpAndSettle();
+    expect(tester.widget<SelectableChip>(find.widgetWithText(SelectableChip, 'Transport')).selected, isTrue);
+  });
+
   testWidgets('history filters by type and category on the device', (tester) async {
     await pumpApp(tester, location: '/personal/transactions');
     expect(find.bySemanticsLabel('Transactions'), findsWidgets); // the title and the tab

@@ -40,15 +40,31 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
   SplitController? _split;
   String? _splitGroupId;
   bool _prefilled = false;
+
+  /// Once you pick (or when editing, or the split came with one), the category stops
+  /// following what you type.
+  bool _categoryChosen = false;
   bool _allCategories = false;
   bool _busy = false;
 
   bool get _editing => widget.editExpenseId != null;
 
+  void _suggestCategory() {
+    if (!_categoryChosen) _categoryId = suggestCategory(ref, _description.text, scope: 'group');
+  }
+
+  /// A tap on the suggested chip keeps it (it's what you meant); otherwise chips toggle.
+  void _pickCategory(String id) => setState(() {
+    final confirming = !_categoryChosen && id == _categoryId;
+    _categoryChosen = true;
+    if (!confirming) _categoryId = id == _categoryId ? null : id;
+  });
+
   @override
   void initState() {
     super.initState();
-    _description.addListener(() => setState(() {}));
+    _categoryChosen = _editing;
+    _description.addListener(() => setState(_suggestCategory));
   }
 
   @override
@@ -212,6 +228,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
         final scope = txn.category?.scope;
         if (ref.read(integrationsProvider).carryCategoryToSplit && (scope == 'group' || scope == 'all')) {
           _categoryId = txn.category!.id;
+          _categoryChosen = true;
         }
       }
       // You paid what your bank says you paid.
@@ -300,7 +317,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                           label: c.label,
                           icon: glyphOr(c.icon),
                           selected: c.id == _categoryId,
-                          onTap: () => setState(() => _categoryId = c.id == _categoryId ? null : c.id),
+                          onTap: () => _pickCategory(c.id),
                         ),
                       if (cats.length > 7)
                         SelectableChip(
