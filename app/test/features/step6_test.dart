@@ -134,10 +134,14 @@ void main() {
     expect(find.byType(TrendBars), findsOneWidget);
     expect(find.text('₹32.5k'), findsOneWidget); // top of the highlighted bar
     await tester.scrollUntilVisible(find.text('Average per day'), 300, scrollable: find.byType(Scrollable).first);
-    expect(find.byType(BreakdownBars), findsOneWidget);
     expect(find.byType(SplitBar), findsOneWidget);
     expect(find.byType(StatBlock), findsOneWidget);
     expect(find.text('August averaged ₹993 per day'), findsOneWidget);
+    // From what entries say: the account, how it was paid, who was paid.
+    await tester.scrollUntilVisible(find.text('Top merchants'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('HDFC ··4821'), findsOneWidget);
+    expect(find.text('Not said'), findsOneWidget);
+    expect(find.text('Swiggy order'), findsOneWidget);
   });
 
   testWidgets('group analytics and editing the layout', (tester) async {
@@ -158,7 +162,14 @@ void main() {
     await tester.pumpAndSettle();
     final (method, path, body) = be.writes.single;
     expect((method, path), ('PUT', '/api/v1/analytics/layout/personal'));
-    expect([for (final c in body['cards'] as List) (c as Map)['type']], ['spending_trend', 'spending_by_category', 'average_daily']);
+    expect([for (final c in body['cards'] as List) (c as Map)['type']], [
+      'spending_trend',
+      'spending_by_category',
+      'average_daily',
+      'spending_by_account',
+      'spending_by_channel',
+      'top_merchants',
+    ]);
   });
 
   testWidgets('a card type the app does not know shows the placeholder', (tester) async {

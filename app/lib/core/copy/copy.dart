@@ -189,6 +189,15 @@ String smsOrigin(PersonalTxnOut t) => [
   if (t.balanceMinor case final b?) 'balance after ${money(b, t.currency)}',
 ].join(' · ');
 
+/// The entry's category as a list shows it. A payment to a friend needs none.
+String? categoryLabel(PersonalTxnOut t) =>
+    t.category?.label ??
+    (t.type == PersonalTxnOutTypeEnum.income
+        ? 'Income'
+        : t.settlementId != null
+        ? null
+        : 'Uncategorised');
+
 /// "Split, not counted": an entry that became a split or a payment, left out of the totals.
 String? notCounted(PersonalTxnOut t) =>
     t.counted ? null : (t.settlementId != null ? 'Payment, not counted' : 'Split, not counted');
@@ -199,7 +208,7 @@ TxnView personalView(PersonalTxnOut t) {
   return TxnView(
     title: t.description,
     subtitle: [
-      t.category?.label ?? (income ? 'Income' : 'Uncategorised'),
+      ?categoryLabel(t),
       if (notCounted(t) case final note?) note
       else if (paidWith != null) paidWith
       else if ((t.notes ?? '').isNotEmpty) t.notes!,

@@ -31,6 +31,27 @@
       "params": {
         "compare": "previous_month"
       }
+    },
+    {
+      "type": "spending_by_account",
+      "title": "By account",
+      "period": "this_month",
+      "source": "personal_by_account",
+      "params": {}
+    },
+    {
+      "type": "spending_by_channel",
+      "title": "By payment mode",
+      "period": "this_month",
+      "source": "personal_by_channel",
+      "params": {}
+    },
+    {
+      "type": "top_merchants",
+      "title": "Top merchants",
+      "period": "this_month",
+      "source": "personal_top_merchants",
+      "params": {}
     }
   ],
   "available": [
@@ -65,6 +86,27 @@
       "params": {
         "compare": "previous_month"
       }
+    },
+    {
+      "type": "spending_by_account",
+      "title": "By account",
+      "period": "this_month",
+      "source": "personal_by_account",
+      "params": {}
+    },
+    {
+      "type": "spending_by_channel",
+      "title": "By payment mode",
+      "period": "this_month",
+      "source": "personal_by_channel",
+      "params": {}
+    },
+    {
+      "type": "top_merchants",
+      "title": "Top merchants",
+      "period": "this_month",
+      "source": "personal_top_merchants",
+      "params": {}
     }
   ],
   "customised": false

@@ -5,6 +5,7 @@ import '../../core/api/api.dart';
 import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/integrations.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
@@ -14,7 +15,10 @@ import 'personal_txn_sheet.dart';
 /// Screen 12, Personal's Transactions tab: filter by dates, type and category; totals;
 /// entries grouped by day.
 class PersonalHistoryPage extends ConsumerStatefulWidget {
-  const PersonalHistoryPage({super.key});
+  const PersonalHistoryPage({super.key, this.account});
+
+  /// Start filtered to this account.
+  final String? account;
 
   @override
   ConsumerState<PersonalHistoryPage> createState() => _PersonalHistoryPageState();
@@ -25,12 +29,29 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
   DateTime _end = appClock.now();
   String? _type = 'expense';
   Set<String> _categories = {};
+  late String? _account = widget.account;
+  String? _channel;
+
+  @override
+  void didUpdateWidget(PersonalHistoryPage old) {
+    super.didUpdateWidget(old);
+    // The tab keeps its page, so a link to another account arrives here.
+    if (widget.account != old.account) _account = widget.account;
+  }
 
   static const _types = {'expense': 'Expenses only', 'income': 'Income only', null: 'Everything'};
 
   PersonalQuery get _query {
     final keys = _categories.toList()..sort();
-    return PersonalQuery(start: _start, end: _end, type: _type, categories: keys.join(','), limit: 500);
+    return PersonalQuery(
+      start: _start,
+      end: _end,
+      type: _type,
+      categories: keys.join(','),
+      account: _account,
+      channel: _channel,
+      limit: 500,
+    );
   }
 
   @override
@@ -38,6 +59,9 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
     final me = ref.watch(meProvider);
     final list = ref.watch(personalListProvider(_query));
     final categories = ref.watch(personalCategoriesProvider);
+    final accounts = ref.watch(featuresProvider).breakdownFilters
+        ? ref.watch(personalAccountsProvider).value ?? const <AccountOut>[]
+        : null;
     final days =
         DateTime(_end.year, _end.month, _end.day).difference(DateTime(_start.year, _start.month, _start.day)).inDays +
         1;
@@ -66,6 +90,33 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
                       _filterButton(label: _types[_type]!, trailing: 'down', onTap: _pickType),
                     ],
                   ),
+                  if (accounts != null) ...[
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (accounts.isNotEmpty || _account != null)
+                          _filterButton(
+                            label: _account ?? 'All accounts',
+                            trailing: 'down',
+                            strong: _account != null,
+                            onTap: () => _pick(
+                              'Account',
+                              {null: 'All accounts', for (final a in accounts) a.account: a.account},
+                              _account,
+                              (v) => _account = v,
+                            ),
+                          ),
+                        _filterButton(
+                          label: channelLabels[_channel] ?? 'Any way paid',
+                          trailing: 'down',
+                          strong: _channel != null,
+                          onTap: () => _pick('Paid with', {null: 'Any way paid', ...channelLabels}, _channel, (v) => _channel = v),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   AsyncBody(
                     value: categories,
@@ -289,7 +340,7 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
                 children: [
                   Text(t.description, style: SkText.body(15, 600), maxLines: 1, overflow: TextOverflow.ellipsis),
                   Text(
-                    [t.category?.label ?? (income ? 'Income' : 'Uncategorised'), ?notCounted(t)].join(' · '),
+                    [?categoryLabel(t), ?notCounted(t)].join(' · '),
                     style: SkText.body(12, 400, color: SkColors.ink2),
                   ),
                 ],
@@ -326,6 +377,34 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
         _end = picked.end;
       });
     }
+  }
+
+  /// One of [options] (value: label; null is "any"), set with [set].
+  Future<void> _pick(String title, Map<String?, String> options, String? current, void Function(String?) set) async {
+    final picked = await showAppBottomSheet<(String?,)>(
+      context,
+      title: title,
+      child: Column(
+        children: [
+          for (final MapEntry(:key, :value) in options.entries)
+            Builder(
+              builder: (sheet) => InkWell(
+                onTap: () => Navigator.of(sheet).pop((key,)),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(value, style: SkText.body(15, 600))),
+                      if (current == key) const SkIcon('check', size: 20, color: SkColors.personal),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+    if (picked != null) setState(() => set(picked.$1));
   }
 
   Future<void> _pickType() async {

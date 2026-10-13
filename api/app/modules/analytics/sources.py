@@ -32,6 +32,21 @@ class Entry:
     amount_minor: int
     category: str = "Uncategorised"
     person: str = ""
+    account: str | None = None
+    channel: str | None = None
+    merchant: str | None = None
+    """As the app names it (the entry's description when the merchant was first seen)."""
+
+
+CHANNELS = {
+    "upi": "UPI",
+    "card": "Card",
+    "bank": "Bank transfer",
+    "atm": "ATM",
+    "cash": "Cash",
+    "other": "Other",
+}
+"""Payment modes, as the app labels them (core/copy/copy.dart channelLabels)."""
 
 
 @dataclass
@@ -171,9 +186,35 @@ def group_paid_by(ctx: Context) -> CardData:
     )
 
 
+def personal_by_account(ctx: Context) -> CardData:
+    """Spending per account or card, for entries that say which."""
+    span = current(ctx.period, ctx.on)
+    named = [e for e in ctx.personal if e.account]
+    return CardData(period_label=span.label, rows=_rows(named, span, lambda e: e.account or ""))
+
+
+def personal_by_channel(ctx: Context) -> CardData:
+    """Spending by how it was paid."""
+    span = current(ctx.period, ctx.on)
+    rows = _rows(ctx.personal, span, lambda e: CHANNELS.get(e.channel or "", "Not said"))
+    return CardData(period_label=span.label, rows=rows)
+
+
+def personal_top_merchants(ctx: Context) -> CardData:
+    """The five merchants you spent most with (entries from bank SMS name them)."""
+    span = current(ctx.period, ctx.on)
+    named = [e for e in ctx.personal if e.merchant]
+    return CardData(
+        period_label=span.label, rows=_rows(named, span, lambda e: e.merchant or "")[:5]
+    )
+
+
 SOURCES: dict[str, Callable[[Context], CardData]] = {
     "personal_monthly": personal_monthly,
     "personal_by_category": personal_by_category,
+    "personal_by_account": personal_by_account,
+    "personal_by_channel": personal_by_channel,
+    "personal_top_merchants": personal_top_merchants,
     "scope_split": scope_split,
     "personal_daily_avg": personal_daily_avg,
     "group_total": group_total,

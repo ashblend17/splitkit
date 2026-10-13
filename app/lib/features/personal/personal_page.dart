@@ -10,6 +10,7 @@ import '../../core/integrations.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import 'accounts_card.dart';
 import 'just_in.dart';
 import 'personal_txn_sheet.dart';
 
@@ -79,6 +80,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                     ),
                     const SizedBox(height: 20),
                     const JustIn(),
+                    const AccountsCard(),
                     Row(
                       children: [
                         Expanded(

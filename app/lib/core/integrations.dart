@@ -46,7 +46,13 @@ class Integrations {
 
 /// Each half on its own.
 class Features {
-  const Features({this.justInLimit = 5, this.suggestCategories = true, this.learnCategories = true});
+  const Features({
+    this.justInLimit = 5,
+    this.suggestCategories = true,
+    this.learnCategories = true,
+    this.accountBalances = true,
+    this.breakdownFilters = true,
+  });
 
   /// How many unchecked bank SMS entries Overview's "Just in" shows at once.
   final int justInLimit;
@@ -58,6 +64,12 @@ class Features {
   /// Suggestions start from what you chose before for the same merchant or words, before
   /// the built-in keywords.
   final bool learnCategories;
+
+  /// Overview lists your accounts with the latest balance their bank reported.
+  final bool accountBalances;
+
+  /// Transactions filter by account and by payment mode, not just dates, type and category.
+  final bool breakdownFilters;
 }
 
 final integrationsProvider = Provider<Integrations>((_) => const Integrations());
