@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- The app talks to the Splitkit API; debug builds also get this from src/debug. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Bank SMS for Personal (lib/features/sms): read on the phone; only the payments found
+         are uploaded. Google Play allows this for SMS-based money management, with a
+         declaration (ISSUES.md). -->
+    <uses-permission android:name="android.permission.READ_SMS"/>
+    <!-- Tablets without a SIM can still install the app; they just have no SMS to read. -->
+    <uses-feature android:name="android.hardware.telephony" android:required="false"/>
     <application
         android:label="splitkit"
         android:name="${applicationName}"

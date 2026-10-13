@@ -104,6 +104,7 @@ Class | Method | HTTP request | Description
 *ImportApi* | [**previewTricount**](doc//ImportApi.md#previewtricount) | **POST** /api/v1/import/tricount/preview | Preview Tricount
 *ImportApi* | [**undoImportBatch**](doc//ImportApi.md#undoimportbatch) | **POST** /api/v1/import/batches/{batch_id}/undo | Undo Import Batch
 *PersonalApi* | [**createPersonal**](doc//PersonalApi.md#createpersonal) | **POST** /api/v1/personal/transactions | Create Personal
+*PersonalApi* | [**createPersonalBatch**](doc//PersonalApi.md#createpersonalbatch) | **POST** /api/v1/personal/transactions/batch | Create Personal Batch
 *PersonalApi* | [**deletePersonal**](doc//PersonalApi.md#deletepersonal) | **DELETE** /api/v1/personal/transactions/{txn_id} | Delete Personal
 *PersonalApi* | [**getPersonal**](doc//PersonalApi.md#getpersonal) | **GET** /api/v1/personal/transactions/{txn_id} | Get Personal
 *PersonalApi* | [**listPersonal**](doc//PersonalApi.md#listpersonal) | **GET** /api/v1/personal/transactions | List Personal
@@ -189,6 +190,8 @@ Class | Method | HTTP request | Description
  - [OverallBalancesOut](doc//OverallBalancesOut.md)
  - [PersonBalance](doc//PersonBalance.md)
  - [PersonOut](doc//PersonOut.md)
+ - [PersonalBatchIn](doc//PersonalBatchIn.md)
+ - [PersonalBatchOut](doc//PersonalBatchOut.md)
  - [PersonalListOut](doc//PersonalListOut.md)
  - [PersonalSummaryOut](doc//PersonalSummaryOut.md)
  - [PersonalTxnIn](doc//PersonalTxnIn.md)

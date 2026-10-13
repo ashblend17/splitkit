@@ -29,7 +29,8 @@ SmsVerdict parseSms(RawSms sms, {Set<String> testSenders = const {}}) {
   // A bank message names an account or card; a shop's "your order of Rs 486" doesn't.
   if (direction == null || amount == null || account == null) return const SmsSkipped(SmsSkip.noTransaction);
 
-  final channel = _channel(lower, card: account.card);
+  final reference = _reference(text);
+  final channel = _channel(lower, card: account.card, reference: reference);
   return SmsParsed(
     SmsTxn(
       direction: direction,
@@ -39,7 +40,7 @@ SmsVerdict parseSms(RawSms sms, {Set<String> testSenders = const {}}) {
       bank: bank?.name,
       account: account.label,
       merchant: channel == 'atm' ? null : _merchant(text, direction),
-      reference: _reference(text),
+      reference: reference,
       balanceMinor: _balance(text),
     ),
   );
@@ -162,11 +163,14 @@ _Account? _account(String text, String lower, Bank? bank, String? header) {
   return null;
 }
 
-String _channel(String lower, {required bool card}) {
+String _channel(String lower, {required bool card, String? reference}) {
   if (_re(r'\batm\b|\bwithdrawn\b|\bcash withdrawal\b').hasMatch(lower)) return 'atm';
   if (_re(r'\bupi\b|\bvpa\b|[a-z0-9]@[a-z]{2,}').hasMatch(lower)) return 'upi';
   if (card) return 'card';
   if (_re(r'\b(?:neft|imps|rtgs|net ?banking|nach|ecs|transfer(?:red)?)\b').hasMatch(lower)) return 'bank';
+  // A 12-digit reference with nothing else said is a UPI one (IMPS says IMPS): HDFC's
+  // "Sent Rs.450 … To SWIGGY … Ref 627812345678".
+  if (reference != null && RegExp(r'^\d{12}$').hasMatch(reference)) return 'upi';
   return 'other';
 }
 

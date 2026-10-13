@@ -288,6 +288,10 @@ class ApiClient {
           return PersonBalance.fromJson(value);
         case 'PersonOut':
           return PersonOut.fromJson(value);
+        case 'PersonalBatchIn':
+          return PersonalBatchIn.fromJson(value);
+        case 'PersonalBatchOut':
+          return PersonalBatchOut.fromJson(value);
         case 'PersonalListOut':
           return PersonalListOut.fromJson(value);
         case 'PersonalSummaryOut':

@@ -22,6 +22,7 @@ class LocalStore {
   final _cursors = StoreRef<String, int>('cursors');
   final _meta = StoreRef<String, Object?>('meta');
   final _outbox = intMapStoreFactory.store('outbox');
+  final _device = StoreRef<String, Object?>('device');
 
   final _cache = <String, LocalEntity>{};
   final _ops = <OutboxOp>[];
@@ -236,11 +237,29 @@ class LocalStore {
     _notify();
   }
 
+  // ---- this device's own values ----
+
+  /// What only this device knows (its bank SMS settings, the messages it read): never synced,
+  /// kept by "Reload from server", gone on logout.
+  Future<Object?> deviceValue(String key) => _device.record(key).get(_db);
+
+  Future<void> setDeviceValue(String key, Object? value) async {
+    value == null ? await _device.record(key).delete(_db) : await _device.record(key).put(_db, value);
+  }
+
+  /// Several at once, in one transaction.
+  Future<void> setDeviceValues(Map<String, Object?> values) => _db.transaction((txn) async {
+    for (final MapEntry(:key, :value) in values.entries) {
+      value == null ? await _device.record(key).delete(txn) : await _device.record(key).put(txn, value);
+    }
+  });
+
   /// Wipes the device copy (logout). The next sign-in rebuilds it from snapshots.
   Future<void> clear() async {
     await _db.transaction((txn) async {
       await _entities.delete(txn);
       await _cursors.delete(txn);
+      await _device.delete(txn);
     });
     _cache.clear();
     _cursorCache.clear();

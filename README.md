@@ -254,6 +254,35 @@ that hasn't been tried on a device yet.
   largest remainder, with ties going to the earlier input, so shares always add up to the total.
 - A deferred database trigger rejects any expense whose splits don't add up to its amount.
 
+## Bank SMS (Android)
+
+Personal can read the SMS a bank sends to the phone and add the payments it finds. It's
+Android only. What it adds syncs, so web and iOS show it too, but only the phone reads
+messages.
+
+- **Turning it on.** Profile → Bank SMS (`/profile/sms`), or Overview's one-time offer. The
+  setup page says what's read and what leaves the phone before the system asks for READ_SMS
+  (Google Play's prominent disclosure). You choose how far back to read: this month, or the
+  last 3 or 12 months.
+- **On the phone** (`android/…/SmsChannel.kt`, `lib/features/sms/`):
+  - Kotlin hands over only messages whose sender matches `senderPattern` (business headers
+    such as VM-HDFCBK-S), so messages from people never reach the app.
+  - `SmsWatcher` reads when the app opens, comes back to the front, or the inbox changes.
+  - `SmsImporter` parses each message (`core/sms/`), gives it its fixed id, and adds it with a
+    category (`core/categorise`). A payment already here is skipped: the same id, a reference
+    already seen, or an entry you made by hand, which gets the account and merchant instead.
+  - Backfilled entries arrive looked at, except those from the last
+    `Features.justInBackfillDays`.
+  - Entries go up through `POST /personal/transactions/batch` in chunks.
+- **What stays on the phone.** The message text, OTPs, and a "Messages we skipped" list of
+  bank messages that weren't added. They're kept in the store's device-only values, never
+  synced, and gone on logout.
+- **Never reads** in view-as, before the first sync, or when your currency isn't rupees.
+- **On an emulator:** run `flutter run --dart-define=SMS_TEST_SENDER=5551234`, then
+  `adb emu sms send 5551234 "Sent Rs.450.00 From HDFC Bank A/C *4821 To SWIGGY On 12/10/26 Ref 627812345678"`.
+- **Google Play** allows READ_SMS for SMS-based money management, through a declaration
+  (ISSUES.md).
+
 ## Tricount sync
 
 A deletable module (`api/app/modules/tricount_sync/`, `app/lib/features/tricount_sync/`, the

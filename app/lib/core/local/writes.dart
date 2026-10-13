@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -337,6 +338,30 @@ class LocalWrites {
       createdAt: _now(),
     );
   }
+
+  /// Entries read from bank SMS, each with the id the message gives it: POST
+  /// /personal/transactions/batch in chunks of [chunk], queued together (one rebuild however
+  /// many).
+  Future<void> importPersonal(List<(String, PersonalTxnIn)> entries, {int chunk = 50}) async {
+    if (entries.isEmpty) return;
+    final l = await _ledger();
+    await _queueAll([
+      for (var i = 0; i < entries.length; i += chunk) _batchOp(l, entries.sublist(i, min(i + chunk, entries.length))),
+    ]);
+  }
+
+  OutboxOp _batchOp(Ledger l, List<(String, PersonalTxnIn)> part) => OutboxOp(
+    method: 'POST',
+    path: '/api/v1/personal/transactions/batch',
+    body: {
+      'items': [for (final (id, body) in part) _json((body..id = id).toJson())],
+    },
+    label: part.length == 1 ? 'Added ${part.single.$2.description} from an SMS' : 'Added ${part.length} entries from bank SMS',
+    entities: [
+      for (final (id, body) in part) _entity('user:${l.me}', 'personal_transaction', id, 1, _personalData(l, id, body, null)),
+    ],
+    createdAt: _now(),
+  );
 
   // ---- personal entries in Split (core/integrations.dart) ----
 
