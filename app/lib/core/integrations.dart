@@ -16,6 +16,7 @@ class Integrations {
     this.paymentFromTransaction = true,
     this.carryCategoryToSplit = true,
     this.personalNoteOnSplit = true,
+    this.notificationSplitAction = true,
     this.linkWindowDays = 3,
   });
 
@@ -41,6 +42,9 @@ class Integrations {
   /// A split made from your entry tells you, and only you, which account paid for it.
   final bool personalNoteOnSplit;
 
+  /// A bank SMS notification for a spend has "Split", which opens Add split with it.
+  final bool notificationSplitAction;
+
   final int linkWindowDays;
 }
 
@@ -53,6 +57,7 @@ class Features {
     this.accountBalances = true,
     this.breakdownFilters = true,
     this.smsImport = true,
+    this.smsNotifications = true,
     this.justInBackfillDays = 2,
     this.countAtmAsSpending = true,
     this.importChunk = 50,
@@ -78,6 +83,10 @@ class Features {
   /// On Android, Personal can read bank SMS on the phone and add the payments it finds
   /// (features/sms). Off: no setup, no reading.
   final bool smsImport;
+
+  /// A notification when a bank SMS arrives with the app closed (you can turn it off on the
+  /// setup page).
+  final bool smsNotifications;
 
   /// Of a first read going back months, only the last few days land in "Just in"; the rest
   /// arrive already looked at.

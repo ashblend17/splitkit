@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/integrations.dart';
 import '../../core/local/providers.dart';
 import '../../core/sms/sms.dart';
 import '../../core/theme/theme.dart';
@@ -72,7 +73,20 @@ class _SmsSetupPageState extends ConsumerState<SmsSetupPage> {
       _busy = false;
       _refused = !allowed;
     });
-    if (allowed) await _run((importer) => importer.setUp(_since));
+    if (!allowed) return;
+    // Then notifications (Android 13 and up ask); without them it still reads in the app.
+    if (ref.read(featuresProvider).smsNotifications) await source.requestNotificationAccess();
+    await _run((importer) => importer.setUp(_since));
+  }
+
+  Future<void> _setNotify(bool on) async {
+    final source = ref.read(smsSourceProvider);
+    if (on && !await source.hasNotificationAccess() && !await source.requestNotificationAccess()) {
+      if (mounted) showMessage(context, "Notifications are off for Splitkit. You can allow them in the phone's settings.");
+      return;
+    }
+    await ref.read(smsImporterProvider).setNotify(on);
+    ref.invalidate(smsSetupProvider);
   }
 
   @override
@@ -190,6 +204,29 @@ class _SmsSetupPageState extends ConsumerState<SmsSetupPage> {
         ],
       ),
     ),
+    if (ref.watch(featuresProvider).smsNotifications) ...[
+      const SizedBox(height: 8),
+      SkCard(
+        padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Tell me when one arrives', style: SkText.body(15, 600)),
+                  Text(
+                    'A notification for each payment, with Split.',
+                    style: SkText.body(12, 400, color: SkColors.ink2),
+                  ),
+                ],
+              ),
+            ),
+            Switch(value: settings.notify, activeColor: SkColors.personal, onChanged: _busy ? null : _setNotify),
+          ],
+        ),
+      ),
+    ],
     const SizedBox(height: 12),
     SkButton(
       _busy ? 'Reading…' : 'Read again',

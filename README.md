@@ -278,6 +278,15 @@ messages.
   bank messages that weren't added. They're kept in the store's device-only values, never
   synced, and gone on logout.
 - **Never reads** in view-as, before the first sync, or when your currency isn't rupees.
+- **Notifications** (`SmsReceiver.kt`), when a bank SMS arrives with the app closed:
+  - A short-lived Dart engine runs `smsBackgroundMain` (in `main.dart`) to describe the
+    message with the same parser, e.g. "₹450 at Swiggy · HDFC ··4821 · UPI".
+  - The notification has Split (`Integrations.notificationSplitAction`). Opening from it
+    adds the payment and opens Add split, or Personal.
+  - The phone only knows what `SmsImporter.configureNotifications` tells it: whether to notify
+    (switch on the setup page), whether to offer Split, and the sender pattern.
+  - It stores nothing itself; the app reads the inbox when it's opened. Signing out turns it
+    off.
 - **On an emulator:** run `flutter run --dart-define=SMS_TEST_SENDER=5551234`, then
   `adb emu sms send 5551234 "Sent Rs.450.00 From HDFC Bank A/C *4821 To SWIGGY On 12/10/26 Ref 627812345678"`.
 - **Google Play** allows READ_SMS for SMS-based money management, through a declaration

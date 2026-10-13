@@ -24,6 +24,10 @@ import java.util.concurrent.Executors
  * passes (business headers such as VM-HDFCBK-S): messages from people never leave this class.
  * `splitkit/sms/live` fires when the inbox changes while the app is open, after the SMS app has
  * stored the message, so a read that follows finds it.
+ *
+ * It also passes on what the receiver needs for notifications ("configure"), asks for the
+ * notification permission, and hands over the message a tapped notification was about
+ * ("takeLaunch").
  */
 class SmsChannel(private val activity: Activity, messenger: BinaryMessenger) :
     MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
@@ -43,7 +47,25 @@ class SmsChannel(private val activity: Activity, messenger: BinaryMessenger) :
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "access" -> result.success(canRead())
-            "request" -> request(result)
+            "request" -> request(result, notifications = call.argument<String>("which") == "notifications")
+            "notificationAccess" -> result.success(canNotify())
+            "configure" -> {
+                SmsConfig.write(
+                    activity,
+                    notify = call.argument<Boolean>("notify") ?: false,
+                    splitAction = call.argument<Boolean>("split") ?: true,
+                    senders = call.argument<String>("senders") ?: "(?!)",
+                )
+                result.success(null)
+            }
+            "takeLaunch" -> {
+                result.success(launch)
+                launch = null
+            }
+            "cancel" -> {
+                SmsNotifier.cancel(activity, call.argument<Int>("id") ?: 0)
+                result.success(null)
+            }
             "settings" -> {
                 activity.startActivity(
                     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", activity.packageName, null)),
@@ -64,14 +86,28 @@ class SmsChannel(private val activity: Activity, messenger: BinaryMessenger) :
         Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
             activity.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
 
-    private fun request(result: MethodChannel.Result) {
-        if (canRead()) return result.success(true)
+    private fun canNotify(): Boolean =
+        Build.VERSION.SDK_INT < 33 ||
+            activity.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    /** SMS access (reading, and receiving for notifications), or the notification permission. */
+    private fun request(result: MethodChannel.Result, notifications: Boolean) {
+        if (if (notifications) canNotify() else canRead() && canReceive()) return result.success(true)
         if (pending != null) return result.error("busy", "Already asking", null)
         pending = result
-        activity.requestPermissions(arrayOf(Manifest.permission.READ_SMS), REQUEST_CODE)
+        val wanted = if (notifications) {
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS)
+        }
+        activity.requestPermissions(wanted, REQUEST_CODE)
     }
 
-    /** From MainActivity.onRequestPermissionsResult. */
+    private fun canReceive(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
+            activity.checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
+
+    /** From MainActivity.onRequestPermissionsResult: allowed if the first one asked for is. */
     fun onPermissionResult(requestCode: Int, grantResults: IntArray) {
         if (requestCode != REQUEST_CODE) return
         pending?.success(grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
@@ -131,5 +167,8 @@ class SmsChannel(private val activity: Activity, messenger: BinaryMessenger) :
 
     companion object {
         private const val REQUEST_CODE = 4821
+
+        /** The message a tapped notification was about, until the app takes it. */
+        var launch: Map<String, Any>? = null
     }
 }

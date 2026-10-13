@@ -8,6 +8,7 @@ import 'core/session/session.dart';
 import 'core/theme/theme.dart';
 import 'features/shell/app_mode.dart';
 import 'features/shell/sync_banner.dart';
+import 'features/sms/sms_background.dart';
 
 Future<void> main() async {
   // Real paths (/groups/…) instead of /#/groups/…; nginx serves index.html for any path.
@@ -27,6 +28,11 @@ Future<void> main() async {
     child: const SplitkitApp(),
   ));
 }
+
+/// Started by the phone (SmsBackground.kt) when a bank SMS arrives with the app closed, to
+/// describe it for the notification. Here, in the main library, so release builds keep it.
+@pragma('vm:entry-point')
+Future<void> smsBackgroundMain() => runSmsBackground();
 
 class SplitkitApp extends ConsumerWidget {
   const SplitkitApp({super.key});

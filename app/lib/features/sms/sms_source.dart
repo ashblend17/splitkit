@@ -24,7 +24,25 @@ abstract class SmsSource {
 
   /// Fires when the inbox changes while the app is open.
   Stream<void> get changes;
+
+  /// What the phone needs to notify with the app closed: whether to, whether to offer Split,
+  /// and which senders are banks.
+  Future<void> configure({required bool notify, required bool split, required String senderPattern});
+
+  Future<bool> hasNotificationAccess();
+
+  /// Asks to show notifications (Android 13 and up ask; before that it's allowed).
+  Future<bool> requestNotificationAccess();
+
+  /// The message a tapped notification was about, once: the app was opened from it.
+  Future<SmsLaunch?> takeLaunch();
+
+  Future<void> cancelNotification(int id);
 }
+
+/// A tapped bank SMS notification: its message, whether Split was tapped, and the
+/// notification (to take it away once handled).
+typedef SmsLaunch = ({RawSms sms, bool split, int notification});
 
 class AndroidSmsSource implements SmsSource {
   static const _methods = MethodChannel('splitkit/sms');
@@ -61,6 +79,35 @@ class AndroidSmsSource implements SmsSource {
 
   @override
   Stream<void> get changes => _live.receiveBroadcastStream();
+
+  @override
+  Future<void> configure({required bool notify, required bool split, required String senderPattern}) =>
+      _methods.invokeMethod<void>('configure', {'notify': notify, 'split': split, 'senders': senderPattern});
+
+  @override
+  Future<bool> hasNotificationAccess() async => await _methods.invokeMethod<bool>('notificationAccess') ?? false;
+
+  @override
+  Future<bool> requestNotificationAccess() async =>
+      await _methods.invokeMethod<bool>('request', {'which': 'notifications'}) ?? false;
+
+  @override
+  Future<SmsLaunch?> takeLaunch() async {
+    final l = await _methods.invokeMapMethod<String, Object?>('takeLaunch');
+    if (l == null) return null;
+    return (
+      sms: RawSms(
+        address: l['address']! as String,
+        body: l['body']! as String,
+        receivedAt: DateTime.fromMillisecondsSinceEpoch(l['date']! as int),
+      ),
+      split: l['action'] == 'split',
+      notification: l['notification'] as int? ?? 0,
+    );
+  }
+
+  @override
+  Future<void> cancelNotification(int id) => _methods.invokeMethod<void>('cancel', {'id': id});
 }
 
 /// Web, iOS, desktop: no SMS to read.
@@ -85,6 +132,21 @@ class NoSmsSource implements SmsSource {
 
   @override
   Stream<void> get changes => const Stream.empty();
+
+  @override
+  Future<void> configure({required bool notify, required bool split, required String senderPattern}) async {}
+
+  @override
+  Future<bool> hasNotificationAccess() async => false;
+
+  @override
+  Future<bool> requestNotificationAccess() async => false;
+
+  @override
+  Future<SmsLaunch?> takeLaunch() async => null;
+
+  @override
+  Future<void> cancelNotification(int id) async {}
 }
 
 final smsSourceProvider = Provider<SmsSource>(
