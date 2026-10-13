@@ -52,6 +52,10 @@ class Features {
     this.learnCategories = true,
     this.accountBalances = true,
     this.breakdownFilters = true,
+    this.smsImport = true,
+    this.justInBackfillDays = 2,
+    this.countAtmAsSpending = true,
+    this.importChunk = 50,
   });
 
   /// How many unchecked bank SMS entries Overview's "Just in" shows at once.
@@ -70,6 +74,21 @@ class Features {
 
   /// Transactions filter by account and by payment mode, not just dates, type and category.
   final bool breakdownFilters;
+
+  /// On Android, Personal can read bank SMS on the phone and add the payments it finds
+  /// (features/sms). Off: no setup, no reading.
+  final bool smsImport;
+
+  /// Of a first read going back months, only the last few days land in "Just in"; the rest
+  /// arrive already looked at.
+  final int justInBackfillDays;
+
+  /// A cash withdrawal counts as spending (else it's left out, as a move between your own
+  /// money).
+  final bool countAtmAsSpending;
+
+  /// Entries per request when sending what was read (POST /personal/transactions/batch).
+  final int importChunk;
 }
 
 final integrationsProvider = Provider<Integrations>((_) => const Integrations());

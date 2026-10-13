@@ -9,6 +9,8 @@ from app.modules.personal import service
 from app.modules.personal.schemas import (
     AccountOut,
     Channel,
+    PersonalBatchIn,
+    PersonalBatchOut,
     PersonalListOut,
     PersonalSummaryOut,
     PersonalTxnIn,
@@ -70,6 +72,13 @@ def personal_summary(actor: CurrentActor, session: DbSession, month: date | None
 @router.post("/transactions", response_model=PersonalTxnOut, status_code=201)
 def create_personal(body: PersonalTxnIn, actor: CurrentActor, session: DbSession):
     return service.create_transaction(session, actor, body)
+
+
+@router.post("/transactions/batch", response_model=PersonalBatchOut, status_code=201)
+def create_personal_batch(body: PersonalBatchIn, actor: CurrentActor, session: DbSession):
+    """Up to 100 entries in one request, all or none. A repeated id (a retry, a bank SMS read
+    again) gives back the entry it already made, deleted or not."""
+    return PersonalBatchOut(items=service.create_batch(session, actor, body.items))
 
 
 @router.get("/transactions/{txn_id}", response_model=PersonalTxnOut)

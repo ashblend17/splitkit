@@ -26,6 +26,7 @@ import '../../features/personal/personal_page.dart';
 import '../../features/profile/categories_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/shell/app_mode.dart';
+import '../../features/sms/sms_setup_page.dart';
 import '../../features/shell/app_shell.dart';
 import '../../features/shell/not_found_page.dart';
 import '../../features/shell/splash_page.dart';
@@ -145,6 +146,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, _) => const ProfilePage(),
                 routes: [
                   GoRoute(path: 'categories', builder: (_, _) => const CategoriesPage()),
+                  // Bank SMS, Android (features/sms).
+                  GoRoute(
+                    path: 'sms',
+                    builder: (_, _) => const SmsSetupPage(),
+                    routes: [GoRoute(path: 'skipped', builder: (_, _) => const SmsSkippedPage())],
+                  ),
                   // Tricount import (deletable module: features/import_tricount).
                   GoRoute(
                     path: 'import',

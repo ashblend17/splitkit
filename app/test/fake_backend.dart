@@ -13,8 +13,11 @@ import 'package:splitkit/core/local/providers.dart';
 import 'package:splitkit/core/router/router.dart';
 import 'package:splitkit/features/shell/app_mode.dart';
 import 'package:splitkit/features/shell/sync_banner.dart';
+import 'package:splitkit/features/sms/sms_source.dart';
 import 'package:splitkit/core/session/session.dart';
 import 'package:splitkit/core/theme/theme.dart';
+
+import 'fake_sms.dart';
 
 dynamic fixture(String name) => jsonDecode(File('test/fixtures/api/$name.json').readAsStringSync());
 
@@ -183,6 +186,7 @@ Future<FakeBackend> pumpApp(
   Duration? syncInterval,
   AppMode mode = AppMode.split,
   MemoryModeStore? modes,
+  SmsSource? sms,
 }) async {
   final be = backend ?? FakeBackend();
   tester.view.physicalSize = size;
@@ -197,6 +201,8 @@ Future<FakeBackend> pumpApp(
       syncIntervalProvider.overrideWithValue(syncInterval), // no timer unless asked for
       savedAppModeProvider.overrideWithValue(mode),
       appModeStoreProvider.overrideWithValue(modes ?? MemoryModeStore(mode)),
+      // No phone inbox unless a test brings one (tests run as Android).
+      smsSourceProvider.overrideWithValue(sms ?? FakeSmsSource()),
       ...overrides,
     ],
     retry: (_, _) => null,

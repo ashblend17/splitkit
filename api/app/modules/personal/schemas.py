@@ -50,6 +50,11 @@ class PersonalTxnIn(Schema):
     """When the bank's SMS arrived."""
 
 
+class PersonalBatchIn(Schema):
+    items: list[PersonalTxnIn] = Field(min_length=1, max_length=100)
+    """Made in order, all or none. Each may carry its own `id`."""
+
+
 class PersonalTxnOut(Schema):
     id: uuid.UUID
     type: TxnType
@@ -121,3 +126,8 @@ class AccountOut(Schema):
     """When the bank reported it."""
     count: int
     """Entries through this account."""
+
+
+class PersonalBatchOut(Schema):
+    items: list[PersonalTxnOut]
+    """In the order sent."""

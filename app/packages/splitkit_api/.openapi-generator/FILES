@@ -81,6 +81,8 @@ lib/model/money_total.dart
 lib/model/overall_balances_out.dart
 lib/model/person_balance.dart
 lib/model/person_out.dart
+lib/model/personal_batch_in.dart
+lib/model/personal_batch_out.dart
 lib/model/personal_list_out.dart
 lib/model/personal_summary_out.dart
 lib/model/personal_txn_in.dart

@@ -11,6 +11,8 @@ import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import '../../core/sms/sms.dart';
+import '../sms/sms_importer.dart';
 import 'txn_actions.dart';
 
 /// Add a personal expense or income, or edit/delete one ([existing]).
@@ -149,6 +151,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                   if (widget.existing case final t? when t.source_ == PersonalTxnOutSource_Enum.sms) ...[
                     const SizedBox(height: 6),
                     Text(smsOrigin(t), style: SkText.body(13, 400, color: SkColors.ink2)),
+                    _SmsMessage(entryId: t.id),
                   ],
                   const SizedBox(height: 14),
                   Wrap(
@@ -398,5 +401,52 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
         showMessage(context, apiErrorMessage(e));
       }
     }
+  }
+}
+
+/// "Show the message": the SMS an entry was read from, from the phone that read it (the
+/// message never leaves it).
+class _SmsMessage extends ConsumerStatefulWidget {
+  const _SmsMessage({required this.entryId});
+  final String entryId;
+
+  @override
+  ConsumerState<_SmsMessage> createState() => _SmsMessageState();
+}
+
+class _SmsMessageState extends ConsumerState<_SmsMessage> {
+  Future<RawSms?>? _message;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_message == null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton(
+          style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+          // A block, not `=>`: setState refuses a callback that returns the Future.
+          onPressed: () => setState(() {
+            _message = ref.read(smsImporterProvider).messageFor(widget.entryId);
+          }),
+          child: Text('Show the message', style: SkText.body(13, 700, color: SkColors.personalInk)),
+        ),
+      );
+    }
+    return FutureBuilder<RawSms?>(
+      future: _message,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) return const SizedBox(height: 24);
+        final sms = snap.data;
+        return Container(
+          margin: const EdgeInsets.only(top: 6),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: SkColors.sunken, borderRadius: BorderRadius.circular(12)),
+          child: Text(
+            sms == null ? 'The message stays on the phone that read it.' : '${sms.address}: ${sms.body}',
+            style: SkText.body(13, 400, color: sms == null ? SkColors.ink2 : SkColors.ink, height: 1.4),
+          ),
+        );
+      },
+    );
   }
 }

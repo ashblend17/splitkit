@@ -9,6 +9,7 @@ import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../home/activity_filters.dart';
 import '../personal/personal_txn_sheet.dart';
+import '../sms/sms_watcher.dart';
 import 'app_mode.dart';
 
 /// Signed-in shell: tab bar under 600px, navigation rail up to 1279px (HomeTablet), sidebar
@@ -92,7 +93,9 @@ class AppShell extends ConsumerWidget {
   static Widget _contained(Widget branch) => Semantics(container: true, child: branch);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => SmsWatcher(child: _shell(context, ref));
+
+  Widget _shell(BuildContext context, WidgetRef ref) {
     final current = _keys[shell.currentIndex];
     final owner = _owner[current];
     final saved = ref.watch(appModeProvider);

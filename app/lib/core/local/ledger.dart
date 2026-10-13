@@ -821,6 +821,27 @@ class Ledger {
     return chosen.firstOrNull?['category_id'] as String?;
   }
 
+  /// "reference|type" for every entry with a bank reference, deleted ones too: a payment
+  /// already here (or removed) whatever message it came from.
+  Set<String> personalReferences() => {
+    for (final t in _personal)
+      if (t['reference'] != null) '${t['reference']}|${t['type']}',
+  };
+
+  /// Your newest entry made by hand (live, with no account yet) of [type] and [amountMinor],
+  /// dated within a day of [day]: one the bank's SMS is about.
+  Json? manualMatch(String type, int amountMinor, DateTime day) {
+    final close = [
+      for (final t in _personalRows(type: type))
+        if (_source(t) == 'manual' &&
+            t['account'] == null &&
+            t['amount_minor'] == amountMinor &&
+            DateTime.parse(t['date'] as String).difference(DateTime(day.year, day.month, day.day)).inDays.abs() <= 1)
+          t,
+    ];
+    return close.isEmpty ? null : _txnOut(close.first);
+  }
+
   /// Your live entry linked to expense [expenseId], as GET /personal/transactions/{id} answers.
   Json? personalLinkedTo(String expenseId) {
     final t = _personal.where((t) => t['expense_id'] == expenseId && t['deleted_at'] == null).firstOrNull;

@@ -240,11 +240,32 @@ def accounts(session: Session, actor: Actor) -> list[AccountOut]:
 
 def create_transaction(session: Session, actor: Actor, body: PersonalTxnIn) -> PersonalTxnOut:
     actor.require_write()
+    t = _create(session, actor, body)
+    session.commit()
+    return get_transaction(session, actor, t.id)
+
+
+def create_batch(
+    session: Session, actor: Actor, items: list[PersonalTxnIn]
+) -> list[PersonalTxnOut]:
+    """Several entries in one go, all or none (the app sends a bank SMS backfill this way).
+    Each is made as `create_transaction` makes it, so a repeated id returns its row."""
+    actor.require_write()
+    rows = [_create(session, actor, body) for body in items]
+    session.commit()
+    cats = _categories(session, rows)
+    covered = repo.covered_ids(session, actor.user_id)
+    return [_out(t, cats, covered) for t in rows]
+
+
+def _create(session: Session, actor: Actor, body: PersonalTxnIn) -> PersonalTransaction:
+    """The entry for `body`, recorded but not committed: the one a repeated create already
+    made (deleted or not), or a new one."""
     replay = replayed_create(
         session, PersonalTransaction, body.id, lambda t: t.user_id == actor.user_id
     )
     if replay is not None:
-        return get_transaction(session, actor, replay.id)
+        return replay
     _check_category(session, actor, body.category_id)
     _check_links(session, actor, body.type, body.expense_id, body.settlement_id)
     t = PersonalTransaction(
@@ -280,8 +301,7 @@ def create_transaction(session: Session, actor: Actor, body: PersonalTxnIn) -> P
         diff={"type": t.type, "amount_minor": t.amount_minor, "source": t.source},
         obj=t,
     )
-    session.commit()
-    return get_transaction(session, actor, t.id)
+    return t
 
 
 def update_transaction(

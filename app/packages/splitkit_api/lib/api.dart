@@ -97,6 +97,8 @@ part 'model/money_total.dart';
 part 'model/overall_balances_out.dart';
 part 'model/person_balance.dart';
 part 'model/person_out.dart';
+part 'model/personal_batch_in.dart';
+part 'model/personal_batch_out.dart';
 part 'model/personal_list_out.dart';
 part 'model/personal_summary_out.dart';
 part 'model/personal_txn_in.dart';

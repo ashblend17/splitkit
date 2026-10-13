@@ -11,6 +11,9 @@ import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import '../../core/integrations.dart';
+import '../sms/sms_setup_page.dart';
+import '../sms/sms_source.dart';
 import 'device_card.dart';
 
 /// Screen 13: who you are and your settings. Shared by both modes: this month's spending
@@ -76,6 +79,16 @@ class ProfilePage extends ConsumerWidget {
                           categories.hasValue ? '${categories.value!.length}' : '',
                           () => context.go('/profile/categories'),
                         ),
+                        if (ref.watch(smsSourceProvider).available && ref.watch(featuresProvider).smsImport)
+                          _link(
+                            'file',
+                            'Bank SMS',
+                            switch (ref.watch(smsSetupProvider).value?.settings) {
+                              null => 'Off',
+                              _ => 'On',
+                            },
+                            () => context.go('/profile/sms'),
+                          ),
                         _link('upload', 'Import from Tricount', '', () => context.go('/profile/import')),
                         _link(
                           'logout',
