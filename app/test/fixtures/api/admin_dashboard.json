@@ -24,7 +24,7 @@
   "open_sessions": 0,
   "recent": [
     {
-      "id": "80cd04f9-d598-4c76-a463-d857da55a8fb",
+      "id": "c34575a6-f1cd-4c3f-9849-a0671c7cae86",
       "at": "2026-09-23T16:10:00Z",
       "action": "expense.create",
       "entity": "expense",
@@ -47,7 +47,7 @@
       }
     },
     {
-      "id": "f06aa7f3-e2ea-4ad8-b68d-f5160b392400",
+      "id": "69b36ec2-c89e-4980-a9b1-e2153dd589f2",
       "at": "2026-09-23T15:45:00Z",
       "action": "expense.update",
       "entity": "expense",
@@ -78,7 +78,7 @@
       }
     },
     {
-      "id": "c701c15a-69ba-449b-a0c0-a083e8a1e20c",
+      "id": "cea3f846-f8df-4766-962e-6f6e0aa5b993",
       "at": "2026-09-23T12:45:00Z",
       "action": "expense.create",
       "entity": "expense",
@@ -101,7 +101,7 @@
       }
     },
     {
-      "id": "e6b07e0c-9e67-4765-b533-7251f1e5cab5",
+      "id": "caa07f32-429c-40bd-8e2e-034c7f34c31f",
       "at": "2026-09-22T04:30:00Z",
       "action": "import.complete",
       "entity": "import_batch",
@@ -120,7 +120,7 @@
       }
     },
     {
-      "id": "55b451cd-6177-4ded-b055-b82d5b215e3c",
+      "id": "18d84526-afda-4fd1-9511-947653deb4e3",
       "at": "2026-09-22T01:20:00Z",
       "action": "settlement.create",
       "entity": "settlement",
@@ -143,7 +143,7 @@
       }
     },
     {
-      "id": "bc35d9c6-0d34-49da-a012-5d1d12e32969",
+      "id": "c61d8e0a-652c-41df-87be-a1c3db3dfb00",
       "at": "2026-09-21T13:00:00Z",
       "action": "expense.delete",
       "entity": "expense",
@@ -164,7 +164,7 @@
       "diff": {}
     },
     {
-      "id": "40d25c82-a9c8-4212-aefe-cfad7dcd9004",
+      "id": "be4a3059-d899-48d8-bc1c-4f657507ee08",
       "at": "2026-09-21T04:35:00Z",
       "action": "member.join",
       "entity": "group",
@@ -190,7 +190,7 @@
   "system": {
     "api_version": "0.1.0",
     "database": "PostgreSQL 16.14",
-    "database_bytes": 9313303,
+    "database_bytes": 9337879,
     "last_import_at": "2026-09-22T04:30:00Z",
     "last_import_source": "tricount"
   }

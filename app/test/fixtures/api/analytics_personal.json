@@ -118,6 +118,78 @@
         "value_minor": 141100,
         "note": "August averaged ₹993 per day"
       }
+    },
+    {
+      "id": "217a6f35-849b-5b1a-b462-b5dfdd481ccf",
+      "type": "spending_by_account",
+      "title": "By account",
+      "period_label": "September",
+      "source": "personal_by_account",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "HDFC ··4821",
+          "value_minor": 88600
+        },
+        {
+          "label": "ICICI Credit card ··9012",
+          "value_minor": 34000
+        }
+      ],
+      "stat": null
+    },
+    {
+      "id": "7314db44-43a6-52e0-a827-864728a16513",
+      "type": "spending_by_channel",
+      "title": "By payment mode",
+      "period_label": "September",
+      "source": "personal_by_channel",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Bank transfer",
+          "value_minor": 1800000
+        },
+        {
+          "label": "Not said",
+          "value_minor": 1136400
+        },
+        {
+          "label": "UPI",
+          "value_minor": 274600
+        },
+        {
+          "label": "Card",
+          "value_minor": 34000
+        }
+      ],
+      "stat": null
+    },
+    {
+      "id": "0de3b09d-7e6b-52e9-9494-eb6718552bc1",
+      "type": "top_merchants",
+      "title": "Top merchants",
+      "period_label": "September",
+      "source": "personal_top_merchants",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Swiggy order",
+          "value_minor": 48600
+        },
+        {
+          "label": "Rapido ride",
+          "value_minor": 40000
+        },
+        {
+          "label": "Blue Tokai coffee",
+          "value_minor": 34000
+        }
+      ],
+      "stat": null
     }
   ]
 }

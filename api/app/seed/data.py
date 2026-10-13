@@ -314,13 +314,17 @@ PERSONAL = [
 # Default dashboards (owner_id NULL). Titles from PersonalAnalytics / GroupAnalytics, except
 # "Spending over time": the trend bars are days, weeks, months or years depending on the period
 # (the design's "Monthly spending" and "Spending per day" each fit only one of them).
-# Migration 0009 adds these and CATEGORIES to every database; keep the two in step.
+# Migrations 0009 and 0011 add these and CATEGORIES to every database; keep them in step.
 A = SeedAnalytics
 ANALYTICS = [
     A("personal", 1, "spending_trend",       "Spending over time",   "last_6_months", "personal_monthly",     {"bucket": "month"}),
     A("personal", 2, "spending_by_category", "Spending by category", "this_month",    "personal_by_category"),
     A("personal", 3, "personal_vs_group",    "Personal vs group",    "this_month",    "scope_split"),
     A("personal", 4, "average_daily",        "Average per day",      "this_month",    "personal_daily_avg",   {"compare": "previous_month"}),
+    # Migration 0011.
+    A("personal", 5, "spending_by_account",  "By account",           "this_month",    "personal_by_account"),
+    A("personal", 6, "spending_by_channel",  "By payment mode",      "this_month",    "personal_by_channel"),
+    A("personal", 7, "top_merchants",        "Top merchants",        "this_month",    "personal_top_merchants"),
     A("group",    1, "total_spend",          "Total group spending", "all_time",      "group_total"),
     A("group",    2, "spending_trend",       "Spending over time",   "all_time",      "group_daily",          {"bucket": "day"}),
     A("group",    3, "spending_by_category", "By category",          "all_time",      "group_by_category"),

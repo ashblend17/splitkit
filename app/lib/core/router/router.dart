@@ -127,7 +127,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [GoRoute(path: '/personal', builder: (_, _) => const PersonalPage())],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: '/personal/transactions', builder: (_, _) => const PersonalHistoryPage())],
+            routes: [
+              GoRoute(
+                path: '/personal/transactions',
+                // ?account=: an account's entries (from Overview's Accounts).
+                builder: (_, s) => PersonalHistoryPage(account: s.uri.queryParameters['account']),
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [GoRoute(path: '/personal/insights', builder: (_, _) => const PersonalAnalyticsPage())],

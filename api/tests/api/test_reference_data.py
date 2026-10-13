@@ -15,21 +15,24 @@ from tests.api.conftest import login
 ROOT = Path(__file__).parents[2]
 
 
-def _migration():
-    path = ROOT / "migrations/versions/0009_reference_data.py"
-    spec = importlib.util.spec_from_file_location("reference_data", path)
+def _migration(name: str = "0009_reference_data"):
+    path = ROOT / f"migrations/versions/{name}.py"
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-def test_the_migration_and_the_seed_agree():
-    m = _migration()
-    assert m._NAMESPACE == loader._NAMESPACE
+def test_the_migrations_and_the_seed_agree():
+    m, cards = _migration(), _migration("0011_personal_insight_cards")
+    assert m._NAMESPACE == loader._NAMESPACE == cards._NAMESPACE
     assert m.CATEGORIES == [(c.key, c.label, c.icon, c.scope, c.sort) for c in data.CATEGORIES]
-    assert m.DASHBOARDS == [
+    assert sorted(m.DASHBOARDS + cards.CARDS) == sorted(
         (a.scope, a.position, a.type, a.title, a.period, a.source, a.params) for a in data.ANALYTICS
-    ]
+    )
+    assert {cards._id(s, p) for s, p, *_ in cards.CARDS} == {
+        str(loader.seed_id("analytics", f"{s}:{p}")) for s, p, *_ in cards.CARDS
+    }
 
 
 def test_an_unseeded_database_gets_categories_and_dashboards(client):

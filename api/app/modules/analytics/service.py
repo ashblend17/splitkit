@@ -80,17 +80,35 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
     labels = _labels(session)
     # Entries that became a group expense or payment aren't counted, as in the summary.
     covered = personal_repo.covered_ids(session, me)
-    personal = [
-        sources.Entry(t.date, t.amount_minor, labels.get(t.category_id, "Uncategorised"))
+    rows = [
+        t
         for t in session.scalars(
-            select(PersonalTransaction).where(
+            select(PersonalTransaction)
+            .where(
                 PersonalTransaction.user_id == me,
                 PersonalTransaction.type == "expense",
                 PersonalTransaction.currency == currency,
                 PersonalTransaction.deleted_at.is_(None),
             )
+            .order_by(PersonalTransaction.created_at, PersonalTransaction.id)
         )
         if t.id not in covered
+    ]
+    # A merchant is called what its first entry was (the app names entries from SMS).
+    merchants: dict[str, str] = {}
+    for t in rows:
+        if t.merchant:
+            merchants.setdefault(t.merchant.lower(), t.description)
+    personal = [
+        sources.Entry(
+            t.date,
+            t.amount_minor,
+            labels.get(t.category_id, "Uncategorised"),
+            account=t.account,
+            channel=t.channel,
+            merchant=merchants[t.merchant.lower()] if t.merchant else None,
+        )
+        for t in rows
     ]
     shares = [
         sources.Entry(d, share)

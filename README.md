@@ -93,6 +93,10 @@ file, and confirm with `uv run alembic check`.
     create only.
   - `GET /personal/transactions` also filters by `account`, `channel`, `source` and `reviewed`.
     `GET /personal/accounts` lists accounts with the latest balance their bank reported.
+  - Personal's default dashboard also has By account, By payment mode and Top merchants
+    (`personal_by_account`, `personal_by_channel` and `personal_top_merchants`, migration 0011).
+    In the app, Overview lists accounts with a reported balance, and Transactions filter by
+    account and by how an entry was paid (`Features.accountBalances`, `breakdownFilters`).
 - Analytics is config-driven: `GET /analytics/personal` and `GET /analytics/groups/{id}` loop over
   `analytics_configuration` rows (yours if you saved a layout, else the defaults). Each row's
   `source` maps to one function in `app/modules/analytics/sources.py`; each `type` maps to one

@@ -50,6 +50,9 @@ Widget _stat(AnalyticsCardOut c, String currency, String scope) =>
 const cardRenderers = <String, CardRenderer>{
   'spending_trend': _trend,
   'spending_by_category': _breakdown,
+  'spending_by_account': _breakdown,
+  'spending_by_channel': _breakdown,
+  'top_merchants': _breakdown,
   'paid_by_member': _breakdown,
   'personal_vs_group': _split,
   'average_daily': _stat,

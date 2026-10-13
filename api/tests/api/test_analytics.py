@@ -45,6 +45,29 @@ def test_personal_dashboard_matches_personal_analytics_mockup(client, seeded):
     )
 
 
+def test_personal_cards_from_what_entries_say(client, seeded):
+    """By account, by payment mode and top merchants: September's SMS entries (the ones split
+    in a group, or that were a payment, don't count)."""
+    c = cards(client, login(client, "ansh"), "/analytics/personal?period=month&on=2026-09-23")
+
+    def rows(card):
+        return [(r["label"], r["value_minor"] // 100) for r in c[card]["rows"]]
+
+    assert rows("spending_by_account") == [("HDFC ··4821", 886), ("ICICI Credit card ··9012", 340)]
+    assert rows("spending_by_channel") == [
+        ("Bank transfer", 18000),
+        ("Not said", 11364),
+        ("UPI", 2746),
+        ("Card", 340),
+    ]
+    assert rows("top_merchants") == [
+        ("Swiggy order", 486),
+        ("Rapido ride", 400),
+        ("Blue Tokai coffee", 340),
+    ]
+    assert c["top_merchants"]["title"] == "Top merchants"
+
+
 def test_period_switch(client, seeded):
     headers = login(client, "ansh")
     week = cards(client, headers, "/analytics/personal?period=week&on=2026-09-23")
@@ -89,8 +112,8 @@ def test_group_dashboard_matches_group_analytics_mockup(client, seeded):
 def test_layout_is_config_driven(client, seeded):
     headers = login(client, "ansh")
     layout = client.get(f"{API}/analytics/layout/personal", headers=headers).json()
-    assert layout["customised"] is False and len(layout["cards"]) == 4
-    reordered = [layout["cards"][3], layout["cards"][0]]  # stat first, drop two cards
+    assert layout["customised"] is False and len(layout["cards"]) == 7
+    reordered = [layout["cards"][3], layout["cards"][0]]  # stat first, drop the rest
     saved = client.put(
         f"{API}/analytics/layout/personal", headers=headers, json={"cards": reordered}
     ).json()
@@ -100,10 +123,10 @@ def test_layout_is_config_driven(client, seeded):
     # other people keep the defaults
     assert (
         len(client.get(f"{API}/analytics/personal", headers=login(client, "rahul")).json()["cards"])
-        == 4
+        == 7
     )
     reset = client.delete(f"{API}/analytics/layout/personal", headers=headers).json()
-    assert reset["customised"] is False and len(reset["cards"]) == 4
+    assert reset["customised"] is False and len(reset["cards"]) == 7
 
 
 def test_unknown_sources_are_rejected(client, seeded):
