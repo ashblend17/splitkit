@@ -45,4 +45,30 @@ class FakeSmsSource implements SmsSource {
 
   @override
   Stream<void> get changes => _changes.stream;
+
+  /// What the app last told the phone about notifications.
+  ({bool notify, bool split, String pattern})? configured;
+  bool notifications = true;
+  SmsLaunch? launch;
+  final cancelled = <int>[];
+
+  @override
+  Future<void> configure({required bool notify, required bool split, required String senderPattern}) async =>
+      configured = (notify: notify, split: split, pattern: senderPattern);
+
+  @override
+  Future<bool> hasNotificationAccess() async => notifications;
+
+  @override
+  Future<bool> requestNotificationAccess() async => notifications;
+
+  @override
+  Future<SmsLaunch?> takeLaunch() async {
+    final l = launch;
+    launch = null;
+    return l;
+  }
+
+  @override
+  Future<void> cancelNotification(int id) async => cancelled.add(id);
 }

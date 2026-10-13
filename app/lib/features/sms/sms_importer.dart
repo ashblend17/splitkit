@@ -102,10 +102,60 @@ class SmsImporter {
     final store = await _store;
     if (since == null) {
       await store.setDeviceValues({SmsKeys.settings: null, SmsKeys.cursor: null});
+      await configureNotifications();
       return SmsScan.none;
     }
     await store.setDeviceValues({SmsKeys.settings: SmsSettings(since: since, notify: notify).toJson(), SmsKeys.cursor: null});
+    await configureNotifications();
     return scan();
+  }
+
+  /// Notifications on or off (while reading is on).
+  Future<void> setNotify(bool notify) async {
+    final settings = await this.settings();
+    if (settings == null) return;
+    await (await _store).setDeviceValue(SmsKeys.settings, SmsSettings(since: settings.since, notify: notify).toJson());
+    await configureNotifications();
+  }
+
+  /// Tells the phone whether to notify (reading and notifications on, signed in as yourself),
+  /// whether to offer Split, and which senders are banks. [off] after signing out.
+  Future<void> configureNotifications({bool off = false}) async {
+    final source = _ref.read(smsSourceProvider);
+    if (!source.available) return;
+    final session = _ref.read(sessionProvider).value;
+    final settings = off || session == null || session.isViewAs ? null : await this.settings();
+    final links = _ref.read(integrationsProvider);
+    await source.configure(
+      notify: settings != null && settings.notify && _ref.read(featuresProvider).smsNotifications,
+      split: links.notificationSplitAction && links.splitFromTransaction,
+      senderPattern: senderPatternWithTests,
+    );
+  }
+
+  /// A tapped notification's message: reads the inbox (where it is by now) and returns the
+  /// entry it became, or null if it's not one (an entry you'd made, when it was matched, is).
+  Future<String?> importOne(RawSms sms) async {
+    await scan();
+    final verdict = parseSms(sms, testSenders: _testSenders);
+    if (verdict is! SmsParsed) return null;
+    final ledger = (await _store).ledger;
+    if (ledger.isEmpty) return null;
+    final txn = verdict.txn;
+    final id = smsEntryId(ledger.me, sms, txn);
+    if (ledger.rawPersonal(id) != null) return id;
+    final type = txn.direction == SmsDirection.spent ? 'expense' : 'income';
+    // Known by its reference (another message about it), or matched to an entry made by hand.
+    final byRef = txn.reference == null
+        ? null
+        : (ledger.personalList(limit: 100000)['items'] as List).cast<Map<String, dynamic>>().where(
+            (t) => t['reference'] == txn.reference && t['type'] == type,
+          );
+    if (byRef != null && byRef.isNotEmpty) return byRef.first['id'] as String;
+    final matched = (ledger.personalList(account: txn.account, type: type, limit: 100000)['items'] as List)
+        .cast<Map<String, dynamic>>()
+        .where((t) => t['merchant'] == txn.merchant && t['amount_minor'] == txn.amountMinor);
+    return matched.isEmpty ? null : matched.first['id'] as String;
   }
 
   /// Reads what arrived since the last read (a few days before, in case a message was stored
@@ -121,6 +171,7 @@ class SmsImporter {
     }
     final store = await _store;
     final settings = await this.settings();
+    await configureNotifications();
     if (settings == null || !await source.hasAccess()) return SmsScan.none;
     await _ref.read(ledgerProvider.future); // the first sync, if this device hasn't had one
     final ledger = store.ledger;
@@ -272,4 +323,13 @@ class _Read {
   }
 }
 
-final smsImporterProvider = Provider<SmsImporter>((ref) => SmsImporter(ref));
+final smsImporterProvider = Provider<SmsImporter>((ref) {
+  final importer = SmsImporter(ref);
+  // Signed out: the phone stops notifying (it would open an app with no one in it).
+  ref.listen(sessionProvider, (previous, next) {
+    if (previous?.value != null && next.hasValue && next.value == null) {
+      importer.configureNotifications(off: true).ignore();
+    }
+  });
+  return importer;
+});
