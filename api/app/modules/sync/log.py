@@ -8,8 +8,8 @@ touch the same streams can't deadlock) and inserts one change_log row per entry.
 
 Streams:
 - `group:<id>`: the group, its members (with their names), expenses with splits, settlements.
-- `user:<id>`: profile, personal transactions, own categories, layouts, and memberships (which
-  group streams this user should follow).
+- `user:<id>`: profile, personal transactions, own categories, learned category rules, layouts,
+  and memberships (which group streams this user should follow).
 - `global`: system categories and default layouts. Written by migrations and the seed only, so
   clients get it from a snapshot.
 """
@@ -127,7 +127,7 @@ def _member_entries(session: Session, m: Any) -> list[Entry]:
 def entries_for(session: Session, obj: Any) -> list[Entry]:
     """Full-state entries for one changed object. Also used to build snapshots."""
     from app.modules.analytics.models import AnalyticsConfiguration
-    from app.modules.categories.models import Category
+    from app.modules.categories.models import Category, CategoryRule
     from app.modules.expenses.models import Expense
     from app.modules.groups.models import ActivityEvent, Group, GroupMember
     from app.modules.personal.models import PersonalTransaction
@@ -185,6 +185,10 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
         case Category():
             stream = GLOBAL if obj.owner_id is None else user_stream(obj.owner_id)
             return [Entry(stream, "category", obj.id, "upsert", _columns(obj))]
+        case CategoryRule():
+            return [
+                Entry(user_stream(obj.user_id), "category_rule", obj.id, "upsert", _columns(obj))
+            ]
         case User():
             profile = Entry(
                 user_stream(obj.id),

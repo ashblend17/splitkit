@@ -10,6 +10,7 @@ from app.core.versioning import check_version, client_id, replayed_create
 from app.modules.analytics.periods import month_end
 from app.modules.auth.deps import Actor
 from app.modules.categories import repository as categories
+from app.modules.categories import rules
 from app.modules.categories.models import Category
 from app.modules.categories.schemas import CategoryOut
 from app.modules.expenses.models import Expense
@@ -301,7 +302,15 @@ def _create(session: Session, actor: Actor, body: PersonalTxnIn) -> PersonalTran
         diff={"type": t.type, "amount_minor": t.amount_minor, "source": t.source},
         obj=t,
     )
+    if t.source != "sms":  # the app guessed an SMS entry's category; you chose a manual one's
+        _learn(session, actor, t)
     return t
+
+
+def _learn(session: Session, actor: Actor, t: PersonalTransaction) -> None:
+    rules.learn(
+        session, actor, t.merchant or t.description, t.category_id, income=t.type == "income"
+    )
 
 
 def update_transaction(
@@ -353,6 +362,8 @@ def update_transaction(
     after = state()
     diff = {k: {"from": before[k], "to": after[k]} for k in before if before[k] != after[k]}
     record(session, actor, "personal.update", "personal_transaction", t.id, diff=diff, obj=t)
+    if "category_id" in diff:
+        _learn(session, actor, t)
     session.commit()
     return get_transaction(session, actor, t.id)
 

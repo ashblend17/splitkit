@@ -10,6 +10,7 @@ from app.modules.auth.deps import Actor
 from app.modules.balances import repository as ledger
 from app.modules.balances.engine import pairwise
 from app.modules.categories import repository as categories
+from app.modules.categories import rules
 from app.modules.categories.schemas import CategoryOut
 from app.modules.expenses import repository as repo
 from app.modules.expenses.models import Expense, ExpenseSplit
@@ -145,6 +146,7 @@ def create_expense(
         {"description": expense.description, "amount_minor": expense.amount_minor},
         obj=expense,
     )
+    rules.learn(session, actor, expense.description, expense.category_id)
     session.commit()
     return get_expense(session, actor, expense.id)
 
@@ -180,6 +182,8 @@ def update_expense(
     after = {**snapshot(expense), "splits": {str(s.user_id): s.share_minor for s in split_rows}}
     diff = changes(before, after)
     record(session, actor, "expense.update", "expense", expense.id, group.id, diff, obj=expense)
+    if "category_id" in diff:
+        rules.learn(session, actor, expense.description, expense.category_id)
     session.commit()
     return get_expense(session, actor, expense.id)
 
