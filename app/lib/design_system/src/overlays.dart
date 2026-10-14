@@ -34,13 +34,13 @@ class ConfirmDialog extends StatelessWidget {
           color: primary ? (destructive ? SkColors.owe : SkColors.brand) : SkColors.surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
-            side: primary ? BorderSide.none : const BorderSide(color: SkColors.lineStrong, width: 1.5),
+            side: primary ? BorderSide.none : BorderSide(color: SkColors.lineStrong, width: 1.5),
           ),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             child: Center(
-              child: Text(label, style: SkText.body(15, 700, color: primary ? Colors.white : SkColors.ink)),
+              child: Text(label, style: SkText.body(15, 700, color: primary ? SkColors.onFill : SkColors.ink)),
             ),
           ),
         ),
@@ -114,7 +114,7 @@ class AppBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 20),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: SkColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -184,7 +184,7 @@ class SheetPersonOption extends StatelessWidget {
                 Avatar(person, size: 30, fontSize: 11),
                 const SizedBox(width: 10),
                 Expanded(child: Text(label ?? person.name, style: SkText.body(15, 600))),
-                if (selected) const SkIcon('check', size: 20, color: SkColors.brand),
+                if (selected) SkIcon('check', size: 20, color: SkColors.brand),
               ],
             ),
           ),

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../api/api.dart';
+import '../categorise/category_rules.dart';
 import '../clock.dart';
 import '../money/money.dart';
 import '../session/session.dart';
@@ -62,6 +63,28 @@ class LocalWrites {
       LocalEntity(stream, entity, id, version, data);
 
   Json _required(Json? row, String what) => row ?? (throw LocalNotFound(what));
+
+  /// The rule a category you chose teaches (api categories/rules.py learn), laid over the
+  /// synced data until the server's copy, with the same id, replaces it. None without a
+  /// category, or for an admin acting as you (the server learns nothing from those).
+  List<LocalEntity> _learn(Ledger l, String? text, String? categoryId, {bool income = false}) {
+    final pattern = rulePattern(text);
+    if (categoryId == null || pattern.isEmpty || _ref.read(sessionProvider).value?.adminId != null) return const [];
+    final id = ruleId(l.me, income: income, pattern: pattern);
+    return [
+      _entity('user:${l.me}', 'category_rule', id, null, {
+        'id': id,
+        'user_id': l.me,
+        'pattern': pattern,
+        'income': income,
+        'category_id': categoryId,
+        'updated_at': _now(),
+      }),
+    ];
+  }
+
+  List<LocalEntity> _learnPersonal(Ledger l, Json data) =>
+      _learn(l, data['merchant'] as String? ?? data['description'] as String?, data['category_id'] as String?, income: data['type'] == 'income');
 
   // ---- expenses ----
 
@@ -121,7 +144,10 @@ class LocalWrites {
       path: '/api/v1/groups/$groupId/expenses',
       body: _json(body.toJson()),
       label: 'Added ${_expenseLabel(data)}',
-      entities: [_entity('group:$groupId', 'expense', id, data['version'], data)],
+      entities: [
+        _entity('group:$groupId', 'expense', id, data['version'], data),
+        ..._learn(l, body.description, body.categoryId),
+      ],
       createdAt: _now(),
     );
   }
@@ -137,7 +163,10 @@ class LocalWrites {
       path: '/api/v1/expenses/$id',
       body: _json(body.toJson()),
       label: 'Edited ${_expenseLabel(data)}',
-      entities: [_entity('group:$groupId', 'expense', id, data['version'], data)],
+      entities: [
+        _entity('group:$groupId', 'expense', id, data['version'], data),
+        if (before['category_id'] != body.categoryId) ..._learn(l, body.description, body.categoryId),
+      ],
       createdAt: _now(),
     ));
   }
@@ -314,7 +343,11 @@ class LocalWrites {
       path: '/api/v1/personal/transactions',
       body: _json(body.toJson()),
       label: 'Added ${_personalLabel(data)}',
-      entities: [_entity('user:${l.me}', 'personal_transaction', id, 1, data)],
+      entities: [
+        _entity('user:${l.me}', 'personal_transaction', id, 1, data),
+        // The app guessed an SMS entry's category; you chose a manual one's.
+        if (body.source_ != PersonalTxnInSource_Enum.sms) ..._learnPersonal(l, data),
+      ],
       createdAt: _now(),
     ));
     return id;
@@ -334,7 +367,10 @@ class LocalWrites {
       path: '/api/v1/personal/transactions/$id',
       body: _json(body.toJson()),
       label: 'Edited ${_personalLabel(data)}',
-      entities: [_entity('user:${l.me}', 'personal_transaction', id, data['version'], data)],
+      entities: [
+        _entity('user:${l.me}', 'personal_transaction', id, data['version'], data),
+        if (before['category_id'] != data['category_id']) ..._learnPersonal(l, data),
+      ],
       createdAt: _now(),
     );
   }

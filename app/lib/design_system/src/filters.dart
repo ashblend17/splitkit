@@ -113,7 +113,7 @@ class DateSelector extends StatelessWidget {
         color: SkColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: SkColors.ink, width: 1.5),
+          side: BorderSide(color: SkColors.ink, width: 1.5),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -215,7 +215,7 @@ class MiniCalendar extends StatelessWidget {
                   13,
                   500,
                   color: on
-                      ? Colors.white
+                      ? SkColors.onFill
                       : outside
                       ? SkColors.ink3
                       : SkColors.ink,

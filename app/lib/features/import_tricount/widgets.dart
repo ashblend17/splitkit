@@ -83,7 +83,7 @@ class ImportSteps extends StatelessWidget {
   Widget _step(int n, bool compact) {
     final done = n < current, on = n == current;
     final dotBg = on ? SkColors.brand : done ? SkColors.owed : SkColors.sunken;
-    final dotFg = on || done ? Colors.white : SkColors.ink2;
+    final dotFg = on || done ? SkColors.onFill : SkColors.ink2;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 14, vertical: 10),
       decoration: BoxDecoration(
@@ -175,7 +175,7 @@ class ImportSection extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SkColors.line))),
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: SkColors.line))),
             child: Row(
               children: [
                 Expanded(
@@ -225,7 +225,7 @@ class ImportSelect extends StatelessWidget {
           child: DropdownButton<String>(
             value: value,
             isExpanded: true,
-            icon: const SkIcon('down', size: 16, color: SkColors.ink2),
+            icon: SkIcon('down', size: 16, color: SkColors.ink2),
             style: SkText.body(14, 500, color: SkColors.ink),
             items: [
               for (final (v, text) in items)

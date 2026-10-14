@@ -43,16 +43,16 @@ abstract final class SkText {
     SkFamily.body => body(t.size, t.weight, color: color, height: height),
   };
 
-  static final amountHero = token(SkType.amountHero, height: 1);
-  static final title = token(SkType.title);
-  static final section = token(SkType.section);
-  static final cardAmount = display(19, 700, tracking: -0.01);
-  static final bodyText = token(SkType.body);
-  static final label = token(SkType.label, color: SkColors.ink2);
-  static final caption = token(SkType.caption, color: SkColors.ink2);
+  static TextStyle get amountHero => token(SkType.amountHero, height: 1);
+  static TextStyle get title => token(SkType.title);
+  static TextStyle get section => token(SkType.section);
+  static TextStyle get cardAmount => display(19, 700, tracking: -0.01);
+  static TextStyle get bodyText => token(SkType.body);
+  static TextStyle get label => token(SkType.label, color: SkColors.ink2);
+  static TextStyle get caption => token(SkType.caption, color: SkColors.ink2);
 
   /// Day headers such as "YESTERDAY": 13/700, caps, 0.06em. Pass text already upper-cased.
-  static final overline = body(13, 700, color: SkColors.ink2, letterSpacing: 13 * 0.06);
+  static TextStyle get overline => body(13, 700, color: SkColors.ink2, letterSpacing: 13 * 0.06);
 
   static FontWeight _weight(int w) => FontWeight.values[((w ~/ 100) - 1).clamp(0, 8)];
 }

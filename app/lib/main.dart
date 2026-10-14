@@ -5,7 +5,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'core/config.dart';
 import 'core/router/router.dart';
 import 'core/session/session.dart';
-import 'core/theme/theme.dart';
+import 'core/theme/theme_mode.dart';
 import 'features/shell/app_mode.dart';
 import 'features/shell/sync_banner.dart';
 import 'features/sms/sms_background.dart';
@@ -18,12 +18,15 @@ Future<void> main() async {
   final savedOrigin = AppConfig.devTools ? await ApiOriginStore().read() : null;
   // Split or Personal: the app opens in the mode it was left in.
   final savedMode = await AppModeStore().read() ?? AppMode.split;
+  // Light, dark or as the device is set, read before the first frame so it doesn't flash.
+  final savedTheme = await ThemeModeStore().read() ?? ThemeMode.system;
   // No automatic retries: failed requests show an error card with "Try again".
   runApp(ProviderScope(
     retry: (_, _) => null,
     overrides: [
       savedApiOriginProvider.overrideWithValue(savedOrigin),
       savedAppModeProvider.overrideWithValue(savedMode),
+      savedThemeModeProvider.overrideWithValue(savedTheme),
     ],
     child: const SplitkitApp(),
   ));
@@ -39,12 +42,6 @@ class SplitkitApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return MaterialApp.router(
-      title: 'Splitkit',
-      debugShowCheckedModeBanner: false,
-      theme: buildSplitkitTheme(),
-      routerConfig: ref.watch(routerProvider),
-      builder: appChrome,
-    );
+    return SkThemedApp(title: 'Splitkit', routerConfig: ref.watch(routerProvider), builder: appChrome);
   }
 }

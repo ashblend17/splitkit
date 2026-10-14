@@ -51,7 +51,7 @@ class _AdminDashboardPageState extends ConsumerState<AdminDashboardPage> {
               subtitle: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SkIcon('shield', size: 16, color: SkColors.ink2),
+                  SkIcon('shield', size: 16, color: SkColors.ink2),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
@@ -277,7 +277,7 @@ class _Tab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? Colors.white : SkColors.ink2;
+    final fg = selected ? SkColors.onFill : SkColors.ink2;
     return Semantics(
       button: true,
       selected: selected,

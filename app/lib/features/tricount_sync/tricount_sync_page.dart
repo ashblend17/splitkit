@@ -177,7 +177,7 @@ class _LinkedState extends ConsumerState<_Linked> {
             children: [
               Row(
                 children: [
-                  const IconTile('swap', background: SkColors.brandSoft, foreground: SkColors.brandInk),
+                  IconTile('swap', background: SkColors.brandSoft, foreground: SkColors.brandInk),
                   const SizedBox(width: 12),
                   Expanded(child: Text('Tricount', style: SkText.body(16, 700))),
                   StatusChip(label, tone: tone),
@@ -214,7 +214,7 @@ class _LinkedState extends ConsumerState<_Linked> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(padding: EdgeInsets.only(top: 2), child: SkIcon('alert', size: 16, color: SkColors.pending)),
+                  Padding(padding: EdgeInsets.only(top: 2), child: SkIcon('alert', size: 16, color: SkColors.pending)),
                   const SizedBox(width: 8),
                   Expanded(child: Text(w, style: SkText.body(14, 400, color: SkColors.ink2, height: 1.4))),
                 ],
@@ -421,7 +421,7 @@ class _NotLinkedState extends ConsumerState<_NotLinked> {
       SkCard(
         child: Row(
           children: [
-            const IconTile('swap', background: SkColors.brandSoft, foreground: SkColors.brandInk),
+            IconTile('swap', background: SkColors.brandSoft, foreground: SkColors.brandInk),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -530,7 +530,7 @@ class _PersonSelect extends StatelessWidget {
           child: DropdownButton<String>(
             value: value,
             isExpanded: true,
-            icon: const SkIcon('down', size: 16, color: SkColors.ink2),
+            icon: SkIcon('down', size: 16, color: SkColors.ink2),
             style: SkText.body(14, 500, color: SkColors.ink),
             items: [
               for (final (v, text) in items)

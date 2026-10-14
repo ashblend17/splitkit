@@ -17,6 +17,7 @@ import '../expenses/feed_list.dart';
 import '../home/home_wide.dart' show ListCard;
 import '../settlements/settlement_sheet.dart';
 import '../tricount_sync/tricount_status_line.dart';
+import 'settle_plan.dart';
 
 enum _Tab { expenses, balances, analytics, members }
 
@@ -254,7 +255,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             : b.netMinor < 0
             ? 'In ${g.name}, you owe'
             : "In ${g.name}, you're all square";
-        final others = b.people.where((p) => p.user.id != me.id).toList();
+        final plan = SettlePlan(b, me.id);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -275,55 +276,47 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'You owe ${money(b.youOweMinor, g.currency)} · You are owed ${money(b.youAreOwedMinor, g.currency)}',
+                      'You pay ${money(plan.youPayMinor, g.currency)} · You get ${money(plan.youGetMinor, g.currency)}',
                       style: SkText.body(13, 400, color: ink),
                     ),
                   ],
                 ),
               ),
             ),
-            if (others.isNotEmpty) ...[
+            if (plan.mine.isNotEmpty) ...[
               const SizedBox(height: 12),
               ListCard(
-                title: 'Your balances',
+                title: 'To settle up',
                 children: [
-                  for (final (n, p) in others.indexed)
-                    FriendBalanceRow(
-                      person: SkPerson(id: p.user.id, name: firstName(p.user.name)),
-                      state: personRowState(p.netMinor, g.currency),
-                      tone: toneFor(p.netMinor),
-                      showDivider: n < others.length - 1,
-                      onTap: p.netMinor == 0 ? null : () => _settleWith(g, b, p),
-                      trailing: p.netMinor < 0
-                          ? SkButton(
-                              'Settle',
-                              variant: SkButtonVariant.strong,
-                              size: SkButtonSize.small,
-                              onPressed: () => _settleWith(g, b, p),
-                            )
-                          : null,
-                    ),
+                  for (final (n, p) in plan.mine.indexed)
+                    if (p.fromUser.id == me.id)
+                      FriendBalanceRow(
+                        person: SkPerson(id: p.toUser.id, name: firstName(p.toUser.name)),
+                        state: 'You pay ${money(p.amountMinor, g.currency)}',
+                        tone: MoneyTone.owe,
+                        showDivider: n < plan.mine.length - 1,
+                        onTap: () => showGroupPaymentSheet(context, plan.target(g, p)),
+                        trailing: SkButton(
+                          'Settle',
+                          variant: SkButtonVariant.strong,
+                          size: SkButtonSize.small,
+                          onPressed: () => showGroupPaymentSheet(context, plan.target(g, p)),
+                        ),
+                      )
+                    else
+                      FriendBalanceRow(
+                        person: SkPerson(id: p.fromUser.id, name: firstName(p.fromUser.name)),
+                        state: 'Pays you ${money(p.amountMinor, g.currency)}',
+                        tone: MoneyTone.owed,
+                        showDivider: n < plan.mine.length - 1,
+                        onTap: () => showGroupPaymentSheet(context, plan.target(g, p)),
+                      ),
                 ],
               ),
             ],
           ],
         );
       },
-    );
-  }
-
-  void _settleWith(GroupOut g, GroupBalancesOut b, PersonBalance p) {
-    final me = ref.read(meProvider);
-    final meBrief = UserBrief(id: me.id, name: me.name, avatarUrl: me.avatarUrl);
-    showGroupPaymentSheet(
-      context,
-      GroupPaymentTarget(
-        group: g,
-        members: b.people,
-        from: p.netMinor < 0 ? meBrief : p.user,
-        to: p.netMinor < 0 ? p.user : meBrief,
-        balanceMinor: p.netMinor.abs(),
-      ),
     );
   }
 
@@ -352,24 +345,31 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             value: balances,
             onRetry: () => ref.invalidate(groupBalancesProvider(g.id)),
             skeletonRows: 1,
-            builder: (b) => Row(
-              children: [
-                figure('You owe', money(b.youOweMinor, g.currency), b.youOweMinor == 0 ? SkColors.ink2 : SkColors.owe),
-                const SizedBox(width: 8),
-                figure(
-                  'You are owed',
-                  money(b.youAreOwedMinor, g.currency),
-                  b.youAreOwedMinor == 0 ? SkColors.ink2 : SkColors.owed,
-                ),
-                const SizedBox(width: 8),
-                figure(
-                  'Net',
-                  formatMinor(b.netMinor, currency: g.currency, signed: true),
-                  textColorFor(b.netMinor),
-                  weight: 800,
-                ),
-              ],
-            ),
+            builder: (b) {
+              final plan = SettlePlan(b, ref.watch(meProvider).id);
+              return Row(
+                children: [
+                  figure(
+                    'You pay',
+                    money(plan.youPayMinor, g.currency),
+                    plan.youPayMinor == 0 ? SkColors.ink2 : SkColors.owe,
+                  ),
+                  const SizedBox(width: 8),
+                  figure(
+                    'You get',
+                    money(plan.youGetMinor, g.currency),
+                    plan.youGetMinor == 0 ? SkColors.ink2 : SkColors.owed,
+                  ),
+                  const SizedBox(width: 8),
+                  figure(
+                    'Net',
+                    formatMinor(b.netMinor, currency: g.currency, signed: true),
+                    textColorFor(b.netMinor),
+                    weight: 800,
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           Row(
@@ -401,15 +401,14 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
     );
   }
 
-  /// Start with the person you owe most; otherwise the person who owes you most.
+  /// Opens your largest payment in the group's fewest-payments plan.
   void _settleUp(GroupOut g, GroupBalancesOut b) {
-    final owe = [...b.people.where((p) => p.netMinor < 0)]..sort((a, c) => a.netMinor.compareTo(c.netMinor));
-    final owed = [...b.people.where((p) => p.netMinor > 0)]..sort((a, c) => c.netMinor.compareTo(a.netMinor));
-    if (owe.isEmpty && owed.isEmpty) {
+    final plan = SettlePlan(b, ref.read(meProvider).id);
+    if (plan.mine.isEmpty) {
       showMessage(context, "You're all square in ${g.name}");
       return;
     }
-    _settleWith(g, b, owe.isNotEmpty ? owe.first : owed.first);
+    showGroupPaymentSheet(context, plan.target(g, plan.mine.first));
   }
 
   Widget _tabs({String balancesLabel = 'Balances'}) {
@@ -438,7 +437,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
     }
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: SkColors.line)),
       ),
       child: SingleChildScrollView(
@@ -549,7 +548,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
       padding: const EdgeInsets.only(top: 8),
       child: Row(
         children: [
-          const SkIcon('file', size: 14, color: SkColors.ink2),
+          SkIcon('file', size: 14, color: SkColors.ink2),
           const SizedBox(width: 6),
           Text('Archived', style: SkText.body(13, 600, color: SkColors.ink2)),
           const SizedBox(width: 4),

@@ -91,7 +91,7 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
                       ),
                       child: Row(
                         children: [
-                          const SkIcon('search', size: 18, color: SkColors.ink2),
+                          SkIcon('search', size: 18, color: SkColors.ink2),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(

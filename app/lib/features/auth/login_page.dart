@@ -73,7 +73,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             width: 56,
                             height: 56,
                             decoration: BoxDecoration(color: SkColors.ink, borderRadius: BorderRadius.circular(16)),
-                            child: const Center(child: SkIcon('settle', size: 28, color: Colors.white)),
+                            child: Center(child: SkIcon('settle', size: 28, color: SkColors.onFill)),
                           ),
                         ),
                         const SizedBox(height: 20),

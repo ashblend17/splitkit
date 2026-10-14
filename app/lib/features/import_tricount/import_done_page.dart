@@ -183,10 +183,10 @@ class _ImportDonePageState extends ConsumerState<ImportDonePage> {
   Widget _item(String title, String? why, VoidCallback? onReview) => Container(
     constraints: const BoxConstraints(minHeight: 52),
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SkPalette.divider))),
+    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: SkPalette.divider))),
     child: Row(
       children: [
-        const SkIcon('alert', size: 18, color: SkColors.pending),
+        SkIcon('alert', size: 18, color: SkColors.pending),
         const SizedBox(width: 12),
         Expanded(
           child: Text.rich(

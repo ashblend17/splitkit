@@ -98,7 +98,7 @@ class _SkTextFieldState extends State<SkTextField> {
             color: SkColors.surface,
             borderRadius: BorderRadius.circular(SkRadius.button),
             border: Border.all(color: borderColor, width: 1.5),
-            boxShadow: focused && !hasError ? const [BoxShadow(color: SkColors.brandSoft, spreadRadius: 3)] : null,
+            boxShadow: focused && !hasError ? [BoxShadow(color: SkColors.brandSoft, spreadRadius: 3)] : null,
           ),
           alignment: Alignment.centerLeft,
           padding: EdgeInsets.symmetric(horizontal: size.padding),
@@ -131,7 +131,7 @@ class _SkTextFieldState extends State<SkTextField> {
           if (widget.errorIcon)
             Row(
               children: [
-                const SkIcon('alert', size: 14, color: SkColors.owe),
+                SkIcon('alert', size: 14, color: SkColors.owe),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(widget.errorText!, style: SkText.body(13, 500, color: SkColors.owe)),

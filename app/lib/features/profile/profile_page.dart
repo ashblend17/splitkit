@@ -9,6 +9,7 @@ import '../../core/local/providers.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
+import '../../core/theme/theme_mode.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import '../../core/integrations.dart';
@@ -74,6 +75,12 @@ class ProfilePage extends ConsumerWidget {
                           () => showEditProfileSheet(context),
                         ),
                         _link(
+                          'moon',
+                          'Appearance',
+                          _themeLabels[ref.watch(themeModeProvider)]!,
+                          () => _pickTheme(context, ref),
+                        ),
+                        _link(
                           'grid',
                           'Categories',
                           categories.hasValue ? '${categories.value!.length}' : '',
@@ -130,9 +137,10 @@ class ProfilePage extends ConsumerWidget {
     String label,
     String value,
     VoidCallback? onTap, {
-    Color color = SkColors.ink,
+    Color? color,
     bool last = false,
   }) {
+    color ??= SkColors.ink;
     return Semantics(
       button: onTap != null,
       enabled: onTap != null,
@@ -142,7 +150,7 @@ class ProfilePage extends ConsumerWidget {
           constraints: const BoxConstraints(minHeight: 52),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            border: last ? null : const Border(bottom: BorderSide(color: SkPalette.divider)),
+            border: last ? null : Border(bottom: BorderSide(color: SkPalette.divider)),
           ),
           child: Row(
             children: [
@@ -158,6 +166,41 @@ class ProfilePage extends ConsumerWidget {
       ),
     );
   }
+}
+
+const _themeLabels = {ThemeMode.system: 'As the device', ThemeMode.light: 'Light', ThemeMode.dark: 'Dark'};
+
+/// Light, dark, or following the phone or browser.
+Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
+  final current = ref.read(themeModeProvider);
+  final picked = await showAppBottomSheet<ThemeMode>(
+    context,
+    title: 'Appearance',
+    child: Column(
+      children: [
+        for (final MapEntry(key: mode, value: label) in _themeLabels.entries)
+          Builder(
+            builder: (sheet) => Semantics(
+              selected: mode == current,
+              button: true,
+              child: InkWell(
+                onTap: () => Navigator.of(sheet).pop(mode),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(label, style: SkText.body(15, 600))),
+                      if (mode == current) SkIcon('check', size: 20, color: SkColors.brand),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+  if (picked != null) ref.read(themeModeProvider.notifier).set(picked);
 }
 
 /// Overview / History / Analytics segmented control.

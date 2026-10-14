@@ -8,6 +8,7 @@ library;
 
 import 'package:intl/intl.dart';
 
+import '../categorise/category_rules.dart';
 import '../clock.dart';
 import 'balance_engine.dart';
 
@@ -98,6 +99,8 @@ class Ledger {
           _categories[e.entityId] = d;
         case 'layout':
           _layouts[e.entityId] = d;
+        case 'category_rule':
+          _rules.add(d);
       }
     }
     final me = profile;
@@ -125,6 +128,7 @@ class Ledger {
   final _personal = <Json>[];
   final _categories = <String, Json>{};
   final _layouts = <String, Json>{};
+  final _rules = <Json>[];
 
   String get me => profile?['id'] as String? ?? (throw const LocalNotFound('Profile'));
 
@@ -798,27 +802,45 @@ class Ledger {
     return s == null ? null : (s['from_user'] == me ? s['to_user'] : s['from_user']) as String;
   }
 
-  /// The category you chose last for an entry ([scope] "personal") or a split you added
-  /// ("group") from the same [merchant] or with the same description as [text], if it's still
-  /// offered there (core/categorise). Entries the app added from SMS count once you've looked
-  /// at them; [income] keeps income and spending apart.
+  /// The category you chose last for an entry ([scope] "personal") or a split ("group") from
+  /// the same [merchant], or with the same description as [text] (core/categorise). Merchants are
+  /// compared by [merchantKey], so "ZOMATO LIMITED" and "Zomato" are one. First the rules learned
+  /// from your choices, newest first; then, from before rules were kept, your own manual entries
+  /// and splits (an SMS entry's category was the app's guess, not yours). A category not offered
+  /// in [scope] gives the one there with its key, if any. [income] keeps income and spending apart.
   String? learnedCategory(String text, {String? merchant, required String scope, bool income = false}) {
-    final offered = {for (final c in categories(scope: scope)) c['id']};
-    final words = text.trim().toLowerCase();
-    final from = merchant?.trim().toLowerCase();
+    final keys = {merchantKey(merchant), merchantKey(text)}..remove('');
+    if (keys.isEmpty) return null;
+    final offered = categories(scope: scope);
+    String? usable(Object? categoryId) {
+      if (categoryId == null) return null;
+      if (offered.any((c) => c['id'] == categoryId)) return categoryId as String;
+      final key = _categories[categoryId]?['key'];
+      if (key == null) return null;
+      // Built-in first: your own category could have the same key.
+      return (offered.where((c) => c['key'] == key && c['owner_id'] == null).firstOrNull ??
+              offered.where((c) => c['key'] == key).firstOrNull)?['id']
+          as String?;
+    }
+
+    final rules = [
+      for (final r in _rules)
+        if (r['income'] == income && keys.contains(merchantKey(r['pattern'] as String?))) r,
+    ]..sort((a, b) => _time(b['updated_at']).compareTo(_time(a['updated_at'])));
     bool same(Json row) =>
-        (from != null && (row['merchant'] as String?)?.toLowerCase() == from) ||
-        (words.isNotEmpty && (row['description'] as String).toLowerCase() == words);
+        keys.contains(merchantKey(row['merchant'] as String?)) || keys.contains(merchantKey(row['description'] as String?));
     final chosen = [
       if (scope == 'personal')
         for (final t in _personal)
-          if (t['deleted_at'] == null && _reviewed(t) && (t['type'] == 'income') == income && same(t)) t
+          if (t['deleted_at'] == null && _source(t) == 'manual' && (t['type'] == 'income') == income && same(t)) t
       else
         for (final e in _expenses.values)
           if (e['deleted_at'] == null && e['created_by'] == me && same(e)) e,
-    ].where((row) => offered.contains(row['category_id'])).toList()
-      ..sort((a, b) => _time(b['created_at']).compareTo(_time(a['created_at'])));
-    return chosen.firstOrNull?['category_id'] as String?;
+    ]..sort((a, b) => _time(b['created_at']).compareTo(_time(a['created_at'])));
+    for (final row in [...rules, ...chosen]) {
+      if (usable(row['category_id']) case final id?) return id;
+    }
+    return null;
   }
 
   /// "reference|type" for every entry with a bank reference, deleted ones too: a payment

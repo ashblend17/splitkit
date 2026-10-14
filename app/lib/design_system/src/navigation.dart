@@ -33,19 +33,17 @@ class NavDestination {
 
 /// A mode's colour in the navigation: brand for Split, personal for Personal.
 enum NavAccent {
-  brand(SkColors.brand, SkColors.brandInk, SkColors.brandSoft),
-  personal(SkColors.personal, SkColors.personalInk, SkColors.personalSoft);
-
-  const NavAccent(this.fill, this.ink, this.soft);
+  brand,
+  personal;
 
   /// The add button.
-  final Color fill;
+  Color get fill => this == brand ? SkColors.brand : SkColors.personal;
 
   /// The selected tab's icon and label.
-  final Color ink;
+  Color get ink => this == brand ? SkColors.brandInk : SkColors.personalInk;
 
   /// The pill behind the selected tab.
-  final Color soft;
+  Color get soft => this == brand ? SkColors.brandSoft : SkColors.personalSoft;
 
   Color fg(bool on) => on ? ink : SkColors.ink2;
 }
@@ -75,7 +73,7 @@ class BottomNav extends StatelessWidget {
       child: Container(
         height: 64 + bottom,
         padding: EdgeInsets.fromLTRB(8, 8, 8, bottom),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: SkColors.surface,
           border: Border(top: BorderSide(color: SkColors.line)),
         ),
@@ -151,7 +149,7 @@ class _BrandMark extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(color: SkColors.ink, borderRadius: BorderRadius.circular(radius)),
       alignment: Alignment.center,
-      child: SkIcon('settle', size: iconSize, color: Colors.white),
+      child: SkIcon('settle', size: iconSize, color: SkColors.onFill),
     );
   }
 }
@@ -188,7 +186,7 @@ class NavRail extends StatelessWidget {
       child: Container(
         width: 88,
         padding: const EdgeInsets.symmetric(vertical: 24),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: SkColors.surface,
           border: Border(right: BorderSide(color: SkColors.line)),
         ),
@@ -206,9 +204,9 @@ class NavRail extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   onTap: onAdd,
-                  child: const SizedBox.square(
+                  child: SizedBox.square(
                     dimension: 56,
-                    child: Center(child: SkIcon('plus', size: 26, color: Colors.white)),
+                    child: Center(child: SkIcon('plus', size: 26, color: SkColors.onFill)),
                   ),
                 ),
               ),
@@ -299,7 +297,7 @@ class WebSidebar extends StatelessWidget {
     return Container(
       width: 248,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: SkColors.surface,
         border: Border(right: BorderSide(color: SkColors.line)),
       ),
@@ -329,9 +327,9 @@ class WebSidebar extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SkIcon('plus', size: 20, color: Colors.white),
+                    SkIcon('plus', size: 20, color: SkColors.onFill),
                     const SizedBox(width: 8),
-                    Text(addLabel, style: SkText.body(15, 700, color: Colors.white)),
+                    Text(addLabel, style: SkText.body(15, 700, color: SkColors.onFill)),
                   ],
                 ),
               ),

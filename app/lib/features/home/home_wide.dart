@@ -87,7 +87,7 @@ Future<void> pickActivityGroup(BuildContext context, WidgetRef ref, List<GroupOu
             SkIcon(glyph, size: 20, color: SkColors.brandInk),
             const SizedBox(width: 10),
             Expanded(child: Text(label, style: SkText.body(15, 600))),
-            if (current == id) const SkIcon('check', size: 20, color: SkColors.brand),
+            if (current == id) SkIcon('check', size: 20, color: SkColors.brand),
           ],
         ),
       ),
@@ -143,7 +143,7 @@ class ListCard extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: SkColors.line)),
           ),
           child: Semantics(header: true, child: Text(title, style: SkText.display(titleSize, 700))),
@@ -385,7 +385,7 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
       ),
       child: Row(
         children: [
-          const SkIcon('search', size: 18, color: SkColors.ink2),
+          SkIcon('search', size: 18, color: SkColors.ink2),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -532,7 +532,7 @@ class _ActivityCard extends ConsumerWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: SkColors.line)),
             ),
             child: Semantics(
@@ -650,7 +650,7 @@ class _MenuChip<T> extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(child: Text(text, style: SkText.body(14, v == value ? 700 : 500))),
-                      if (v == value) const SkIcon('check', size: 18, color: SkColors.brand),
+                      if (v == value) SkIcon('check', size: 18, color: SkColors.brand),
                     ],
                   ),
                 ),

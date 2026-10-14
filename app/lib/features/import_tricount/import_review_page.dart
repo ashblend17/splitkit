@@ -191,7 +191,7 @@ class _ImportReviewPageState extends ConsumerState<ImportReviewPage> {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       decoration: BoxDecoration(
         color: warn ? SkPalette.importWarnWash : SkColors.surface,
-        border: const Border(bottom: BorderSide(color: SkPalette.divider)),
+        border: Border(bottom: BorderSide(color: SkPalette.divider)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -206,7 +206,7 @@ class _ImportReviewPageState extends ConsumerState<ImportReviewPage> {
           const SizedBox(height: 8),
           Row(
             children: [
-              const SkIcon('next', size: 16, color: SkColors.ink3),
+              SkIcon('next', size: 16, color: SkColors.ink3),
               const SizedBox(width: 8),
               Expanded(child: select),
             ],
@@ -234,7 +234,7 @@ class _ImportReviewPageState extends ConsumerState<ImportReviewPage> {
         for (final (r, flags) in flagged)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SkPalette.divider))),
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: SkPalette.divider))),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -261,7 +261,7 @@ class _ImportReviewPageState extends ConsumerState<ImportReviewPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(width: 56),
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 1),
                       child: SkIcon('alert', size: 16, color: SkColors.pending),
                     ),
@@ -304,7 +304,7 @@ class _ImportReviewPageState extends ConsumerState<ImportReviewPage> {
     );
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: SkColors.surface,
         border: Border(top: BorderSide(color: SkColors.line)),
       ),

@@ -142,7 +142,7 @@ class _AmountInputState extends State<AmountInput> {
           Center(
             child: Material(
               color: SkColors.paper,
-              shape: const StadiumBorder(side: BorderSide(color: SkColors.line)),
+              shape: StadiumBorder(side: BorderSide(color: SkColors.line)),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: widget.onCurrencyTap,

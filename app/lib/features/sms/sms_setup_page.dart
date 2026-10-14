@@ -193,7 +193,7 @@ class _SmsSetupPageState extends ConsumerState<SmsSetupPage> {
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
-          const SkIcon('check', size: 20, color: SkColors.personal),
+          SkIcon('check', size: 20, color: SkColors.personal),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -278,7 +278,7 @@ class _Disclosure extends StatelessWidget {
       children: [
         Row(
           children: [
-            const SkIcon('lock', size: 18, color: SkColors.personalInk),
+            SkIcon('lock', size: 18, color: SkColors.personalInk),
             const SizedBox(width: 8),
             Expanded(child: Text('Your bank SMS, read on this phone', style: SkText.body(16, 700))),
           ],

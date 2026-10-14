@@ -163,7 +163,7 @@ void main() {
     expect(find.text('YOUR SHARE'), findsOneWidget);
   });
 
-  testWidgets('desktop group: breadcrumb, table and your balances', (tester) async {
+  testWidgets('desktop group: breadcrumb, table and your payments to settle up', (tester) async {
     final be = FakeBackend();
     await pumpApp(tester, backend: be, size: desktop, location: '/groups/${be.goa['id']}');
     expect(find.text('Groups'), findsWidgets); // sidebar and breadcrumb
@@ -172,11 +172,12 @@ void main() {
     expect(find.text('Settlements'), findsOneWidget);
     expect(find.text('YOU'), findsOneWidget);
     expect(find.text('In Goa Trip, you are owed'), findsOneWidget);
-    expect(find.text('Your balances'), findsOneWidget);
-    expect(find.widgetWithText(SkButton, 'Settle'), findsNWidgets(2));
+    expect(find.text('To settle up'), findsOneWidget);
+    expect(find.text('Pays you ₹1,150'), findsOneWidget); // Vivek, from the fewest payments
+    expect(find.widgetWithText(SkButton, 'Settle'), findsNothing);
     await tester.tap(find.text('Members'));
     await tester.pumpAndSettle();
     expect(find.text('Add member'), findsOneWidget);
-    expect(find.text('Your balances'), findsOneWidget); // the side panel stays
+    expect(find.text('To settle up'), findsOneWidget); // the side panel stays
   });
 }

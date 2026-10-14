@@ -75,7 +75,7 @@ class EditLayoutButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
     color: SkColors.surface,
-    shape: const StadiumBorder(side: BorderSide(color: SkColors.line)),
+    shape: StadiumBorder(side: BorderSide(color: SkColors.line)),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
       onTap: onPressed,
@@ -91,12 +91,14 @@ class EditLayoutButton extends StatelessWidget {
 
 /// Week / Month / Year.
 class PeriodTabs extends StatelessWidget {
-  const PeriodTabs({super.key, required this.value, required this.onChanged, this.selectedColor = SkColors.brandInk});
+  const PeriodTabs({super.key, required this.value, required this.onChanged, Color? selectedColor})
+    : _selectedColor = selectedColor;
   final String value;
   final ValueChanged<String> onChanged;
 
   /// The selected tab's label: brand in groups, personal in Insights.
-  final Color selectedColor;
+  final Color? _selectedColor;
+  Color get selectedColor => _selectedColor ?? SkColors.brandInk;
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +116,7 @@ class PeriodTabs extends StatelessWidget {
                 color: on ? SkColors.surface : Colors.transparent,
                 borderRadius: BorderRadius.circular(9),
                 boxShadow: on
-                    ? const [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))]
+                    ? [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))]
                     : null,
               ),
               alignment: Alignment.center,
