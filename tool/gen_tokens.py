@@ -37,9 +37,35 @@ def main() -> None:
         "  final SkFamily family;",
         "}",
         "",
-        "abstract final class SkColors {",
     ]
-    lines += [f"  static const {k} = {color(v)};" for k, v in t["color"].items()]
+    names = list(t["color"])
+    if list(t["colorDark"]) != names:
+        raise SystemExit("colorDark must have the same tokens, in the same order, as color")
+    lines += [
+        '/// One set of colour tokens: tokens.json "color" ([skLightColors]) or "colorDark"',
+        "/// ([skDarkColors]).",
+        "class SkColorSet {",
+        "  const SkColorSet({",
+        *[f"    required this.{k}," for k in names],
+        "  });",
+        *[f"  final Color {k};" for k in names],
+        "}",
+        "",
+    ]
+    for const, key in (("skLightColors", "color"), ("skDarkColors", "colorDark")):
+        lines += [f"const {const} = SkColorSet("]
+        lines += [f"  {k}: {color(v)}," for k, v in t[key].items()]
+        lines += [");", ""]
+    lines += [
+        "/// The colours in use. Widgets read them here; the app root picks the set (theme.dart",
+        "/// SkTheme.apply) and rebuilds everything when light and dark change.",
+        "abstract final class SkColors {",
+        "  static SkColorSet current = skLightColors;",
+        "",
+        "  static bool get isDark => identical(current, skDarkColors);",
+        "",
+    ]
+    lines += [f"  static Color get {k} => current.{k};" for k in names]
     lines += ["}", "", "abstract final class SkType {"]
     for k, v in t["type"].items():
         lines.append(
@@ -54,9 +80,13 @@ def main() -> None:
     lines += ["}", "", "abstract final class SkBreakpoints {"]
     lines += [f"  static const {k} = {num(v)};" for k, v in t["breakpoints"].items()]
     lines += ["}", "", f"const skMinTouchTarget = {num(t['minTouchTarget'])};", ""]
-    lines += ["/// Every colour token by name, for tests and the gallery.", "const skColorTokens = <String, Color>{"]
-    lines += [f"  '{k}': SkColors.{k}," for k in t["color"]]
-    lines += ["};", ""]
+    for const, key, doc in (
+        ("skColorTokens", "color", "Every light colour token by name, for tests and the gallery."),
+        ("skDarkColorTokens", "colorDark", "Every dark colour token by name."),
+    ):
+        lines += [f"/// {doc}", f"const {const} = <String, Color>{{"]
+        lines += [f"  '{k}': {color(v)}," for k, v in t[key].items()]
+        lines += ["};", ""]
     OUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote {OUT.relative_to(ROOT)}")
 

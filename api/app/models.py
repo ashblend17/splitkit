@@ -2,7 +2,7 @@
 
 from app.modules.admin.models import AdminSession, AuditLog
 from app.modules.analytics.models import AnalyticsConfiguration
-from app.modules.categories.models import Category
+from app.modules.categories.models import Category, CategoryRule
 from app.modules.expenses.models import Expense, ExpenseSplit
 from app.modules.groups.models import ActivityEvent, Group, GroupMember
 from app.modules.import_tricount.models import ImportBatch
@@ -25,6 +25,7 @@ __all__ = [
     "AnalyticsConfiguration",
     "AuditLog",
     "Category",
+    "CategoryRule",
     "Expense",
     "ExpenseSplit",
     "Group",

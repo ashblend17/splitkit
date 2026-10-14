@@ -1,9 +1,10 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base, uuid_pk
+from app.core.db import Base, now_default, uuid_pk
 
 
 class Category(Base):
@@ -34,3 +35,25 @@ class Category(Base):
     scope: Mapped[str]
     owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     sort: Mapped[int] = mapped_column(server_default="0")
+
+
+class CategoryRule(Base):
+    """A category you chose for a merchant (or, without one, a description), learned from your
+    own entries and splits (rules.py) so the app suggests it next time. The device matches
+    patterns loosely (app/lib/core/categorise/), so "ZOMATO LIMITED" also covers "Zomato"."""
+
+    __tablename__ = "category_rules"
+    __table_args__ = (UniqueConstraint("user_id", "income", "pattern"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
+    """rules.rule_id(): the device makes the same one, so its own copy of a rule it just
+    learned is replaced by the server's."""
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    pattern: Mapped[str]
+    """Lowercase, with spaces collapsed."""
+    income: Mapped[bool]
+    """Rules for money received and for spending are kept apart: you pay a friend and get paid
+    by them under different categories."""
+    category_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("categories.id"))
+    updated_at: Mapped[datetime] = now_default()
+    """When it was last chosen. Of the rules that match, the newest wins."""

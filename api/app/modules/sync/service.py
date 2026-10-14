@@ -9,7 +9,7 @@ from app.core.db import engine
 from app.core.errors import not_found
 from app.modules.analytics.models import AnalyticsConfiguration
 from app.modules.auth.deps import Actor
-from app.modules.categories.models import Category
+from app.modules.categories.models import Category, CategoryRule
 from app.modules.expenses.models import Expense
 from app.modules.groups.models import Group, GroupMember
 from app.modules.personal.models import PersonalTransaction
@@ -117,6 +117,7 @@ def _objects(snap: Session, stream: str) -> list:
             *snap.scalars(select(GroupMember).where(GroupMember.user_id == uid)),
             *snap.scalars(select(PersonalTransaction).where(PersonalTransaction.user_id == uid)),
             *snap.scalars(select(Category).where(Category.owner_id == uid)),
+            *snap.scalars(select(CategoryRule).where(CategoryRule.user_id == uid)),
         ]
     return list(snap.scalars(select(Category).where(Category.owner_id.is_(None))))
 

@@ -128,8 +128,8 @@ changed for the sync log (`app/modules/sync/log.py`). At commit, each entry gets
 its stream, in the same transaction as the write.
 
 - Streams: `group:<id>` (group, members with names, expenses with splits, settlements),
-  `user:<id>` (profile, personal entries, own categories, layouts, memberships), `global`
-  (system categories, default layouts). Seqs are gap-free per stream.
+  `user:<id>` (profile, personal entries, own categories, learned category rules, layouts,
+  memberships), `global` (system categories, default layouts). Seqs are gap-free per stream.
 - `POST /sync {"cursors": {"group:…": 41, …}}` returns, for every stream you can see, the changes
   after your cursor (paged by `limit`, with `has_more`). `snapshot_required` means: load
   `GET /sync/snapshot/{stream}` and store its `head_seq`. `gone` means: delete your copy.
@@ -180,6 +180,14 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
 
 - Theme values come from `splitkit-design/tokens.json`. After editing it, run
   `python3 tool/gen_tokens.py` (a test fails if `tokens.g.dart` is stale).
+- Light and dark: `tokens.json` has `color` and `colorDark` (the same names), generated into
+  `skLightColors` and `skDarkColors`. `SkColors.x` reads the set in use, which `SkThemedApp`
+  (`core/theme/theme_mode.dart`) picks from Profile → Appearance (as the device, light or dark,
+  saved on the device) and the phone's own setting; on a change every widget is rebuilt.
+  - So colours and text styles are read when building: never keep one in a `const` or a
+    `static final` (write a getter), and give a colour parameter no default (take `Color?`).
+  - Text and icons on a solid ink, brand or accent fill use `SkColors.onFill`, not white.
+  - `SkPalette` (mockup colours outside the tokens) and the avatar pairs have both values too.
 - Design-system widgets live in `app/lib/design_system/`; `/gallery` shows them all.
 - Layout follows `SkLayout` (`app/lib/core/layout/layout.dart`): tab bar under 600px, NavRail up
   to 1279px, WebSidebar from 1280px. Only phones show the floating add button. Home and group
@@ -191,12 +199,26 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   "Add entry" in the personal accent) and accent. Profile and Admin belong to both; the app
   reopens in the mode it was left in. The old `/personal/history`, `/profile/history` and
   `/profile/analytics` redirect to Personal's tabs.
+- A group is settled by its fewest payments (`suggested`, read through
+  `features/groups/settle_plan.dart`): Settle up, the group summary (You pay, You get, Net), the
+  desktop side panel and the top of the balances page follow it. The one-to-one balances
+  (`people`) are a small table below; tapping a row records a payment for just that pair. Home
+  and settling with a friend across groups stay one-to-one.
 - Every link between the two modes is a flag in `app/lib/core/integrations.dart`
   (`integrationsProvider`, overridden in tests), so a link can be tuned or cut in one place.
   The server never reads them. `Features` there tunes each mode on its own.
 - Categories are suggested on the device (`lib/core/categorise/`): what you chose before for
   the same merchant or words, then keywords (`category_keywords.dart`), then a typo of one
   (`fuzzywuzzy`). The personal sheet and Add split follow what you type until you pick one.
+  - What you chose is learned as a rule (`category_rules` on your user stream): a manual entry,
+    a category changed on an edit, or a split teaches its merchant (else its description). The
+    API writes the rule with the change (`api/app/modules/categories/rules.py`), and the device
+    lays the same rule, with the same id, over its data at once (`LocalWrites._learn`).
+    Categories the app guessed for SMS teach nothing, and neither do imports, the Tricount sync
+    or an admin acting as you.
+  - Rules match by `merchantKey()` (`category_rules.dart`), so "ZOMATO LIMITED", "ZOMATO CYBS"
+    and "zomato.payu@axisbank" are one merchant. The newest matching rule wins; income and
+    spending are learned apart. A category not offered in the other mode gives its namesake there.
 - Bank SMS are read by `lib/core/sms/sms_parser.dart`, which is pure Dart and runs on the phone
   only. It returns a payment (direction, amount, account label, mode, merchant, reference,
   balance, date) or why it skipped the message: OTPs, things still to come, failures, refunds,

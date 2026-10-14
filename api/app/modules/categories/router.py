@@ -8,7 +8,7 @@ from app.core.errors import ApiError, not_found
 from app.core.events import record
 from app.core.versioning import client_id, replayed_create
 from app.modules.auth.deps import CurrentActor, DbSession
-from app.modules.categories import repository
+from app.modules.categories import repository, rules
 from app.modules.categories.models import Category
 from app.modules.categories.schemas import CategoryIn, CategoryOut
 from app.modules.expenses.models import Expense
@@ -90,6 +90,7 @@ def delete_category(category_id: uuid.UUID, actor: CurrentActor, session: DbSess
         obj=category,
         deleted=True,
     )
+    rules.forget_category(session, actor, category_id)
     session.delete(category)
     session.commit()
     return Response(status_code=204)
