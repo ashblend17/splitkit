@@ -15,7 +15,7 @@ import 'package:splitkit/features/shell/app_mode.dart';
 import 'package:splitkit/features/shell/sync_banner.dart';
 import 'package:splitkit/features/sms/sms_source.dart';
 import 'package:splitkit/core/session/session.dart';
-import 'package:splitkit/core/theme/theme.dart';
+import 'package:splitkit/core/theme/theme_mode.dart';
 
 import 'fake_sms.dart';
 
@@ -159,6 +159,17 @@ class MemoryTokenStore extends TokenStore {
 }
 
 /// Keeps the Split / Personal choice in memory instead of SharedPreferences.
+class MemoryThemeStore implements ThemeModeStore {
+  MemoryThemeStore([this.mode]);
+  ThemeMode? mode;
+
+  @override
+  Future<ThemeMode?> read() async => mode;
+
+  @override
+  Future<void> write(ThemeMode mode) async => this.mode = mode;
+}
+
 class MemoryModeStore implements AppModeStore {
   MemoryModeStore([this.mode]);
   AppMode? mode;
@@ -186,6 +197,8 @@ Future<FakeBackend> pumpApp(
   Duration? syncInterval,
   AppMode mode = AppMode.split,
   MemoryModeStore? modes,
+  ThemeMode theme = ThemeMode.system,
+  MemoryThemeStore? themes,
   SmsSource? sms,
 }) async {
   final be = backend ?? FakeBackend();
@@ -201,6 +214,8 @@ Future<FakeBackend> pumpApp(
       syncIntervalProvider.overrideWithValue(syncInterval), // no timer unless asked for
       savedAppModeProvider.overrideWithValue(mode),
       appModeStoreProvider.overrideWithValue(modes ?? MemoryModeStore(mode)),
+      savedThemeModeProvider.overrideWithValue(theme),
+      themeModeStoreProvider.overrideWithValue(themes ?? MemoryThemeStore(theme)),
       // No phone inbox unless a test brings one (tests run as Android).
       smsSourceProvider.overrideWithValue(sms ?? FakeSmsSource()),
       ...overrides,
@@ -211,11 +226,7 @@ Future<FakeBackend> pumpApp(
   final router = container.read(routerProvider);
   await tester.pumpWidget(UncontrolledProviderScope(
     container: container,
-    child: MaterialApp.router(
-      theme: buildSplitkitTheme(),
-      routerConfig: router,
-      builder: appChrome,
-    ),
+    child: SkThemedApp(routerConfig: router, builder: appChrome),
   ));
   await tester.pumpAndSettle();
   if (location != null) {

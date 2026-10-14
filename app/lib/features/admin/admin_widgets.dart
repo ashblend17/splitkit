@@ -93,7 +93,7 @@ class AdminSearchField extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const SkIcon('search', size: 18, color: SkColors.ink2),
+          SkIcon('search', size: 18, color: SkColors.ink2),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -137,7 +137,7 @@ class AdminSection extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SkColors.line))),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: SkColors.line))),
           child: Wrap(
             spacing: 12,
             runSpacing: 8,
@@ -297,7 +297,7 @@ class AuditTable extends StatelessWidget {
                   child: Container(
                     constraints: const BoxConstraints(minHeight: 52),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: SkPalette.divider))),
+                    decoration: BoxDecoration(border: Border(top: BorderSide(color: SkPalette.divider))),
                     alignment: Alignment.centerLeft,
                     child: _cells(
                       cols,
@@ -338,7 +338,7 @@ class AuditTable extends StatelessWidget {
     child: ExcludeSemantics(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: SkPalette.divider))),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: SkPalette.divider))),
         child: Row(
           children: [
             Expanded(

@@ -87,7 +87,7 @@ class ActivityTable extends ConsumerWidget {
             ExcludeSemantics(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: _pad, vertical: 10),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: SkPalette.tableHead,
                   border: Border(bottom: BorderSide(color: SkColors.line)),
                 ),
@@ -202,7 +202,7 @@ class ActivityTable extends ConsumerWidget {
             child: Container(
               constraints: BoxConstraints(minHeight: onHome ? 60 : 56),
               padding: EdgeInsets.symmetric(horizontal: _pad, vertical: onHome ? 4 : 2),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: SkPalette.divider)),
               ),
               child: Center(child: _cells(cols, cell)),

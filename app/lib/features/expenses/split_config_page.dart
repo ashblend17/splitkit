@@ -26,7 +26,7 @@ class SplitConfigPage extends StatelessWidget {
             Container(
               height: 60,
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: SkColors.surface,
                 border: Border(bottom: BorderSide(color: SkColors.line)),
               ),
@@ -71,7 +71,7 @@ class SplitConfigPage extends StatelessWidget {
             ),
             Container(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: SkColors.surface,
                 border: Border(top: BorderSide(color: SkColors.line)),
               ),

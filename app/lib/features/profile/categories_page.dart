@@ -96,7 +96,7 @@ class CategoriesPage extends ConsumerWidget {
             constraints: const BoxConstraints(minHeight: 52),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              border: i == cats.length - 1 ? null : const Border(bottom: BorderSide(color: SkPalette.divider)),
+              border: i == cats.length - 1 ? null : Border(bottom: BorderSide(color: SkPalette.divider)),
             ),
             child: Row(
               children: [

@@ -104,7 +104,7 @@ class _ImportUploadPageState extends ConsumerState<ImportUploadPage> {
             ),
             child: Column(
               children: [
-                const IconTile(
+                IconTile(
                   'upload',
                   background: SkColors.brandSoft,
                   foreground: SkColors.brand,
@@ -163,7 +163,7 @@ class _ImportUploadPageState extends ConsumerState<ImportUploadPage> {
                   else if (draft.preview != null)
                     Row(
                       children: [
-                        const SkIcon('check', size: 16, color: SkColors.owed),
+                        SkIcon('check', size: 16, color: SkColors.owed),
                         const SizedBox(width: 4),
                         Text('Read', style: SkText.body(13, 700, color: SkColors.owed)),
                       ],
@@ -178,7 +178,7 @@ class _ImportUploadPageState extends ConsumerState<ImportUploadPage> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SkIcon('alert', size: 18, color: SkColors.owe),
+                SkIcon('alert', size: 18, color: SkColors.owe),
                 const SizedBox(width: 8),
                 Expanded(child: Text(draft.error!, style: SkText.body(14, 600, color: SkColors.oweInk))),
               ],

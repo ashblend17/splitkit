@@ -43,13 +43,13 @@ class AdminBanner extends StatelessWidget {
           child: Container(
             constraints: const BoxConstraints(minHeight: 52),
             padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: SkColors.adminBand,
               border: Border(bottom: BorderSide(color: SkColors.adminInk, width: 2)),
             ),
             child: Row(
               children: [
-                const SkIcon('shield', size: 20, color: SkColors.adminInk),
+                SkIcon('shield', size: 20, color: SkColors.adminInk),
                 const SizedBox(width: 10),
                 Expanded(
                   child: ExcludeSemantics(
@@ -279,7 +279,7 @@ class UserSwitcher extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(color: SkColors.adminBand, borderRadius: BorderRadius.circular(10)),
                   alignment: Alignment.center,
-                  child: const SkIcon('eye', size: 20, color: SkColors.adminInk),
+                  child: SkIcon('eye', size: 20, color: SkColors.adminInk),
                 ),
                 const SizedBox(width: 16),
                 Flexible(

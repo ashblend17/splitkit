@@ -159,7 +159,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.94),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: SkColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(SkRadius.sheet)),
         ),
@@ -354,7 +354,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
       child: Row(
         children: [
           side(from, 'pays', onTap: pick(true)),
-          const Expanded(
+          Expanded(
             child: Row(
               children: [
                 Expanded(
@@ -550,7 +550,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     color: SkColors.surface,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
-      side: const BorderSide(color: SkColors.line, width: 1.5),
+      side: BorderSide(color: SkColors.line, width: 1.5),
     ),
     clipBehavior: Clip.antiAlias,
     child: InkWell(

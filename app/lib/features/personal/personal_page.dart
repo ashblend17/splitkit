@@ -64,7 +64,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const SkIcon('lock', size: 14, color: SkColors.personalInk),
+                              SkIcon('lock', size: 14, color: SkColors.personalInk),
                               const SizedBox(width: 6),
                               Text('Only you see this', style: SkText.body(12, 700, color: SkColors.personalInk)),
                             ],
@@ -281,7 +281,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                   child: Row(
                     children: [
                       Expanded(child: Text(shortMonthLabel(m), style: SkText.body(15, 600))),
-                      if (m == _month) const SkIcon('check', size: 20, color: SkColors.personal),
+                      if (m == _month) SkIcon('check', size: 20, color: SkColors.personal),
                     ],
                   ),
                 ),

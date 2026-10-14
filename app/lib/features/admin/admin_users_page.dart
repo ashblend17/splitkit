@@ -174,7 +174,7 @@ class _UsersTable extends ConsumerWidget {
                   child: Container(
                     constraints: const BoxConstraints(minHeight: 64),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: SkPalette.divider))),
+                    decoration: BoxDecoration(border: Border(top: BorderSide(color: SkPalette.divider))),
                     alignment: Alignment.centerLeft,
                     child: cells([
                       (null, _identity(u)),
@@ -252,7 +252,7 @@ class ViewAsButton extends ConsumerWidget {
         color: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
-          side: const BorderSide(color: SkColors.adminInk, width: 1.5),
+          side: BorderSide(color: SkColors.adminInk, width: 1.5),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -263,7 +263,7 @@ class ViewAsButton extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SkIcon('eye', size: 16, color: SkColors.adminInk),
+                SkIcon('eye', size: 16, color: SkColors.adminInk),
                 const SizedBox(width: 6),
                 Text('View as', style: SkText.body(13, 700, color: SkColors.adminInk)),
               ],
@@ -348,7 +348,7 @@ class UserPanel extends ConsumerWidget {
                   constraints: const BoxConstraints(minHeight: 46),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    border: i == 0 ? null : const Border(top: BorderSide(color: SkPalette.divider)),
+                    border: i == 0 ? null : Border(top: BorderSide(color: SkPalette.divider)),
                   ),
                   child: Row(
                     children: [
@@ -378,7 +378,7 @@ class UserPanel extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const SkIcon('eye', size: 18, color: SkColors.adminBand),
+                    SkIcon('eye', size: 18, color: SkColors.adminBand),
                     const SizedBox(width: 8),
                     Text(
                       'View app as ${firstName(u.name)}',

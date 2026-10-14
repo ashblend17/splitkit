@@ -130,7 +130,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
             Container(
               height: 60,
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: SkColors.line)),
               ),
               child: Row(
@@ -264,7 +264,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                   decoration: BoxDecoration(color: SkColors.personalSoft, borderRadius: BorderRadius.circular(12)),
                   child: Row(
                     children: [
-                      const SkIcon('lock', size: 16, color: SkColors.personalInk),
+                      SkIcon('lock', size: 16, color: SkColors.personalInk),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -409,7 +409,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
           constraints: const BoxConstraints(minHeight: 60),
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            border: last ? null : const Border(bottom: BorderSide(color: SkColors.line)),
+            border: last ? null : Border(bottom: BorderSide(color: SkColors.line)),
           ),
           child: Row(
             children: [
@@ -531,7 +531,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
     final canSave = _canSave;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: SkColors.surface,
         border: Border(top: BorderSide(color: SkColors.line)),
       ),
@@ -626,7 +626,7 @@ class _AddExpensePageState extends ConsumerState<AddExpensePage> {
                       SkIcon(glyphOr(g.icon, 'groups'), size: 20, color: SkColors.brandInk),
                       const SizedBox(width: 10),
                       Expanded(child: Text(g.name, style: SkText.body(15, 600))),
-                      if (g.id == _groupId) const SkIcon('check', size: 20, color: SkColors.brand),
+                      if (g.id == _groupId) SkIcon('check', size: 20, color: SkColors.brand),
                     ],
                   ),
                 ),
@@ -691,7 +691,7 @@ class _GroupChip extends StatelessWidget {
       label: 'Group: $name',
       child: Material(
         color: SkColors.brandSoft,
-        shape: const StadiumBorder(side: BorderSide(color: SkColors.line)),
+        shape: StadiumBorder(side: BorderSide(color: SkColors.line)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -711,7 +711,7 @@ class _GroupChip extends StatelessWidget {
                 ),
                 if (onTap != null) ...[
                   const SizedBox(width: 4),
-                  const SkIcon('down', size: 14, color: SkColors.brandInk),
+                  SkIcon('down', size: 14, color: SkColors.brandInk),
                 ],
               ],
             ),

@@ -74,7 +74,7 @@ class TrendBars extends StatelessWidget {
         if (headline != null) ...[Text(headline!, style: SkText.display(26, 800)), const SizedBox(height: 6)],
         Container(
           height: 140,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: SkColors.lineStrong)),
           ),
           child: Row(
@@ -197,11 +197,12 @@ class _TopLabel extends StatelessWidget {
 
 /// Horizontal bars (by category, who paid), scaled to the largest row.
 class BreakdownBars extends StatelessWidget {
-  const BreakdownBars({super.key, required this.rows, required this.format, this.color = SkColors.personal});
+  const BreakdownBars({super.key, required this.rows, required this.format, Color? color}) : _color = color;
 
   final List<({String label, int value})> rows;
   final String Function(int value) format;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? SkColors.personal;
 
   @override
   Widget build(BuildContext context) {
@@ -312,7 +313,7 @@ class SplitBar extends StatelessWidget {
                       Expanded(
                         flex: pa,
                         child: Container(
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: SkColors.personal,
                             borderRadius: BorderRadius.horizontal(left: Radius.circular(4)),
                           ),
@@ -323,7 +324,7 @@ class SplitBar extends StatelessWidget {
                       Expanded(
                         flex: pb,
                         child: Container(
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: SkColors.brand,
                             borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
                           ),

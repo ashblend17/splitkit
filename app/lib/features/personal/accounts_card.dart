@@ -45,7 +45,7 @@ class AccountsCard extends ConsumerWidget {
                         decoration: BoxDecoration(
                           border: i == accounts.length - 1
                               ? null
-                              : const Border(bottom: BorderSide(color: SkPalette.divider)),
+                              : Border(bottom: BorderSide(color: SkPalette.divider)),
                         ),
                         child: Row(
                           children: [

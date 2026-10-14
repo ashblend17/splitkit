@@ -48,8 +48,8 @@ class SkButton extends StatelessWidget {
     final (bg, fg, border) = !enabled
         ? (SkColors.lineStrong, SkColors.ink2, null)
         : switch (variant) {
-            SkButtonVariant.primary => (SkColors.brand, Colors.white, null),
-            SkButtonVariant.strong => (SkColors.ink, Colors.white, null),
+            SkButtonVariant.primary => (SkColors.brand, SkColors.onFill, null),
+            SkButtonVariant.strong => (SkColors.ink, SkColors.onFill, null),
             SkButtonVariant.secondary => (SkColors.surface, SkColors.ink, SkColors.lineStrong),
             SkButtonVariant.ghost => (Colors.transparent, SkColors.brandInk, null),
             SkButtonVariant.danger => (SkColors.oweSoft, SkColors.oweInk, SkPalette.dangerBorder),
@@ -97,13 +97,14 @@ class SkButton extends StatelessWidget {
 
 /// The one floating action per screen: "Add split" in Split, "Add entry" in Personal.
 class AddSplitFab extends StatelessWidget {
-  const AddSplitFab({super.key, required this.onPressed, this.label = 'Add split', this.color = SkColors.brand});
+  const AddSplitFab({super.key, required this.onPressed, this.label = 'Add split', Color? color}) : _color = color;
 
   final VoidCallback onPressed;
   final String label;
 
   /// The mode's accent: brand in Split, personal in Personal.
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? SkColors.brand;
 
   @override
   Widget build(BuildContext context) {
@@ -129,10 +130,10 @@ class AddSplitFab extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const SkIcon('plus', size: 22, color: Colors.white),
+                    SkIcon('plus', size: 22, color: SkColors.onFill),
                     const SizedBox(width: 8),
                     ExcludeSemantics(
-                      child: Text(label, style: SkText.body(16, 700, color: Colors.white)),
+                      child: Text(label, style: SkText.body(16, 700, color: SkColors.onFill)),
                     ),
                   ],
                 ),
@@ -158,7 +159,7 @@ class SkPillButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: SkColors.surface,
-      shape: const StadiumBorder(side: BorderSide(color: SkColors.line)),
+      shape: StadiumBorder(side: BorderSide(color: SkColors.line)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onPressed,

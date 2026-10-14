@@ -39,7 +39,7 @@ class FriendBalanceRow extends StatelessWidget {
           constraints: BoxConstraints(minHeight: dense ? 54 : 58),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            border: showDivider ? const Border(bottom: BorderSide(color: SkPalette.divider)) : null,
+            border: showDivider ? Border(bottom: BorderSide(color: SkPalette.divider)) : null,
           ),
           child: ExcludeSemantics(
             child: Row(

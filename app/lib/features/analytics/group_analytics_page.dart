@@ -80,7 +80,7 @@ class GroupAnalyticsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 14),
                   Container(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(bottom: BorderSide(color: SkColors.line)),
                     ),
                     child: Row(

@@ -282,8 +282,8 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFAF9F6),
+                decoration: BoxDecoration(
+                  color: SkPalette.tableHead,
                   border: Border(bottom: BorderSide(color: SkColors.line)),
                 ),
                 child: Row(
@@ -321,7 +321,7 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
         constraints: const BoxConstraints(minHeight: 56),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          border: last ? null : const Border(bottom: BorderSide(color: SkPalette.divider)),
+          border: last ? null : Border(bottom: BorderSide(color: SkPalette.divider)),
         ),
         child: Row(
           children: [
@@ -395,7 +395,7 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
                   child: Row(
                     children: [
                       Expanded(child: Text(value, style: SkText.body(15, 600))),
-                      if (current == key) const SkIcon('check', size: 20, color: SkColors.personal),
+                      if (current == key) SkIcon('check', size: 20, color: SkColors.personal),
                     ],
                   ),
                 ),
@@ -422,7 +422,7 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
                   child: Row(
                     children: [
                       Expanded(child: Text(value, style: SkText.body(15, 600))),
-                      if (_type == key) const SkIcon('check', size: 20, color: SkColors.personal),
+                      if (_type == key) SkIcon('check', size: 20, color: SkColors.personal),
                     ],
                   ),
                 ),

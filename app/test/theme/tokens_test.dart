@@ -10,12 +10,15 @@ import 'package:splitkit/core/theme/theme.dart';
 void main() {
   final tokens = jsonDecode(File('../splitkit-design/tokens.json').readAsStringSync()) as Map<String, dynamic>;
 
-  test('colours', () {
-    final colors = (tokens['color'] as Map).cast<String, String>();
-    expect(skColorTokens.keys, colors.keys);
-    colors.forEach((name, hex) {
-      expect(skColorTokens[name], Color(int.parse('FF${hex.substring(1)}', radix: 16)), reason: name);
-    });
+  test('colours, light and dark', () {
+    for (final (key, generated) in [('color', skColorTokens), ('colorDark', skDarkColorTokens)]) {
+      final colors = (tokens[key] as Map).cast<String, String>();
+      expect(generated.keys, colors.keys, reason: key);
+      colors.forEach((name, hex) {
+        expect(generated[name], Color(int.parse('FF${hex.substring(1)}', radix: 16)), reason: '$key.$name');
+      });
+    }
+    expect(skDarkColors.paper, skDarkColorTokens['paper']);
   });
 
   test('type, space, radius, breakpoints', () {

@@ -81,7 +81,7 @@ class DeviceCard extends ConsumerWidget {
           constraints: const BoxConstraints(minHeight: 48),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            border: last ? null : const Border(bottom: BorderSide(color: SkPalette.divider)),
+            border: last ? null : Border(bottom: BorderSide(color: SkPalette.divider)),
           ),
           child: Row(
             children: [
@@ -113,7 +113,7 @@ class DeviceCard extends ConsumerWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: SkPalette.divider),
+          Divider(height: 1, color: SkPalette.divider),
           row('refresh', 'Sync now', syncNow),
           if (refused > 0) row('alert', 'Review changes that couldn\'t be saved', () => showAttentionSheet(context)),
           row('down', 'Reload from the server', reload),

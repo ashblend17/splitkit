@@ -211,7 +211,7 @@ class _Body extends ConsumerWidget {
         decoration: BoxDecoration(color: SkColors.personalSoft, borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
-            const SkIcon('lock', size: 16, color: SkColors.personalInk),
+            SkIcon('lock', size: 16, color: SkColors.personalInk),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -237,7 +237,7 @@ class _Body extends ConsumerWidget {
     decoration: BoxDecoration(color: SkColors.sunken, borderRadius: BorderRadius.circular(14)),
     child: Row(
       children: [
-        const SkIcon('trash', size: 18, color: SkColors.ink2),
+        SkIcon('trash', size: 18, color: SkColors.ink2),
         const SizedBox(width: 8),
         Expanded(
           child: Text("Deleted. It doesn't count towards balances.", style: SkText.body(14, 600, color: SkColors.ink2)),
@@ -382,7 +382,7 @@ class _Body extends ConsumerWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: SkColors.line)),
             ),
             child: Row(

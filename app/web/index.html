@@ -31,6 +31,12 @@
 
   <title>splitkit</title>
   <link rel="manifest" href="manifest.json">
+  <!-- The page behind the app until it draws: paper, or the dark one when the browser is dark. -->
+  <meta name="color-scheme" content="light dark">
+  <style>
+    body { background: #F4F3EF; }
+    @media (prefers-color-scheme: dark) { body { background: #111215; } }
+  </style>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

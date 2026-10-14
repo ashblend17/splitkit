@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/categorise/category_guesser.dart';
+import 'package:splitkit/core/categorise/category_rules.dart';
 import 'package:splitkit/core/local/providers.dart';
 import 'package:splitkit/core/local/writes.dart';
 import 'package:splitkit/design_system/design_system.dart';
@@ -56,6 +58,30 @@ void main() {
     expect(queued.entityId, '00000000-0000-5000-8000-000000000001');
     expect(queued.data.keys.toSet(), _serverEntry('Swiggy order').keys.toSet());
     expect((queued.data['merchant'], queued.data['source'], queued.data['reviewed']), ('SWIGGY', 'sms', false));
+  });
+
+  testWidgets('picking a category for an SMS entry teaches it on the device at once', (tester) async {
+    final be = await pumpApp(tester, location: '/personal');
+    be.offline = true;
+    final container = appContainer(tester);
+    final groceries = _out('Groceries'); // BIGBASKET, guessed as Food
+    final ledger = container.read(localStoreProvider).value!.ledger;
+    final shopping = ledger.categories(scope: 'personal').firstWhere((c) => c['key'] == 'shopping')['id'] as String;
+
+    await runWrite(tester, container.read(writesProvider).updatePersonal(groceries.id, personalBody(groceries)..categoryId = shopping));
+    final rule = container.read(outboxProvider).single.entities.last;
+    final me = ledger.me;
+    expect((rule.entity, rule.entityId), ('category_rule', ruleId(me, income: false, pattern: 'bigbasket')));
+    expect((rule.data['pattern'], rule.data['category_id']), ('bigbasket', shopping));
+
+    // The next message from BigBasket, however the bank spells it, goes under Shopping.
+    final now = container.read(localStoreProvider).value!.ledger;
+    expect(categoryFor(now, 'BigBasket', scope: 'personal', merchant: 'BIGBASKET.COM PVT LTD', fuzzy: false), shopping);
+
+    // Only a changed category teaches: looking at an entry doesn't.
+    final swiggy = _out('Swiggy order');
+    await runWrite(tester, container.read(writesProvider).reviewPersonal(swiggy.id));
+    expect(container.read(outboxProvider).last.entities.map((e) => e.entity), ['personal_transaction']);
   });
 
   testWidgets('an edit keeps where the entry came from, and its link', (tester) async {

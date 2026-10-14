@@ -13,13 +13,12 @@ class CategoryOption {
 
 /// Colour of the selected state. Group screens use indigo, personal screens teal.
 enum ChipAccent {
-  brand(SkColors.brand, SkColors.brandSoft, SkColors.brandInk),
-  personal(SkColors.personal, SkColors.personalSoft, SkColors.personalInk);
+  brand,
+  personal;
 
-  const ChipAccent(this.border, this.background, this.foreground);
-  final Color border;
-  final Color background;
-  final Color foreground;
+  Color get border => this == brand ? SkColors.brand : SkColors.personal;
+  Color get background => this == brand ? SkColors.brandSoft : SkColors.personalSoft;
+  Color get foreground => this == brand ? SkColors.brandInk : SkColors.personalInk;
 }
 
 /// Single-choice category chips (Add split). Renders whatever categories it is given.

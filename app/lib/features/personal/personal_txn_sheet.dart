@@ -93,7 +93,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.94),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: SkColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(SkRadius.sheet)),
         ),
@@ -140,7 +140,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const SkIcon('lock', size: 14, color: SkColors.personalInk),
+                            SkIcon('lock', size: 14, color: SkColors.personalInk),
                             const SizedBox(width: 6),
                             Text('Only you', style: SkText.body(12, 700, color: SkColors.personalInk)),
                           ],
@@ -280,7 +280,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
     color: SkColors.surface,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
-      side: const BorderSide(color: SkColors.line, width: 1.5),
+      side: BorderSide(color: SkColors.line, width: 1.5),
     ),
     clipBehavior: Clip.antiAlias,
     child: InkWell(

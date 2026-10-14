@@ -10,6 +10,7 @@ import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import '../settlements/settlement_sheet.dart';
+import 'settle_plan.dart';
 
 class GroupBalancesPage extends ConsumerWidget {
   const GroupBalancesPage({super.key, required this.groupId});
@@ -92,12 +93,13 @@ class _Body extends ConsumerWidget {
     final me = ref.watch(meProvider);
     final b = balances;
     final c = b.currency;
+    final plan = SettlePlan(b, me.id);
     final (bg, ink, headline) = b.netMinor > 0
         ? (SkColors.owedSoft, SkColors.owedInk, 'In this group, overall you are owed')
         : b.netMinor < 0
         ? (SkColors.oweSoft, SkColors.oweInk, 'In this group, overall you owe')
         : (SkColors.settledSoft, SkColors.ink2, "In this group, you're all square");
-    final others = b.suggested.where((p) => p.fromUser.id != me.id && p.toUser.id != me.id).toList();
+    final n = plan.mine.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -118,71 +120,50 @@ class _Body extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'You owe ${money(b.youOweMinor, c)} · You are owed ${money(b.youAreOwedMinor, c)}',
+                  n == 0
+                      ? 'Nothing for you to pay or get'
+                      : n == 1
+                      ? '1 payment settles you up'
+                      : '$n payments settle you up',
                   style: SkText.body(13, 400, color: ink),
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        const Overline('With each person'),
-        const SizedBox(height: 8),
-        for (final p in b.people) ...[_row(context, me, p), const SizedBox(height: 8)],
-        if (others.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          const Overline('Everyone else · fewest payments'),
-          const SizedBox(height: 8),
-          SkCard(
-            radius: 14,
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                for (final (i, p) in others.indexed)
-                  InkWell(
-                    onTap: () => showGroupPaymentSheet(
-                      context,
-                      GroupPaymentTarget(group: group, from: p.fromUser, to: p.toUser, balanceMinor: p.amountMinor),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        border: i == others.length - 1 ? null : const Border(bottom: BorderSide(color: SkColors.line)),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(firstName(p.fromUser.name), style: SkText.body(14, 700)),
-                          const SizedBox(width: 8),
-                          Text('pays', style: SkText.body(14, 400, color: SkColors.ink2)),
-                          const SizedBox(width: 8),
-                          Text(firstName(p.toUser.name), style: SkText.body(14, 700)),
-                          const Spacer(),
-                          Text(money(p.amountMinor, c), style: SkText.display(16, 700)),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+        if (b.suggested.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const Overline('Fewest payments'),
+          const SizedBox(height: 4),
+          Text(
+            'The fewest payments that settle everyone in the group.',
+            style: SkText.body(12, 400, color: SkColors.ink2),
           ),
+          const SizedBox(height: 8),
+          for (final p in plan.mine) ...[_yours(context, me, plan, p), const SizedBox(height: 8)],
+          if (plan.others.isNotEmpty) _theirs(context, plan),
+        ],
+        if (b.people.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Overline('One-to-one balances'),
+          const SizedBox(height: 4),
+          Text(
+            'What one of you spent for the other, less payments between you two.',
+            style: SkText.body(12, 400, color: SkColors.ink2),
+          ),
+          const SizedBox(height: 8),
+          _oneToOne(context, me),
         ],
       ],
     );
   }
 
-  Widget _row(BuildContext context, UserOut me, PersonBalance p) {
-    final meBrief = UserBrief(id: me.id, name: me.name, avatarUrl: me.avatarUrl);
-    final net = p.netMinor;
-    void pay() => showGroupPaymentSheet(
-      context,
-      GroupPaymentTarget(
-        group: group,
-        members: balances.people,
-        from: net < 0 ? meBrief : p.user,
-        to: net < 0 ? p.user : meBrief,
-        balanceMinor: net.abs(),
-      ),
-    );
+  /// One of your payments in the plan: "Abdul · Pays you ₹3,160.52" with a button.
+  Widget _yours(BuildContext context, UserOut me, SettlePlan plan, SuggestedPayment p) {
+    final youPay = p.fromUser.id == me.id;
+    final other = youPay ? p.toUser : p.fromUser;
+    final c = balances.currency;
+    void pay() => showGroupPaymentSheet(context, plan.target(group, p));
     return Container(
       constraints: const BoxConstraints(minHeight: 64),
       padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
@@ -193,29 +174,100 @@ class _Body extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Avatar(personOf(p.user), size: 40, fontSize: 13),
+          Avatar(personOf(other), size: 40, fontSize: 13),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(firstName(p.user.name), style: SkText.body(15, 700)),
+                Text(firstName(other.name), style: SkText.body(15, 700)),
                 const SizedBox(height: 1),
-                Text(personRowState(net, balances.currency), style: SkText.body(14, 600, color: textColorFor(net))),
+                Text(
+                  youPay ? 'You pay ${money(p.amountMinor, c)}' : 'Pays you ${money(p.amountMinor, c)}',
+                  style: SkText.body(14, 600, color: youPay ? SkColors.oweInk : SkColors.owedInk),
+                ),
               ],
             ),
           ),
-          if (net < 0)
+          if (youPay)
             SkButton('Settle', variant: SkButtonVariant.strong, size: SkButtonSize.small, onPressed: pay)
-          else if (net > 0)
-            SkButton('Record payment', variant: SkButtonVariant.secondary, size: SkButtonSize.small, onPressed: pay)
           else
-            Row(
-              children: [
-                const SkIcon('check', size: 16, color: SkColors.ink2),
-                const SizedBox(width: 4),
-                Text('Settled', style: SkText.body(13, 700, color: SkColors.ink2)),
-              ],
+            SkButton('Record payment', variant: SkButtonVariant.secondary, size: SkButtonSize.small, onPressed: pay),
+        ],
+      ),
+    );
+  }
+
+  /// The rest of the plan, between other people: "Nihit pays Vagish ₹1,519.28".
+  Widget _theirs(BuildContext context, SettlePlan plan) => SkCard(
+    radius: 14,
+    padding: EdgeInsets.zero,
+    child: Column(
+      children: [
+        for (final (i, p) in plan.others.indexed)
+          InkWell(
+            onTap: () => showGroupPaymentSheet(context, plan.target(group, p)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                border: i == plan.others.length - 1 ? null : Border(bottom: BorderSide(color: SkColors.line)),
+              ),
+              child: Row(
+                children: [
+                  Text(firstName(p.fromUser.name), style: SkText.body(14, 700)),
+                  const SizedBox(width: 8),
+                  Text('pays', style: SkText.body(14, 400, color: SkColors.ink2)),
+                  const SizedBox(width: 8),
+                  Text(firstName(p.toUser.name), style: SkText.body(14, 700)),
+                  const Spacer(),
+                  Text(money(p.amountMinor, balances.currency), style: SkText.display(16, 700)),
+                ],
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  /// A small table of the one-to-one balances. A row records a payment for just that pair.
+  Widget _oneToOne(BuildContext context, UserOut me) {
+    final meBrief = UserBrief(id: me.id, name: me.name, avatarUrl: me.avatarUrl);
+    final people = balances.people;
+    return SkCard(
+      radius: 14,
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (final (i, p) in people.indexed)
+            InkWell(
+              onTap: p.netMinor == 0
+                  ? null
+                  : () => showGroupPaymentSheet(
+                      context,
+                      GroupPaymentTarget(
+                        group: group,
+                        members: people,
+                        from: p.netMinor < 0 ? meBrief : p.user,
+                        to: p.netMinor < 0 ? p.user : meBrief,
+                        balanceMinor: p.netMinor.abs(),
+                      ),
+                    ),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 44),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  border: i == people.length - 1 ? null : Border(bottom: BorderSide(color: SkColors.line)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(child: Text(firstName(p.user.name), style: SkText.body(13, 600))),
+                    Text(
+                      personRowState(p.netMinor, balances.currency),
+                      style: SkText.body(13, 600, color: textColorFor(p.netMinor)),
+                    ),
+                  ],
+                ),
+              ),
             ),
         ],
       ),

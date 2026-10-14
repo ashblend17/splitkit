@@ -166,7 +166,7 @@ class ErrorState extends StatelessWidget {
           children: [
             Row(
               children: [
-                const SkIcon('alert', size: 20, color: SkColors.oweInk),
+                SkIcon('alert', size: 20, color: SkColors.oweInk),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(title, style: SkText.body(15, 700, color: SkColors.oweInk)),

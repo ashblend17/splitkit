@@ -48,7 +48,7 @@ class ModeSwitch extends StatelessWidget {
               decoration: BoxDecoration(
                 color: on ? SkColors.surface : Colors.transparent,
                 borderRadius: BorderRadius.circular(9),
-                boxShadow: on ? const [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))] : null,
+                boxShadow: on ? [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))] : null,
               ),
               alignment: Alignment.center,
               child: FittedBox(

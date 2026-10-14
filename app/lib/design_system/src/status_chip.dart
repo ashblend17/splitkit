@@ -3,22 +3,40 @@ import 'package:flutter/widgets.dart';
 import '../../core/theme/theme.dart';
 
 enum StatusTone {
-  youOwe(SkColors.oweSoft, SkColors.owe),
-  owedToYou(SkColors.owedSoft, SkColors.owed),
-  settled(SkColors.settledSoft, SkColors.settled),
-  pending(SkColors.pendingSoft, SkColors.pending),
-  group(SkColors.brandSoft, SkColors.brandInk),
-  personal(SkColors.personalSoft, SkColors.personalInk),
-  income(SkColors.owedSoft, SkColors.owed),
-  expense(SkColors.sunken, SkColors.ink),
+  youOwe,
+  owedToYou,
+  settled,
+  pending,
+  group,
+  personal,
+  income,
+  expense,
 
   /// Expense detail share states.
-  paid(SkColors.sunken, SkColors.ink2),
-  settledShare(SkColors.owedSoft, SkColors.owedInk);
+  paid,
+  settledShare;
 
-  const StatusTone(this.background, this.foreground);
-  final Color background;
-  final Color foreground;
+  Color get background => switch (this) {
+    youOwe => SkColors.oweSoft,
+    owedToYou || income || settledShare => SkColors.owedSoft,
+    settled => SkColors.settledSoft,
+    pending => SkColors.pendingSoft,
+    group => SkColors.brandSoft,
+    personal => SkColors.personalSoft,
+    expense || paid => SkColors.sunken,
+  };
+
+  Color get foreground => switch (this) {
+    youOwe => SkColors.owe,
+    owedToYou || income => SkColors.owed,
+    settled => SkColors.settled,
+    pending => SkColors.pending,
+    group => SkColors.brandInk,
+    personal => SkColors.personalInk,
+    expense => SkColors.ink,
+    paid => SkColors.ink2,
+    settledShare => SkColors.owedInk,
+  };
 }
 
 /// Dot plus words; the dot repeats the colour, the words carry the meaning.

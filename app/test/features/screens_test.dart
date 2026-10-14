@@ -61,11 +61,40 @@ void main() {
     final be = FakeBackend();
     await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}/balances');
     expect(find.text('In this group, overall you are owed'), findsOneWidget);
+    expect(find.text('1 payment settles you up'), findsOneWidget);
+    expect(find.text('Pays you ₹1,150'), findsOneWidget); // Vivek, in the fewest payments
+    expect(find.text('Record payment'), findsOneWidget);
+    expect(find.text('Settle'), findsNothing);
+    // One-to-one, in the table below: no buttons.
     expect(find.text('You owe ₹750'), findsOneWidget);
     expect(find.text('Owes you ₹1,550'), findsOneWidget);
     expect(find.text('All square'), findsOneWidget);
-    expect(find.text('Settle'), findsNWidgets(2));
-    expect(find.text('Record payment'), findsNWidgets(2));
+  });
+
+  testWidgets("a group's balances lead with the fewest payments, one-to-one below", (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}/balances', size: const Size(390, 1400));
+    double y(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(y('FEWEST PAYMENTS'), lessThan(y('Pays you ₹1,150')));
+    expect(y('Pays you ₹1,150'), lessThan(y('₹3,408'))); // Priya pays Rahul
+    expect(y('₹3,408'), lessThan(y('ONE-TO-ONE BALANCES')));
+    expect(y('ONE-TO-ONE BALANCES'), lessThan(y('You owe ₹750')));
+
+    await tester.tap(find.text('Record payment'));
+    await tester.pumpAndSettle();
+    expect(find.text('Full balance ₹1,150'), findsOneWidget);
+    expect(find.text('After this, you and Vivek are all square.'), findsOneWidget);
+  });
+
+  testWidgets("a group's Settle up opens your payment in the fewest payments", (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}');
+    expect(find.text('You pay'), findsOneWidget);
+    expect(find.text('You get'), findsOneWidget);
+    await tester.tap(find.widgetWithText(SkButton, 'Settle up'));
+    await tester.pumpAndSettle();
+    expect(find.text('Full balance ₹1,150'), findsOneWidget);
+    expect(find.text('After this, you and Vivek are all square.'), findsOneWidget);
   });
 
   testWidgets('expense detail shows your part and each share', (tester) async {
@@ -182,7 +211,7 @@ void main() {
   testWidgets("payment sheets open over the tab bar, from a group's balances too", (tester) async {
     final be = FakeBackend();
     await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}/balances');
-    await tester.tap(find.text('Settle').first);
+    await tester.tap(find.text('Record payment'));
     await tester.pumpAndSettle();
     final sheet = tester.element(find.text('Record a payment'));
     expect(ModalRoute.of(sheet)!.navigator, Navigator.of(sheet, rootNavigator: true));

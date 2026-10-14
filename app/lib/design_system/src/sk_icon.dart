@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:path_drawing/path_drawing.dart';
 
+import '../../core/theme/theme.dart';
+
 /// Line icons from designs/Icon.dc.html: 24-unit grid, 1.8 stroke, round caps and joins.
 /// [glyph] is a plain string because category icons come from the categories table;
 /// unknown names fall back to "other".
@@ -18,7 +20,7 @@ class SkIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = this.color ?? DefaultTextStyle.of(context).style.color ?? const Color(0xFF15171C);
+    final color = this.color ?? DefaultTextStyle.of(context).style.color ?? SkColors.ink;
     final icon = SizedBox.square(
       dimension: size,
       child: CustomPaint(painter: _IconPainter(_parsed(glyph), color)),
@@ -103,6 +105,7 @@ final _paths = <String, String>{
   'file': 'M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5ZM14 2v6h6M9 13h6M9 17h4',
   'refresh': 'M3 12a9 9 0 0 1 15.7-6L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.7 6L3 16M8 16H3v5',
   'lock': 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4',
+  'moon': 'M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z',
   'link': 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7',
   'grid': 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   'more': 'M12 5h.01M12 12h.01M12 19h.01',

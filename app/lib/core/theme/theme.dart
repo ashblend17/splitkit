@@ -8,13 +8,15 @@ export 'palette.dart';
 export 'tokens.g.dart';
 export 'typography.dart';
 
-/// Material theme built from the tokens. Splitkit widgets style themselves from the tokens
-/// directly; this makes stock Material pieces (text fields, dialogs, pickers) match.
+/// Material theme built from the colour set in use ([SkColors.current]). Splitkit widgets style
+/// themselves from the tokens directly; this makes stock Material pieces (text fields, dialogs,
+/// pickers) match.
 ThemeData buildSplitkitTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: SkColors.brand,
+    brightness: SkColors.isDark ? Brightness.dark : Brightness.light,
     primary: SkColors.brand,
-    onPrimary: Colors.white,
+    onPrimary: SkColors.onFill,
     secondary: SkColors.personal,
     error: SkColors.owe,
     surface: SkColors.surface,
@@ -31,6 +33,7 @@ ThemeData buildSplitkitTheme() {
 
   return ThemeData(
     useMaterial3: true,
+    brightness: scheme.brightness,
     colorScheme: scheme,
     scaffoldBackgroundColor: SkColors.paper,
     fontFamily: SkText.bodyFamily,
@@ -44,7 +47,7 @@ ThemeData buildSplitkitTheme() {
       labelMedium: SkText.label,
       bodySmall: SkText.caption,
     ),
-    dividerTheme: const DividerThemeData(color: SkColors.line, thickness: 1, space: 1),
+    dividerTheme: DividerThemeData(color: SkColors.line, thickness: 1, space: 1),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: SkColors.surface,
@@ -57,13 +60,13 @@ ThemeData buildSplitkitTheme() {
       errorBorder: border(SkColors.owe),
       focusedErrorBorder: border(SkColors.owe),
     ),
-    textSelectionTheme: const TextSelectionThemeData(cursorColor: SkColors.brand, selectionColor: SkColors.brandSoft),
+    textSelectionTheme: TextSelectionThemeData(cursorColor: SkColors.brand, selectionColor: SkColors.brandSoft),
     dialogTheme: DialogThemeData(
       backgroundColor: SkColors.surface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
+    bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: SkColors.surface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
@@ -72,11 +75,11 @@ ThemeData buildSplitkitTheme() {
       backgroundColor: SkColors.surface,
       surfaceTintColor: Colors.transparent,
       headerBackgroundColor: SkColors.brand,
-      headerForegroundColor: Colors.white,
+      headerForegroundColor: SkColors.onFill,
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: SkColors.ink,
-      contentTextStyle: SkText.body(14, 600, color: Colors.white),
+      contentTextStyle: SkText.body(14, 600, color: SkColors.onFill),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SkRadius.button)),
     ),
@@ -86,7 +89,7 @@ ThemeData buildSplitkitTheme() {
 }
 
 /// The amber frame colour drawn around the viewport in admin mode.
-const skAdminFrameColor = SkColors.adminBand;
+Color get skAdminFrameColor => SkColors.adminBand;
 
 /// Divider inside cards (lighter than [SkColors.line]).
-const skCardDivider = SkPalette.divider;
+Color get skCardDivider => SkPalette.divider;
