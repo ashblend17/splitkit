@@ -18,6 +18,24 @@ def test_september_summary_matches_personal_mockup(client, seeded):
     ]
     # Goa Trip share (₹10,830) + Flatmates September shares (₹5,000 + ₹800 + ₹800 + ₹780)
     assert s["group_share_minor"] == 1083000 + 738000
+    # The card bill and the cash withdrawal moved money between accounts: not spending.
+    assert s["refunds_minor"] == 0
+
+
+def test_september_lists_the_transfers_without_counting_them(client, seeded):
+    h = login(client, "john")
+    every = client.get(f"{API}/personal/transactions?start=2026-09-01&end=2026-09-30", headers=h)
+    moves = client.get(
+        f"{API}/personal/transactions?start=2026-09-01&end=2026-09-30&type=transfer", headers=h
+    ).json()
+    assert (moves["count"], moves["spent_minor"], moves["income_minor"]) == (4, 0, 0)
+    assert {(i["description"], i["direction"]) for i in moves["items"]} == {
+        ("Credit card bill", "out"),
+        ("Credit card bill", "in"),
+        ("Cash withdrawal", "out"),
+        ("Cash withdrawal", "in"),
+    }
+    assert every.json()["spent_minor"] == 3245000  # the same as the summary's
 
 
 def test_history_filters_match_history_mockup(client, seeded):

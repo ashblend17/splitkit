@@ -37,6 +37,14 @@ Some are enforced by PostgreSQL and can't be broken by the app; the rest are che
 | A payment is between two different people | `ck_settlements_different_people` |
 | Only people with an email can have a password | `ck_users_login_needs_email` |
 | Emails are unique, ignoring case | unique index `uq_users_email_lower` |
+| A transfer's live legs are one out and one in, same amount and currency, between two different accounts | Deferred constraint trigger `personal_transfer_pairs` (checked at commit) |
+| A personal entry's account, and the spend a refund points at, are its owner's | Foreign keys on `(account_id, user_id)` and `(refund_of_id, user_id)` |
+| One personal account per bank SMS label, deleted ones included | unique index `uq_personal_accounts_user_sms_label` |
+| A goal's followed account and a contribution's goal and entry are the owner's | Foreign keys on `(linked_account_id, user_id)`, `(goal_id, user_id)` and `(transaction_id, user_id)` |
+| An entry counts towards one goal at most; each tracking mode has its own field and only that one | unique index `uq_personal_goal_contributions_live_transaction`; `ck_personal_goals_account_only_when_linked`, `ck_personal_goals_progress_only_when_manual` |
+| One allocation plan per income and rule, ever; rules and plans go to exactly one goal or account, theirs; each kind has its own value | `uq_personal_allocation_plans_source_transaction_id`; `ck_*_one_destination`, `ck_*_percent_when_percentage`, `ck_*_amount_when_fixed`; foreign keys on `(…, user_id)` |
+| Only investments and withdrawals name a holding, the owner's; a holding is in the owner's account | `ck_personal_transactions_holding_only_on_investments`; foreign keys on `(holding_id, user_id)` and `(account_id, user_id)` |
+| One reminder decision per dedup key, ever; snoozed exactly when it has an until time; a schedule is for one goal or holding, on days 1–28 | `uq_personal_reminder_states_user_id`; `ck_personal_reminder_states_until_only_when_snoozed`; `ck_personal_reminder_schedules_one_target`, `ck_personal_reminder_schedules_day_of_month` |
 | Enumerations (roles, scopes, methods, view-as modes, sync ops) | `ck_*` check constraints |
 
 ### Checked by `python -m app.validate`
@@ -50,7 +58,16 @@ Some are enforced by PostgreSQL and can't be broken by the app; the rest are che
 | `personal_links_are_the_owners` | warning | A personal entry linked to a split is its payer's; one linked to a payment is the sender's (spending) or receiver's (income) | Expected after a payer edit; unlink the entry |
 | `currency_matches_group` | error | Expenses and payments are in the group's currency | Bad import or manual SQL; fix the row |
 | `categories_fit_their_use` | error | Expenses use group categories; personal entries use personal ones (built in or their owner's) | Pick another category in the app |
-| `accounts_are_sane` | error | Placeholders have no password or personal entries; no duplicate emails | Merge the accounts, or move the rows |
+| `transfer_pairs_are_whole` | error | A transfer's live legs are one out and one in, same amount and currency, between two of one person's accounts (also re-checked here in case the trigger was dropped) | Check the `personal_transfer_pairs` trigger exists, then fix or delete the legs |
+| `entries_use_own_accounts` | error | A personal entry's account is its owner's (the foreign key normally refuses anything else) | Set the entry's `account_id` to null or the owner's account, then reset their stream |
+| `goal_contributions_count_once` | error | No entry counts towards a goal both as a contribution and through the balance of an account another goal follows (either leg of a transfer) | Delete the contribution, or switch the goal that follows the account to another mode |
+| `goal_contributions_fit` | error | A live contribution is to a live goal in its currency; its entry (if any) is live, in that currency and at least as much | Delete the contribution or fix its amount; deletes normally cascade |
+| `linked_goals_follow_live_accounts` | error | A goal that follows an account's balance follows a live account in its currency, and no other counting goal follows the same one | Restore the account, or switch one goal to another mode |
+| `allocation_plans_follow_their_income` | error | A live allocation plan is for a live income, in the income's currency | Delete the plan; deleting an income normally cancels its plans |
+| `allocation_rules_point_somewhere` | error | A live allocation rule sends money to a live contribution-mode goal (not archived) or a live, open account, in its currency | Point the rule elsewhere or delete it; the API normally refuses the change that broke it |
+| `holdings_are_in_investment_accounts` | error | A live holding is in a live investment account in its currency; a live entry that names a holding names a live one in its currency | Move the holding, restore what was deleted, or clear the entry's `holding_id` |
+| `reminder_schedules_point_somewhere` | error | A live reminder schedule is for a live goal or holding | Delete the schedule or restore its target; deletes normally cascade |
+| `accounts_are_sane` | error | Placeholders have no password, personal entries, accounts, goals, allocation rules or holdings; no duplicate emails | Merge the accounts, or move the rows |
 | `invites_are_open` | warning | Invite emails are lowercase, only on current placeholder members, and no account has the email yet | Link the member again: with an account it merges |
 | `groups_have_members` | warning | A group that isn't archived has a current member | Normal after everyone leaves; archive it |
 | `versions_start_at_one` | error | Every versioned row has version ≥ 1 (used for conflict detection) | `UPDATE … SET version = 1`, then reset its stream |

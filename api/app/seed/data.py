@@ -39,6 +39,8 @@ class SeedCategory:
     icon: str
     scope: str
     sort: int
+    kind: str | None = None
+    """need, want or income (migration 0013 sets the same on every database)."""
 
 
 @dataclass(frozen=True)
@@ -109,6 +111,16 @@ class SeedPersonal:
     """The seed expense (key) this was split into."""
     settlement: str | None = None
     """The seed payment (key) this was."""
+    account: str | None = None
+    """The seed account (key) it moved, for an entry not read from SMS (those go by label)."""
+    direction: str | None = None
+    """For a transfer leg: 'in' or 'out'. Other types imply theirs."""
+    transfer: str | None = None
+    """A transfer's two legs share this key."""
+    refund_of: str | None = None
+    """For a refund: the description of the spend it refunds (unique among the user's)."""
+    holding: str | None = None
+    """For an investment or a withdrawal: the seed holding (key) it bought into or sold from."""
 
 
 @dataclass(frozen=True)
@@ -120,6 +132,117 @@ class SeedSms:
     reference: str | None = None
     balance: int | None = None
     reviewed: bool = True
+
+
+@dataclass(frozen=True)
+class SeedAccount:
+    user: str
+    key: str
+    name: str
+    type: str
+    opening: int
+    """What was in it, or owed on it, before its first entry (rupees)."""
+    created: datetime
+    sms_label: str | None = None
+    """Bank SMS entries with this label are in this account, whose id is then the one the app
+    makes for the label (ledger_rules.sms_account_id)."""
+
+
+@dataclass(frozen=True)
+class SeedGoal:
+    user: str
+    key: str
+    name: str
+    target: int
+    """Rupees."""
+    mode: str
+    created: datetime
+    target_date: date | None = None
+    account: str | None = None
+    """The seed account (key) a linked_balance goal follows."""
+    manual_progress: int | None = None
+    """Rupees, for a manual goal."""
+    priority: int = 0
+    status: str = "active"
+
+
+@dataclass(frozen=True)
+class SeedContribution:
+    user: str
+    goal: str
+    amount: int
+    day: date
+    created: datetime
+    entry: tuple[str, str] | None = None
+    """(description, direction) of the entry that moved the money, unique among the user's."""
+    note: str | None = None
+
+
+@dataclass(frozen=True)
+class SeedRule:
+    user: str
+    key: str
+    kind: str
+    created: datetime
+    percent_bp: int | None = None
+    amount: int | None = None
+    """Rupees, for a fixed rule."""
+    goal: str | None = None
+    account: str | None = None
+    name: str | None = None
+    priority: int = 0
+
+
+@dataclass(frozen=True)
+class SeedPlan:
+    """What a rule set aside from one income; the snapshot is the rule as it is here."""
+
+    user: str
+    rule: str
+    source: tuple[str, date]
+    """(description, date) of the income, unique among the user's."""
+    planned: int
+    """Rupees."""
+
+
+@dataclass(frozen=True)
+class SeedHolding:
+    user: str
+    key: str
+    account: str
+    name: str
+    asset_type: str
+    market_value: int
+    """Rupees."""
+    valuation_at: date
+    created: datetime
+    quantity: str | None = None
+    cost_basis: int | None = None
+    """Rupees."""
+
+
+@dataclass(frozen=True)
+class SeedSchedule:
+    user: str
+    key: str
+    day_of_month: int
+    created: datetime
+    goal: str | None = None
+    holding: str | None = None
+    amount: int | None = None
+    """Rupees."""
+
+
+@dataclass(frozen=True)
+class SeedReminderState:
+    """A decision on a reminder: its dedup key is "<kind>:<goal id>:<window>"."""
+
+    user: str
+    kind: str
+    goal: str
+    window: str
+    status: str
+    created: datetime
 
 
 @dataclass(frozen=True)
@@ -144,17 +267,17 @@ USERS = [
 
 # `icon` is a glyph name from designs/Icon.dc.html.
 CATEGORIES = [
-    SeedCategory("food",          "Food",      "food",          "all",      10),
-    SeedCategory("transport",     "Transport", "transport",     "all",      20),
-    SeedCategory("shopping",      "Shopping",  "shopping",      "all",      30),
-    SeedCategory("entertainment", "Fun",       "entertainment", "all",      40),
-    SeedCategory("travel",        "Travel",    "travel",        "group",    50),
-    SeedCategory("stay",          "Stay",      "rent",          "group",    60),
-    SeedCategory("rent",          "Rent",      "rent",          "all",      70),
-    SeedCategory("bills",         "Bills",     "bills",         "all",      80),
-    SeedCategory("health",        "Health",    "health",        "personal", 90),
-    SeedCategory("income",        "Income",    "income",        "personal", 100),
-    SeedCategory("other",         "Other",     "other",         "all",      999),
+    SeedCategory("food",          "Food",      "food",          "all",      10,  "need"),
+    SeedCategory("transport",     "Transport", "transport",     "all",      20,  "need"),
+    SeedCategory("shopping",      "Shopping",  "shopping",      "all",      30,  "want"),
+    SeedCategory("entertainment", "Fun",       "entertainment", "all",      40,  "want"),
+    SeedCategory("travel",        "Travel",    "travel",        "group",    50,  "want"),
+    SeedCategory("stay",          "Stay",      "rent",          "group",    60,  "want"),
+    SeedCategory("rent",          "Rent",      "rent",          "all",      70,  "need"),
+    SeedCategory("bills",         "Bills",     "bills",         "all",      80,  "need"),
+    SeedCategory("health",        "Health",    "health",        "personal", 90,  "need"),
+    SeedCategory("income",        "Income",    "income",        "personal", 100, "income"),
+    SeedCategory("other",         "Other",     "other",         "all",      999, None),
 ]
 
 GROUPS = [
@@ -311,10 +434,92 @@ PERSONAL = [
                  SeedSms("BIGBASKET", HDFC, "426614590032", 39936), expense="flat_groceries"),
 ]
 
+# John's accounts. HDFC's opening balance makes its balance after the September salary SMS the
+# ₹1,12,480 the bank reported (the rule migration 0013 backfills with); the card owed August's
+# ₹4,999 statement; the wallet had ₹500 when he started tracking cash.
+ACCOUNTS = [
+    SeedAccount("john", "hdfc",       HDFC,       "bank",        27480, at(sep(1), 9, 0),    sms_label=HDFC),
+    SeedAccount("john", "icici_card", ICICI_CARD, "credit_card", 4999,  at(sep(21), 10, 45), sms_label=ICICI_CARD),
+    SeedAccount("john", "cash",       "Cash",     "cash",        500,   at(sep(12), 10, 0)),
+    # Kept for the emergency fund goal, which follows its balance. No entries yet.
+    SeedAccount("john", "savings", "Emergency savings", "bank", 120000, at(date(2026, 6, 1), 10, 0)),
+    # Valued by its holdings, not by entries.
+    SeedAccount("john", "zerodha", "Zerodha", "investment", 0, at(date(2026, 4, 10), 18, 0)),
+]
+
+
+
+def _transfer(day: date, amount: int, description: str, out_of: str, into: str, channel: str) -> list[SeedPersonal]:
+    key = f"{out_of}>{into}:{day}"
+    return [
+        SeedPersonal("john", "transfer", amount, None, day, description, channel=channel, account=out_of, direction="out", transfer=key),
+        SeedPersonal("john", "transfer", amount, None, day, description, channel=channel, account=into, direction="in", transfer=key),
+    ]
+
+
+# Money moved between John's accounts, which is neither spending nor income, and a refund, which
+# comes off July's spending (₹35,920 less ₹1,490: ₹34,430 in totals and Insights). Appended,
+# since seed ids follow the order of PERSONAL.
+PERSONAL += [
+    # The headphones got cheaper within the price-protection window.
+    SeedPersonal("john", "refund", 1490, "shopping", date(2026, 7, 24), "Price drop refund", refund_of="New headphones"),
+    # August's card statement, paid from HDFC.
+    *_transfer(sep(5), 4999, "Credit card bill", "hdfc", "icici_card", "bank"),
+    *_transfer(sep(12), 2000, "Cash withdrawal", "hdfc", "cash", "atm"),
+]
+
+# John's goals, one per tracking mode. None of it is spending or income, so no total moves.
+GOALS = [
+    SeedGoal("john", "emergency", "Emergency fund", 270000, "linked_balance", at(date(2026, 6, 1), 10, 5), account="savings"),
+    SeedGoal("john", "ladakh", "Ladakh trip", 60000, "contribution", at(date(2026, 8, 20), 21, 0), target_date=date(2027, 5, 31), priority=1),
+    SeedGoal("john", "gold", "Gold coins", 200000, "manual", at(date(2026, 7, 5), 9, 30), manual_progress=68000, priority=2),
+]
+
+CONTRIBUTIONS = [
+    SeedContribution("john", "ladakh", 15000, date(2026, 8, 31), at(date(2026, 8, 31), 20, 0), note="Saved before I started tracking"),
+    # Part of the 12 Sep cash withdrawal went into the trip jar.
+    SeedContribution("john", "ladakh", 2000, sep(12), at(sep(12), 10, 15), entry=("Cash withdrawal", "in"), note="Trip jar"),
+]
+
+# John's allocation rules, set up before September's salary, and the plans the app made from
+# it. Plans are intentions, not money: no total moves. The trip has ₹2,000 of its ₹8,500 so far
+# (the jar), and nothing has gone to the savings account yet.
+RULES = [
+    SeedRule("john", "trip_share", "percentage", at(date(2026, 8, 25), 21, 0), percent_bp=1000, goal="ladakh"),
+    SeedRule("john", "top_up", "fixed", at(date(2026, 8, 25), 21, 5), amount=5000, account="savings", name="Emergency top-up", priority=1),
+]
+
+PLANS = [
+    SeedPlan("john", "trip_share", ("Salary", sep(1)), 8500),
+    SeedPlan("john", "top_up", ("Salary", sep(1)), 5000),
+]
+
+# What's in the Zerodha account. The index fund was last valued on 15 Aug (over 30 days old: the
+# app marks it stale) and has a cost basis; the shares have no cost basis, so no gain is shown.
+HOLDINGS = [
+    SeedHolding("john", "nifty", "zerodha", "Nifty 50 index fund", "mutual_fund", 68450, date(2026, 8, 15), at(date(2026, 4, 10), 18, 5), quantity="412.358", cost_basis=60000),
+    SeedHolding("john", "tata", "zerodha", "Tata Motors shares", "stock", 12300, date(2026, 9, 20), at(date(2026, 5, 2), 11, 0), quantity="18"),
+]
+
+# September's SIP into the index fund, paid from HDFC after its last valuation (so the app adds
+# it at cost: "incl. ₹5,000 added since 15 Aug"). An investment, not spending. Appended.
+PERSONAL += [
+    SeedPersonal("john", "investment_contribution", 5000, None, sep(5), "Index fund SIP", channel="bank", account="hdfc", holding="nifty"),
+]
+
+# A reminder on the 5th for that SIP (it never records the entry itself), and a "Ladakh trip is
+# behind" reminder John dismissed for September.
+SCHEDULES = [
+    SeedSchedule("john", "sip", 5, at(date(2026, 4, 10), 18, 10), holding="nifty", amount=5000),
+]
+REMINDER_STATES = [
+    SeedReminderState("john", "goal_behind", "ladakh", "2026-09", "dismissed", at(sep(20), 20, 0)),
+]
+
 # Default dashboards (owner_id NULL). Titles from PersonalAnalytics / GroupAnalytics, except
 # "Spending over time": the trend bars are days, weeks, months or years depending on the period
 # (the design's "Monthly spending" and "Spending per day" each fit only one of them).
-# Migrations 0009 and 0011 add these and CATEGORIES to every database; keep them in step.
+# Migrations 0009, 0011 and 0018 add these and CATEGORIES to every database; keep them in step.
 A = SeedAnalytics
 ANALYTICS = [
     A("personal", 1, "spending_trend",       "Spending over time",   "last_6_months", "personal_monthly",     {"bucket": "month"}),
@@ -325,6 +530,9 @@ ANALYTICS = [
     A("personal", 5, "spending_by_account",  "By account",           "this_month",    "personal_by_account"),
     A("personal", 6, "spending_by_channel",  "By payment mode",      "this_month",    "personal_by_channel"),
     A("personal", 7, "top_merchants",        "Top merchants",        "this_month",    "personal_top_merchants"),
+    # Migration 0018.
+    A("personal", 8, "savings_rate",         "Savings rate",         "this_month",    "personal_savings_rate"),
+    A("personal", 9, "need_vs_want",         "Needs and wants",      "this_month",    "personal_need_want"),
     A("group",    1, "total_spend",          "Total group spending", "all_time",      "group_total"),
     A("group",    2, "spending_trend",       "Spending over time",   "all_time",      "group_daily",          {"bucket": "day"}),
     A("group",    3, "spending_by_category", "By category",          "all_time",      "group_by_category"),

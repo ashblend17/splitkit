@@ -4,6 +4,8 @@ from sqlalchemy import text
 
 from app import recover, validate
 from app.core.db import SessionLocal
+from app.seed import data
+from app.seed.loader import account_id
 from tests.api.conftest import gid, login, uid
 from tests.api.test_expenses import dinner as dinner_body
 
@@ -40,9 +42,9 @@ def test_planted_problems_are_found(client, seeded):
         ).scalar_one()
         session.execute(
             text(
-                "INSERT INTO personal_transactions (id, user_id, type, amount_minor, currency, "
-                "date, description) VALUES (gen_random_uuid(), :u, 'expense', 100, 'INR', "
-                "'2026-09-25', 'x')"
+                "INSERT INTO personal_transactions (id, user_id, type, direction, amount_minor, "
+                "currency, date, description) VALUES (gen_random_uuid(), :u, 'expense', 'out', "
+                "100, 'INR', '2026-09-25', 'x')"
             ),
             {"u": ghost},
         )
@@ -59,6 +61,56 @@ def test_planted_problems_are_found(client, seeded):
                 "WHERE description = 'Uber to airport'"
             )
         )
+    with SessionLocal.begin() as session:
+        # Past the trigger and the foreign keys: a lone transfer leg, and an entry of Rahul's in
+        # John's account.
+        session.execute(text("SET LOCAL session_replication_role = replica"))
+        hdfc = account_id(next(a for a in data.ACCOUNTS if a.key == "hdfc"))
+        session.execute(
+            text(
+                "INSERT INTO personal_transactions (user_id, type, direction, amount_minor, "
+                "currency, date, description, account_id, transfer_group_id) VALUES "
+                "(:john, 'transfer', 'out', 100, 'INR', '2026-09-25', 'Half', :a, "
+                "gen_random_uuid()), "
+                "(:rahul, 'expense', 'out', 100, 'INR', '2026-09-25', 'Not mine', :a, NULL)"
+            ),
+            {"john": uid("john"), "rahul": uid("rahul"), "a": hdfc},
+        )
+        # The emergency fund follows Cash, which the trip jar's money went into (counted
+        # twice), Cash is deleted under it, and the jar counts more than its entry.
+        cash = account_id(next(a for a in data.ACCOUNTS if a.key == "cash"))
+        session.execute(
+            text("UPDATE personal_goals SET linked_account_id = :a WHERE name = 'Emergency fund'"),
+            {"a": cash},
+        )
+        session.execute(
+            text("UPDATE personal_accounts SET deleted_at = now() WHERE id = :a"), {"a": cash}
+        )
+        session.execute(
+            text(
+                "UPDATE personal_goal_contributions SET amount_minor = 900000 "
+                "WHERE transaction_id IS NOT NULL"
+            )
+        )
+        # September's salary deleted under its plans, and the account a rule sends money to
+        # closed under it.
+        session.execute(
+            text(
+                "UPDATE personal_transactions SET deleted_at = now() "
+                "WHERE type = 'income' AND date = '2026-09-01'"
+            )
+        )
+        session.execute(
+            text("UPDATE personal_accounts SET status = 'closed' WHERE name = 'Emergency savings'")
+        )
+        # Zerodha made a bank account under its holdings, and the index fund deleted under the
+        # SIP entry and reminder that name it.
+        session.execute(text("UPDATE personal_accounts SET type = 'bank' WHERE name = 'Zerodha'"))
+        session.execute(
+            text(
+                "UPDATE personal_holdings SET deleted_at = now() WHERE name = 'Nifty 50 index fund'"
+            )
+        )
     with SessionLocal() as session:
         found = failing(session)
     assert {
@@ -67,6 +119,15 @@ def test_planted_problems_are_found(client, seeded):
         "accounts_are_sane",
         "sync_log_matches_tables",
         "personal_links_are_the_owners",
+        "transfer_pairs_are_whole",
+        "entries_use_own_accounts",
+        "goal_contributions_count_once",
+        "goal_contributions_fit",
+        "linked_goals_follow_live_accounts",
+        "allocation_plans_follow_their_income",
+        "allocation_rules_point_somewhere",
+        "holdings_are_in_investment_accounts",
+        "reminder_schedules_point_somewhere",
     } <= found
     assert validate.main(["--json"]) == 1
 

@@ -83,8 +83,74 @@ file, and confirm with `uv run alembic check`.
   `group_id`, `category` (key), `start`/`end`, `unsettled` (by the group's fewest payments: you
   still pay someone there and have a share, or someone still pays you and you paid) and
   `q` (description or a person's name). `category` and `unsettled` leave payments out.
-- Personal finance (`/personal/...`) is private to its owner: transactions with filters and
+- Personal finance (`/personal/...`) is private to its owner: accounts, entries with filters and
   totals, plus a monthly summary that includes your share of group spending.
+  - Accounts (`GET`/`POST /personal/accounts`, `GET`/`PUT`/`DELETE /personal/accounts/{id}`,
+    `POST …/restore`) are cash, bank, credit_card, loan, investment or other_asset, in your
+    currency, with an `opening_balance_minor`. The server never computes a balance: the app
+    derives it from the opening balance and the entries in the account (`account_id`). A closed
+    account (`status: closed`) takes no new entries; one with entries can't be deleted (409
+    `account_in_use`). An account's `sms_label` ("HDFC ··4821") is unique per person, deleted
+    accounts included. Making an account, labelling it or reopening it moves in your entries
+    with that label and no account yet.
+  - Entry types: income, expense, refund, investment_contribution and investment_withdrawal
+    each imply their `direction` (in or out); transfer and adjustment say theirs. A transfer is
+    two legs, one out and one in, of the same amount between two of your accounts, sharing a
+    `transfer_group_id`. Both legs are made or changed in one `POST /personal/batch`, and
+    deleting or restoring a leg takes the other with it (a deferred trigger backs this up). An
+    adjustment corrects an account's balance. A refund may name the spend it's for
+    (`refund_of_id`: one of yours, at most its amount). Transfers and adjustments have no
+    category and no Split link.
+  - Goals (`/personal/goals`: list, create, get, PUT, DELETE, `…/restore`) have a target, an
+    optional target date, a priority and a status (active, paused, completed, archived). Their
+    `tracking_mode` says where progress comes from: `contribution` (the goal's contributions),
+    `linked_balance` (the balance of `linked_account_id`, an account of yours no other goal
+    follows) or `manual` (`manual_progress_minor`, typed in). Each mode's field is required in
+    that mode and empty in the others; switching keeps old contributions. The server never
+    computes progress, what's left, the monthly amount needed or whether a goal is behind: the
+    app does. A followed account can't be deleted.
+  - Contributions (`/personal/goal-contributions`, `?goal_id=` to filter) put money towards a
+    `contribution` goal that isn't archived, optionally with the entry that moved it
+    (`transaction_id`: yours, live, at least the amount). An entry counts towards one goal at
+    most, and never both as a contribution and through an account a goal follows (either leg
+    of a transfer; 422 `counted_by_balance`, or `counted_by_contribution` when the goal is the
+    change). Deleting an entry or a goal deletes its contributions, and restoring it brings
+    back the ones that went with it.
+  - Allocation rules (`/personal/allocation-rules`) set aside a percentage (`percent_bp`, basis
+    points; over 100% is allowed, the app warns and never rescales) or a fixed amount of each
+    income, optionally only incomes in a category or into an account, for a `contribution`
+    goal or an open account. While a live rule points at a goal or account, it can't be
+    deleted, archived, switched to another mode or closed (409 `rule_points_here`).
+  - Allocation plans (`/personal/allocation-plans`, filter by `source_transaction_id`,
+    `rule_id`, `goal_id`, `account_id`) are what a rule set aside from one income: intentions,
+    never money. The app makes them with the income, with id
+    `uuid5(plan namespace, "<income>|<rule>")` (`ledger_rules.plan_id`, pinned in
+    `shared/ledger_vectors.json`), snapshots the rule's kind and value, and recomputes them
+    when the income changes; the server doesn't redo the maths. One plan per income and rule,
+    ever (409 `plan_exists`). Deleting an income cancels its plans and restoring it brings them
+    back; an income with plans can't become another type until they're deleted; deleting a
+    rule leaves its plans. Planned, partial, fulfilled and cancelled are worked out on the
+    device.
+  - Holdings (`/personal/holdings`, `?account_id=`) are what an investment account of yours
+    holds: a fund, shares, a deposit, gold, with a quantity (a decimal string), an optional
+    cost basis and the latest value you typed (`market_value_minor`, `valuation_at`; only the
+    latest is kept). Gains and whether a value is stale (over 30 days) are worked out on the
+    device. An investment or a withdrawal entry can name the holding it bought into or sold
+    from (`holding_id`). A holding named by a live entry can't be deleted (409
+    `holding_in_use`), nor can an investment account with holdings, or be made another type.
+  - Reminders are worked out on each device. Only your decisions sync:
+    `/personal/reminder-states` keeps one per dedup key (`type:entity:window`), dismissed,
+    snoozed until a time, or done. `POST` makes it (201) or replaces it (200); its id is
+    `uuid5(reminder namespace, "<user>|<key>")` (`ledger_rules.reminder_state_id`, pinned in
+    `shared/ledger_vectors.json`), so every device writes the same row. Pending and shown stay
+    on the device. `/personal/reminder-schedules` are monthly SIP reminders (day 1–28, an
+    optional amount) for a goal or a holding; they never record an entry, and they're deleted
+    and restored with their goal or holding.
+  - `POST /personal/batch` applies up to 100 creates, updates and deletes (not of accounts) of
+    accounts, entries, goals, contributions, allocation rules and plans, holdings, reminder
+    decisions and schedules, in order, all or none. An item can use what an earlier one made,
+    so a transfer and its contribution, or an income and its plans, go in one request. A
+    refusal says which `item` (counting from 0).
   - An entry can say how it was paid (`channel`: upi, card, bank, atm, cash, other), who was paid
     (`merchant`) and the `account` ("HDFC ··4821"). Entries the app read from a bank SMS on the
     phone have `source: sms`, the bank's `reference`, the `balance_minor` it reported, `sms_at`,
@@ -93,11 +159,18 @@ file, and confirm with `uv run alembic check`.
     or the payment it was (`settlement_id`). While that expense or payment is live in a group
     you're in, the entry is listed with `counted: false` and left out of every personal total
     and personal analytics: your share counts as group spending, and a payment isn't spending.
-  - On PUT, `channel`, `merchant`, `account`, the links and `reviewed` keep their value when
-    the body leaves them out. `source`, `reference`, `balance_minor` and `sms_at` are set on
-    create only.
-  - `GET /personal/transactions` also filters by `account`, `channel`, `source` and `reviewed`.
-    `GET /personal/accounts` lists accounts with the latest balance their bank reported.
+  - On PUT, `channel`, `merchant`, `account`, `account_id`, the links (also
+    `transfer_group_id` and `refund_of_id`) and `reviewed` keep their value when the body leaves
+    them out. `source`, `reference`, `balance_minor` and `sms_at` are set on create only. A body
+    without the `account_id` key (an older app) goes in your open account whose `sms_label` is
+    its `account`, if there is one.
+  - Totals (`spent_minor` in the list and the summary) are expenses minus refunds, with
+    `refunds_minor` beside them; they can be negative. Transfers, adjustments and investments
+    are never income or spending. A refund of a split spend isn't counted, like the spend.
+  - `GET /personal/transactions` also filters by `type`, `account` (label), `account_id`,
+    `channel`, `source` and `reviewed`. `GET /personal/accounts/reported` lists the account
+    labels with the latest balance their bank reported (kept while the app still uses
+    `/personal/summary`).
   - Personal's default dashboard also has By account, By payment mode and Top merchants
     (`personal_by_account`, `personal_by_channel` and `personal_top_merchants`, migration 0011).
     In the app, Overview lists accounts with a reported balance, and Transactions filter by
@@ -107,6 +180,17 @@ file, and confirm with `uv run alembic check`.
   `source` maps to one function in `app/modules/analytics/sources.py`; each `type` maps to one
   renderer in `app/lib/features/analytics/cards.dart`. `PUT /analytics/layout/{scope}` saves
   your own order; `DELETE` goes back to the defaults.
+  - Personal cards count what the summary counts: expenses less refunds (off the refund's own
+    category), in your currency, without the entries a group covers. Transfers, investments and
+    adjustments never count, and nor does your group share (Personal vs group shows it beside).
+    By account goes by the entry's account name, else its label. A bar or row never goes below
+    zero; the trend's headline shows the real total.
+  - Savings rate (`personal_savings_rate`: income less spending, as a percent rounded half away
+    from zero, "—" without income) and Needs and wants (`personal_need_want`, by category `kind`,
+    with "Not sorted" when there is some) are default cards from migration 0018. Run
+    `python -m app.recover reset-stream global` when it deploys.
+  - These rules are the contract for Insights on the device (finance revamp, Phase 6), which a
+    parity test holds equal to `/analytics/personal`; the endpoint stays for older builds.
 - Deletes are soft: `DELETE /expenses/{id}` then `POST /expenses/{id}/restore` (same for settlements).
 - Every write is recorded in `audit_logs`, and group writes in `activity_events`, with
   `acting_admin_id` ready for admin impersonation. Every write also lands in the sync change log
@@ -133,8 +217,10 @@ changed for the sync log (`app/modules/sync/log.py`). At commit, each entry gets
 its stream, in the same transaction as the write.
 
 - Streams: `group:<id>` (group, members with names, expenses with splits, settlements),
-  `user:<id>` (profile, personal entries, own categories, learned category rules, layouts,
-  memberships), `global` (system categories, default layouts). Seqs are gap-free per stream.
+  `user:<id>` (profile, personal entries, accounts, goals, contributions, allocation rules and
+  plans, holdings, reminder decisions and schedules, own categories, learned category rules,
+  layouts, memberships), `global` (system categories, default layouts). Seqs are gap-free per
+  stream.
 - `POST /sync {"cursors": {"group:…": 41, …}}` returns, for every stream you can see, the changes
   after your cursor (paged by `limit`, with `has_more`). `snapshot_required` means: load
   `GET /sync/snapshot/{stream}` and store its `head_seq`. `gone` means: delete your copy.
@@ -144,7 +230,9 @@ its stream, in the same transaction as the write.
   one gets 409 `version_conflict`. Creates may send their own `id`, so a retry returns the row it
   already made.
 - Rows written outside `record()` (the seed, migrations) have no log entries. Clients get them
-  from snapshots.
+  from snapshots. Migration 0013 made accounts from entry labels this way: after running it,
+  `python -m app.recover reset-stream` every user stream and `global`, so devices that loaded a
+  snapshot before it reload.
 - Group entries carry `last_activity_at`; clients move it forward with the `at` of later
   group-stream changes (except `user.*`, which only re-sends member names). Expense entries embed
   their category with `scope` and `owner_id`.

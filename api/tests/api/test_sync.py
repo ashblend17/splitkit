@@ -7,6 +7,7 @@ from sqlalchemy import select, update
 
 from app.core.db import SessionLocal
 from app.modules.sync.models import ChangeLog, SyncStream
+from app.seed import data
 from tests.api.conftest import cat, eid, gid, login, register, uid
 
 API = "/api/v1"
@@ -341,6 +342,7 @@ def test_user_and_global_snapshots(client, seeded):
     assert kinds.count("profile") == 1
     assert kinds.count("membership") == 2
     assert kinds.count("personal_transaction") >= 50
+    assert kinds.count("personal_account") == len(data.ACCOUNTS)
     assert "member" not in kinds  # those belong to group streams
     world = client.get(f"{API}/sync/snapshot/global", headers=h).json()
     assert {e["entity"] for e in world["entities"]} == {"category", "layout"}

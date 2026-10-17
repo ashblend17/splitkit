@@ -6,7 +6,17 @@ from app.modules.categories.models import Category, CategoryRule
 from app.modules.expenses.models import Expense, ExpenseSplit
 from app.modules.groups.models import ActivityEvent, Group, GroupMember
 from app.modules.import_tricount.models import ImportBatch
-from app.modules.personal.models import PersonalTransaction
+from app.modules.personal.models import (
+    PersonalAccount,
+    PersonalAllocationPlan,
+    PersonalAllocationRule,
+    PersonalGoal,
+    PersonalGoalContribution,
+    PersonalHolding,
+    PersonalReminderSchedule,
+    PersonalReminderState,
+    PersonalTransaction,
+)
 from app.modules.settlements.models import Settlement
 from app.modules.sync.models import ChangeLog, SyncStream
 from app.modules.tricount_sync.models import (
@@ -31,6 +41,14 @@ __all__ = [
     "Group",
     "GroupMember",
     "ImportBatch",
+    "PersonalAccount",
+    "PersonalAllocationPlan",
+    "PersonalAllocationRule",
+    "PersonalGoal",
+    "PersonalGoalContribution",
+    "PersonalHolding",
+    "PersonalReminderSchedule",
+    "PersonalReminderState",
     "PersonalTransaction",
     "Settlement",
     "SyncStream",

@@ -8,8 +8,10 @@ touch the same streams can't deadlock) and inserts one change_log row per entry.
 
 Streams:
 - `group:<id>`: the group, its members (with their names), expenses with splits, settlements.
-- `user:<id>`: profile, personal transactions, own categories, learned category rules, layouts,
-  and memberships (which group streams this user should follow).
+- `user:<id>`: profile, personal transactions, accounts, goals, goal contributions,
+  allocation rules and plans, holdings, reminder decisions and schedules, own categories,
+  learned category rules, layouts, and memberships (which group streams this user should
+  follow).
 - `global`: system categories and default layouts. Written by migrations and the seed only, so
   clients get it from a snapshot.
 """
@@ -130,7 +132,17 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
     from app.modules.categories.models import Category, CategoryRule
     from app.modules.expenses.models import Expense
     from app.modules.groups.models import ActivityEvent, Group, GroupMember
-    from app.modules.personal.models import PersonalTransaction
+    from app.modules.personal.models import (
+        PersonalAccount,
+        PersonalAllocationPlan,
+        PersonalAllocationRule,
+        PersonalGoal,
+        PersonalGoalContribution,
+        PersonalHolding,
+        PersonalReminderSchedule,
+        PersonalReminderState,
+        PersonalTransaction,
+    )
     from app.modules.settlements.models import Settlement
     from app.modules.users.models import User
 
@@ -180,6 +192,31 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
                     "upsert",
                     _columns(obj),
                     obj.version,
+                )
+            ]
+        case (
+            PersonalAccount()
+            | PersonalGoal()
+            | PersonalGoalContribution()
+            | PersonalAllocationRule()
+            | PersonalAllocationPlan()
+            | PersonalHolding()
+            | PersonalReminderState()
+            | PersonalReminderSchedule()
+        ):
+            entity = {
+                PersonalAccount: "personal_account",
+                PersonalGoal: "personal_goal",
+                PersonalGoalContribution: "personal_goal_contribution",
+                PersonalAllocationRule: "personal_allocation_rule",
+                PersonalAllocationPlan: "personal_allocation_plan",
+                PersonalHolding: "personal_holding",
+                PersonalReminderState: "personal_reminder_state",
+                PersonalReminderSchedule: "personal_reminder_schedule",
+            }[type(obj)]
+            return [
+                Entry(
+                    user_stream(obj.user_id), entity, obj.id, "upsert", _columns(obj), obj.version
                 )
             ]
         case Category():

@@ -22,7 +22,7 @@ from app.modules.expenses.models import Expense, ExpenseSplit
 from app.modules.groups import repository as groups
 from app.modules.groups.service import require_member
 from app.modules.personal import repository as personal_repo
-from app.modules.personal.models import PersonalTransaction
+from app.modules.personal.models import PersonalAccount, PersonalTransaction
 from app.modules.sync import log as sync_log
 from app.modules.users.models import User
 
@@ -76,9 +76,18 @@ def _labels(session: Session) -> dict[uuid.UUID, str]:
 
 
 def personal_dashboard(session: Session, actor: Actor, period: Period, on: date) -> DashboardOut:
+    """Kept for app builds that ask the server; newer ones work this out on the device from
+    the same rows, and a parity test holds the two equal (with group share left out of
+    spending, as here)."""
     me, currency = actor.user_id, actor.user.currency
-    labels = _labels(session)
-    # Entries that became a group expense or payment aren't counted, as in the summary.
+    categories = {c.id: c for c in session.scalars(select(Category))}
+    accounts = dict(
+        session.execute(
+            select(PersonalAccount.id, PersonalAccount.name).where(PersonalAccount.user_id == me)
+        ).all()
+    )
+    # As in the summary: entries in your currency, less those that became a group expense or
+    # payment (and refunds of those). Transfers, investments and adjustments never count.
     covered = personal_repo.covered_ids(session, me)
     rows = [
         t
@@ -86,7 +95,7 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
             select(PersonalTransaction)
             .where(
                 PersonalTransaction.user_id == me,
-                PersonalTransaction.type == "expense",
+                PersonalTransaction.type.in_(("expense", "refund", "income")),
                 PersonalTransaction.currency == currency,
                 PersonalTransaction.deleted_at.is_(None),
             )
@@ -94,22 +103,27 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
         )
         if t.id not in covered
     ]
+    spending = [t for t in rows if t.type != "income"]
     # A merchant is called what its first entry was (the app names entries from SMS).
     merchants: dict[str, str] = {}
-    for t in rows:
+    for t in spending:
         if t.merchant:
             merchants.setdefault(t.merchant.lower(), t.description)
-    personal = [
-        sources.Entry(
-            t.date,
-            t.amount_minor,
-            labels.get(t.category_id, "Uncategorised"),
-            account=t.account,
-            channel=t.channel,
-            merchant=merchants[t.merchant.lower()] if t.merchant else None,
+    personal = []
+    for t in spending:
+        c = categories.get(t.category_id)
+        personal.append(
+            sources.Entry(
+                t.date,
+                -t.amount_minor if t.type == "refund" else t.amount_minor,
+                c.label if c else "Uncategorised",
+                account=accounts.get(t.account_id) or t.account,
+                channel=t.channel,
+                merchant=merchants[t.merchant.lower()] if t.merchant else None,
+                kind=c.kind if c else None,
+            )
         )
-        for t in rows
-    ]
+    income = [sources.Entry(t.date, t.amount_minor) for t in rows if t.type == "income"]
     shares = [
         sources.Entry(d, share)
         for d, share in session.execute(
@@ -123,7 +137,12 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
         )
     ]
     ctx = sources.Context(
-        period=period, on=on, currency=currency, personal=personal, group_shares=shares
+        period=period,
+        on=on,
+        currency=currency,
+        personal=personal,
+        income=income,
+        group_shares=shares,
     )
     return DashboardOut(
         scope="personal",

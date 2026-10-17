@@ -199,14 +199,14 @@ def test_filters_by_account_mode_source_and_review(client, seeded):
 
 
 def test_accounts_have_their_latest_balance(client, seeded):
-    accounts = client.get(f"{API}/personal/accounts", headers=login(client, "john")).json()
+    accounts = client.get(f"{API}/personal/accounts/reported", headers=login(client, "john")).json()
     assert [(a["account"], a["balance_minor"], a["count"]) for a in accounts] == [
         ("HDFC ··4821", 3993600, 6),  # after the groceries on 23 Sep
         ("ICICI Credit card ··9012", None, 1),  # cards report a limit, not a balance
     ]
     assert accounts[0]["balance_at"].startswith("2026-09-23T")
     other, _ = register(client, "Someone", "someone@example.com")
-    assert client.get(f"{API}/personal/accounts", headers=other).json() == []
+    assert client.get(f"{API}/personal/accounts/reported", headers=other).json() == []
 
 
 def test_sync_entries_carry_the_new_fields(client, seeded):

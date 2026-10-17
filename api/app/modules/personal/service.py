@@ -15,8 +15,10 @@ from app.modules.categories.models import Category
 from app.modules.categories.schemas import CategoryOut
 from app.modules.expenses.models import Expense
 from app.modules.groups import repository as groups
+from app.modules.personal import accounts, allocation_plans, contributions, transfers
 from app.modules.personal import repository as repo
-from app.modules.personal.models import PersonalTransaction
+from app.modules.personal.ledger_rules import INVESTMENT_TYPES, implied_direction
+from app.modules.personal.models import PersonalAccount, PersonalHolding, PersonalTransaction
 from app.modules.personal.schemas import (
     AccountOut,
     CategoryTotal,
@@ -29,7 +31,37 @@ from app.modules.settlements.models import Settlement
 
 # What an update may change besides the basics. A field the body leaves out keeps its value,
 # so an older app that doesn't know them can't wipe a link.
-EDITABLE = ("channel", "merchant", "account", "expense_id", "settlement_id", "reviewed")
+EDITABLE = (
+    "channel",
+    "merchant",
+    "account",
+    "expense_id",
+    "settlement_id",
+    "reviewed",
+    "account_id",
+    "transfer_group_id",
+    "refund_of_id",
+    "holding_id",
+)
+# Which other rows an entry points at; checked together by _validate.
+LINKS = (
+    "account_id",
+    "transfer_group_id",
+    "refund_of_id",
+    "holding_id",
+    "expense_id",
+    "settlement_id",
+)
+MOVES = ("transfer", "adjustment")
+"""Money moved between accounts or a balance corrected: never income or spending."""
+
+DIRECTION_RULES = {
+    "income": "Income is money coming in",
+    "expense": "An expense is money going out",
+    "refund": "A refund is money coming in",
+    "investment_contribution": "Money invested is money going out",
+    "investment_withdrawal": "Money taken out of an investment is money coming in",
+}
 
 
 def _categories(session: Session, rows: list[PersonalTransaction]) -> dict[uuid.UUID, Category]:
@@ -44,6 +76,11 @@ def _out(
     return PersonalTxnOut(
         id=t.id,
         type=t.type,
+        direction=t.direction,
+        account_id=t.account_id,
+        transfer_group_id=t.transfer_group_id,
+        refund_of_id=t.refund_of_id,
+        holding_id=t.holding_id,
         amount_minor=t.amount_minor,
         currency=t.currency,
         description=t.description,
@@ -68,6 +105,20 @@ def _out(
     )
 
 
+def outs(session: Session, actor: Actor, rows: list[PersonalTransaction]) -> list[PersonalTxnOut]:
+    cats = _categories(session, rows)
+    covered = repo.covered_ids(session, actor.user_id)
+    return [_out(t, cats, covered) for t in rows]
+
+
+def _spending(rows: list[PersonalTransaction]) -> tuple[int, int, int]:
+    """(spent, income, refunds) of counted rows: spent is expenses minus refunds."""
+    total = defaultdict(int)
+    for t in rows:
+        total[t.type] += t.amount_minor
+    return total["expense"] - total["refund"], total["income"], total["refund"]
+
+
 def list_transactions(
     session: Session,
     actor: Actor,
@@ -80,6 +131,7 @@ def list_transactions(
     limit: int,
     offset: int,
     account: str | None = None,
+    account_id: uuid.UUID | None = None,
     channel: str | None = None,
     source: str | None = None,
     reviewed: bool | None = None,
@@ -93,6 +145,7 @@ def list_transactions(
         category_keys=category_keys,
         deleted=deleted,
         account=account,
+        account_id=account_id,
         channel=channel,
         source=source,
         reviewed=reviewed,
@@ -103,10 +156,12 @@ def list_transactions(
     # Totals can't add up different currencies: entries made before you changed your currency
     # are listed but not counted. Nor are entries that became a group expense or payment.
     counted = [t for t in rows if t.currency == actor.user.currency and t.id not in covered]
+    spent, income, refunds = _spending(counted)
     return PersonalListOut(
         items=[_out(t, cats, covered) for t in page],
-        spent_minor=sum(t.amount_minor for t in counted if t.type == "expense"),
-        income_minor=sum(t.amount_minor for t in counted if t.type == "income"),
+        spent_minor=spent,
+        income_minor=income,
+        refunds_minor=refunds,
         count=len(rows),
     )
 
@@ -121,12 +176,13 @@ def summary(session: Session, actor: Actor, month: date) -> PersonalSummaryOut:
         if t.currency == currency and t.id not in covered
     ]
     cats = _categories(session, rows)
-    spent = sum(t.amount_minor for t in rows if t.type == "expense")
-    income = sum(t.amount_minor for t in rows if t.type == "income")
+    spent, income, refunds = _spending(rows)
     by_cat: dict[uuid.UUID | None, int] = defaultdict(int)
     for t in rows:
         if t.type == "expense":
             by_cat[t.category_id] += t.amount_minor
+        elif t.type == "refund":
+            by_cat[t.category_id] -= t.amount_minor
     totals = [
         CategoryTotal(
             category=CategoryOut.model_validate(cats[k]) if k in cats else None,
@@ -134,6 +190,7 @@ def summary(session: Session, actor: Actor, month: date) -> PersonalSummaryOut:
             amount_minor=v,
         )
         for k, v in by_cat.items()
+        if v
     ]
     totals.sort(key=lambda t: (-t.amount_minor, t.label))
     label = f"{start:%B}" if start.year == date.today().year else f"{start:%B %Y}"
@@ -143,6 +200,7 @@ def summary(session: Session, actor: Actor, month: date) -> PersonalSummaryOut:
         currency=currency,
         spent_minor=spent,
         income_minor=income,
+        refunds_minor=refunds,
         left_over_minor=income - spent,
         group_share_minor=repo.group_share(session, actor.user_id, start, end, currency),
         by_category=totals,
@@ -197,6 +255,112 @@ def _check_links(
             raise ApiError(422, "link_invalid", "Link a payment you received")
 
 
+def _check_account(session: Session, actor: Actor, account_id: uuid.UUID, currency: str) -> None:
+    """For an entry moving into this account (a new one, or one changing account)."""
+    a = session.get(PersonalAccount, account_id)
+    if a is None or a.user_id != actor.user_id or a.deleted_at is not None:
+        raise ApiError(422, "unknown_account", "That account isn't available")
+    if a.status == "closed":
+        raise ApiError(422, "account_closed", "That account is closed")
+    if a.currency != currency:
+        raise ApiError(
+            422,
+            "currency_mismatch",
+            f"That account is in {a.currency}; this entry is in {currency}",
+        )
+
+
+def _check_holding(session: Session, actor: Actor, holding_id: uuid.UUID, currency: str) -> None:
+    h = session.get(PersonalHolding, holding_id)
+    if h is None or h.user_id != actor.user_id or h.deleted_at is not None:
+        raise ApiError(422, "unknown_holding", "That holding isn't available")
+    if h.currency != currency:
+        raise ApiError(
+            422,
+            "currency_mismatch",
+            f"That holding is in {h.currency}; this entry is in {currency}",
+        )
+
+
+def _check_refund(
+    session: Session,
+    actor: Actor,
+    body: PersonalTxnIn,
+    refund_of_id: uuid.UUID,
+    t: PersonalTransaction | None,
+) -> None:
+    """The spend must be yours and live when the refund is pointed at it (so one deleted since
+    doesn't block other edits), and at least as much as the refund."""
+    pointed = t is None or refund_of_id != t.refund_of_id
+    original = session.get(PersonalTransaction, refund_of_id)
+    if pointed and (
+        original is None
+        or original.user_id != actor.user_id
+        or original.deleted_at is not None
+        or original.type != "expense"
+    ):
+        raise ApiError(422, "unknown_refund_target", "That spend isn't available")
+    resized = t is None or pointed or body.amount_minor != t.amount_minor
+    if original is not None and resized and body.amount_minor > original.amount_minor:
+        raise ApiError(422, "refund_too_large", "A refund can't be more than the spend")
+
+
+def _validate(
+    session: Session,
+    actor: Actor,
+    body: PersonalTxnIn,
+    links: dict[str, uuid.UUID | None],
+    t: PersonalTransaction | None,
+) -> str:
+    """Checks an entry as `body` and `links` (what it points at, stored values filled in for
+    any the body left out) would leave it: a new one, or `t`. Returns its direction."""
+    kind = body.type
+    implied = implied_direction(kind)
+    if implied is not None:
+        if body.direction not in (None, implied):
+            raise ApiError(422, "direction_invalid", DIRECTION_RULES[kind])
+        direction = implied
+    elif body.direction is not None:
+        direction = body.direction
+    elif t is not None and t.type == kind:
+        direction = t.direction
+    else:
+        raise ApiError(422, "direction_required", "Say whether money came in or went out")
+
+    if kind in MOVES and body.category_id:
+        raise ApiError(
+            422,
+            "category_not_allowed",
+            "Transfers and balance corrections don't have a category",
+        )
+    if (links["expense_id"] or links["settlement_id"]) and kind not in ("income", "expense"):
+        raise ApiError(422, "link_invalid", "Only spending and income can be linked to Split")
+    if links["refund_of_id"] and kind != "refund":
+        raise ApiError(422, "refund_invalid", "Only a refund can point at a spend")
+    if links["transfer_group_id"] and kind != "transfer":
+        raise ApiError(422, "transfer_invalid", "Only a transfer has a transfer_group_id")
+    if kind == "transfer" and links["account_id"] is None:
+        raise ApiError(422, "transfer_invalid", "A transfer needs an account on each side")
+    if kind == "transfer" and links["transfer_group_id"] is None:
+        raise ApiError(
+            422, "transfer_invalid", "Give both halves of a transfer the same transfer_group_id"
+        )
+    if kind == "adjustment" and links["account_id"] is None:
+        raise ApiError(422, "account_required", "Pick the account to correct")
+
+    account_id = links["account_id"]
+    if account_id is not None and (t is None or account_id != t.account_id):
+        _check_account(session, actor, account_id, t.currency if t else actor.user.currency)
+    if links["refund_of_id"] is not None:
+        _check_refund(session, actor, body, links["refund_of_id"], t)
+    holding_id = links["holding_id"]
+    if holding_id is not None and kind not in INVESTMENT_TYPES:
+        raise ApiError(422, "holding_invalid", "Only an investment or a withdrawal names a holding")
+    if holding_id is not None and (t is None or holding_id != t.holding_id):
+        _check_holding(session, actor, holding_id, t.currency if t else actor.user.currency)
+    return direction
+
+
 def _text(value: str | None) -> str | None:
     """Trimmed, and blank as none."""
     return (value or "").strip() or None
@@ -207,9 +371,9 @@ def get_transaction(session: Session, actor: Actor, txn_id: uuid.UUID) -> Person
     return _out(t, _categories(session, [t]), repo.covered_ids(session, actor.user_id))
 
 
-def accounts(session: Session, actor: Actor) -> list[AccountOut]:
-    """Each account or card your entries went through, most recently used first, with the
-    latest balance its bank reported."""
+def reported_accounts(session: Session, actor: Actor) -> list[AccountOut]:
+    """Each account label your entries carry, most recently used first, with the latest
+    balance its bank reported."""
     by_account: dict[str, list[PersonalTransaction]] = defaultdict(list)
     for t in repo.query(session, actor.user_id):
         if t.account:
@@ -241,38 +405,44 @@ def accounts(session: Session, actor: Actor) -> list[AccountOut]:
 
 def create_transaction(session: Session, actor: Actor, body: PersonalTxnIn) -> PersonalTxnOut:
     actor.require_write()
-    t = _create(session, actor, body)
+    touched: dict[uuid.UUID, bool] = {}
+    t = create(session, actor, body, touched=touched)
+    transfers.check_groups(session, actor.user_id, touched)
+    contributions.check_counted_once(session, actor.user_id, "contribution")
     session.commit()
     return get_transaction(session, actor, t.id)
 
 
-def create_batch(
-    session: Session, actor: Actor, items: list[PersonalTxnIn]
-) -> list[PersonalTxnOut]:
-    """Several entries in one go, all or none (the app sends a bank SMS backfill this way).
-    Each is made as `create_transaction` makes it, so a repeated id returns its row."""
-    actor.require_write()
-    rows = [_create(session, actor, body) for body in items]
-    session.commit()
-    cats = _categories(session, rows)
-    covered = repo.covered_ids(session, actor.user_id)
-    return [_out(t, cats, covered) for t in rows]
-
-
-def _create(session: Session, actor: Actor, body: PersonalTxnIn) -> PersonalTransaction:
-    """The entry for `body`, recorded but not committed: the one a repeated create already
-    made (deleted or not), or a new one."""
+def create(
+    session: Session,
+    actor: Actor,
+    body: PersonalTxnIn,
+    txn_id: uuid.UUID | None = None,
+    touched: dict[uuid.UUID, bool] | None = None,
+) -> PersonalTransaction:
+    """The entry for `body` (with id `txn_id` or `body.id`), recorded but not committed: the
+    one a repeated create already made (deleted or not, unchanged), or a new one. Adds the
+    transfer it starts to `touched`, for transfers.check_groups()."""
+    txn_id = txn_id or body.id
     replay = replayed_create(
-        session, PersonalTransaction, body.id, lambda t: t.user_id == actor.user_id
+        session, PersonalTransaction, txn_id, lambda t: t.user_id == actor.user_id
     )
     if replay is not None:
         return replay
+    label = _text(body.account)
+    links = {k: getattr(body, k) for k in LINKS}
+    if "account_id" not in body.model_fields_set and label:
+        # An older app: it knows the label, not the account.
+        found = accounts.for_label(session, actor.user_id, label, actor.user.currency)
+        links["account_id"] = found.id if found else None
+    direction = _validate(session, actor, body, links, None)
     _check_category(session, actor, body.category_id)
     _check_links(session, actor, body.type, body.expense_id, body.settlement_id)
     t = PersonalTransaction(
-        **client_id(body.id),
+        **client_id(txn_id),
         user_id=actor.user_id,
         type=body.type,
+        direction=direction,
         amount_minor=body.amount_minor,
         currency=actor.user.currency,
         category_id=body.category_id,
@@ -281,12 +451,16 @@ def _create(session: Session, actor: Actor, body: PersonalTxnIn) -> PersonalTran
         notes=body.notes,
         channel=body.channel,
         merchant=_text(body.merchant),
-        account=_text(body.account),
+        account=label,
         source=body.source,
         reference=_text(body.reference),
         balance_minor=body.balance_minor,
         sms_at=body.sms_at,
         reviewed=body.reviewed,
+        account_id=links["account_id"],
+        transfer_group_id=links["transfer_group_id"],
+        refund_of_id=links["refund_of_id"],
+        holding_id=links["holding_id"],
         expense_id=body.expense_id,
         settlement_id=body.settlement_id,
         acting_admin_id=actor.admin_id,
@@ -302,8 +476,11 @@ def _create(session: Session, actor: Actor, body: PersonalTxnIn) -> PersonalTran
         diff={"type": t.type, "amount_minor": t.amount_minor, "source": t.source},
         obj=t,
     )
-    if t.source != "sms":  # the app guessed an SMS entry's category; you chose a manual one's
+    # The app guessed an SMS entry's category; you chose a manual one's.
+    if t.source != "sms" and t.type in ("income", "expense"):
         _learn(session, actor, t)
+    if touched is not None and t.transfer_group_id:
+        touched[t.transfer_group_id] = True
     return t
 
 
@@ -317,6 +494,22 @@ def update_transaction(
     session: Session, actor: Actor, txn_id: uuid.UUID, body: PersonalTxnIn
 ) -> PersonalTxnOut:
     actor.require_write()
+    touched: dict[uuid.UUID, bool] = {}
+    t = update(session, actor, txn_id, body, touched)
+    transfers.check_groups(session, actor.user_id, touched)
+    contributions.check_counted_once(session, actor.user_id, "contribution")
+    session.commit()
+    return get_transaction(session, actor, t.id)
+
+
+def update(
+    session: Session,
+    actor: Actor,
+    txn_id: uuid.UUID,
+    body: PersonalTxnIn,
+    touched: dict[uuid.UUID, bool],
+) -> PersonalTransaction:
+    """Recorded but not committed. Adds the transfers the entry was or is in to `touched`."""
     t = _load(session, actor, txn_id)
     if t.deleted_at is not None:
         raise ApiError(409, "deleted", "Restore this entry before editing it")
@@ -326,31 +519,46 @@ def update_transaction(
     for k in ("merchant", "account"):
         if k in given:
             given[k] = _text(given[k])
-    expense_id = given.get("expense_id", t.expense_id)
-    settlement_id = given.get("settlement_id", t.settlement_id)
+    if "account_id" not in body.model_fields_set and given.get("account") not in (None, t.account):
+        # An older app relabelled it: use the account with that label, if there is one.
+        found = accounts.for_label(session, actor.user_id, given["account"], t.currency)
+        if found is not None:
+            given["account_id"] = found.id
+    links = {k: given.get(k, getattr(t, k)) for k in LINKS}
+    direction = _validate(session, actor, body, links, t)
+    if body.amount_minor < t.amount_minor:
+        contributions.check_entry_amount(session, t, body.amount_minor)
+    if t.type == "income" and body.type != "income" and allocation_plans.has_live_plans(session, t):
+        raise ApiError(
+            422,
+            "income_has_plans",
+            "Your allocation rules made plans from this income. Delete them first",
+        )
     # Checked when the link (or what it links) changes, so a link whose expense was deleted
     # since doesn't block other edits.
+    expense_id, settlement_id = links["expense_id"], links["settlement_id"]
     if (expense_id, settlement_id, body.type) != (t.expense_id, t.settlement_id, t.type):
         _check_links(session, actor, body.type, expense_id, settlement_id)
 
     def state() -> dict:
+        ids = ("category_id", *LINKS)
         return {
             "type": t.type,
+            "direction": t.direction,
             "amount_minor": t.amount_minor,
             "description": t.description,
             "date": t.date.isoformat(),
-            "category_id": str(t.category_id) if t.category_id else None,
             "notes": t.notes,
             "channel": t.channel,
             "merchant": t.merchant,
             "account": t.account,
-            "expense_id": str(t.expense_id) if t.expense_id else None,
-            "settlement_id": str(t.settlement_id) if t.settlement_id else None,
             "reviewed": t.reviewed,
+            **{k: str(getattr(t, k)) if getattr(t, k) else None for k in ids},
         }
 
-    before = state()
+    before, old_group = state(), t.transfer_group_id
     t.type, t.amount_minor, t.description = body.type, body.amount_minor, body.description.strip()
+    t.direction = direction
     t.date, t.category_id, t.notes, t.acting_admin_id = (
         body.date,
         body.category_id,
@@ -362,28 +570,68 @@ def update_transaction(
     after = state()
     diff = {k: {"from": before[k], "to": after[k]} for k in before if before[k] != after[k]}
     record(session, actor, "personal.update", "personal_transaction", t.id, diff=diff, obj=t)
-    if "category_id" in diff:
+    if "category_id" in diff and t.type in ("income", "expense"):
         _learn(session, actor, t)
-    session.commit()
-    return get_transaction(session, actor, t.id)
+    for group in (old_group, t.transfer_group_id):
+        if group is not None:
+            touched.setdefault(group, False)
+    return t
+
+
+def change_deleted(
+    session: Session,
+    actor: Actor,
+    txn_id: uuid.UUID,
+    deleted: bool,
+    version: int | None,
+    touched: dict[uuid.UUID, bool],
+) -> PersonalTransaction:
+    """Deletes or restores the entry, and a transfer leg's partner with it (the version is
+    checked on the one addressed), each with its goal contribution. Restoring refuses an entry
+    whose account was deleted. Recorded but not committed."""
+    t = _load(session, actor, txn_id)
+    if (t.deleted_at is not None) == deleted:
+        return t
+    check_version(t, version)
+    legs = [t, *transfers.partners(session, t)]
+    now = datetime.now(UTC)
+    for leg in legs:
+        if not deleted and leg.account_id is not None:
+            account = session.get(PersonalAccount, leg.account_id)
+            if account is None or account.deleted_at is not None:
+                raise ApiError(
+                    422,
+                    "unknown_account",
+                    "This entry's account was deleted. Restore the account first",
+                )
+        if not deleted and leg.holding_id is not None:
+            holding = session.get(PersonalHolding, leg.holding_id)
+            if holding.deleted_at is not None:
+                raise ApiError(
+                    422,
+                    "unknown_holding",
+                    "This entry's holding was deleted. Restore the holding first",
+                )
+        # A contribution follows its entry: it went at the same moment, so it comes back too.
+        at = now if deleted else leg.deleted_at
+        leg.deleted_at = now if deleted else None
+        leg.acting_admin_id = actor.admin_id
+        contributions.follow_entry(session, actor, leg, deleted, at)
+        allocation_plans.follow_income(session, actor, leg, deleted, at)
+        action = "personal.delete" if deleted else "personal.restore"
+        record(session, actor, action, "personal_transaction", leg.id, obj=leg)
+    if t.transfer_group_id is not None:
+        touched.setdefault(t.transfer_group_id, False)
+    return t
 
 
 def set_deleted(
     session: Session, actor: Actor, txn_id: uuid.UUID, deleted: bool, version: int | None = None
 ) -> PersonalTxnOut:
     actor.require_write()
-    t = _load(session, actor, txn_id)
-    if (t.deleted_at is not None) != deleted:
-        check_version(t, version)
-        t.deleted_at = datetime.now(UTC) if deleted else None
-        t.acting_admin_id = actor.admin_id
-        record(
-            session,
-            actor,
-            "personal.delete" if deleted else "personal.restore",
-            "personal_transaction",
-            t.id,
-            obj=t,
-        )
-        session.commit()
+    touched: dict[uuid.UUID, bool] = {}
+    change_deleted(session, actor, txn_id, deleted, version, touched)
+    transfers.check_groups(session, actor.user_id, touched)
+    contributions.check_counted_once(session, actor.user_id, "contribution")
+    session.commit()
     return get_transaction(session, actor, txn_id)

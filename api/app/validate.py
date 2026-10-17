@@ -154,6 +154,171 @@ CHECKS: list[Check] = [
                 OR (c.owner_id IS NOT NULL AND c.owner_id <> t.user_id))
         """),
     ),
+    Check(
+        "transfer_pairs_are_whole",
+        "error",
+        "Each transfer's live legs are one out and one in, of the same amount and currency, "
+        "between two different accounts of one person.",
+        "The personal_transfer_pairs trigger (migration 0013) normally refuses this: check it "
+        "still exists. Then fix or delete the legs so the pair is whole again.",
+        _sql("""
+            SELECT transfer_group_id, count(*) AS legs,
+                   count(DISTINCT amount_minor) AS amounts, count(DISTINCT account_id) AS accounts
+            FROM personal_transactions
+            WHERE transfer_group_id IS NOT NULL AND deleted_at IS NULL
+            GROUP BY transfer_group_id
+            HAVING NOT (count(*) = 2 AND count(DISTINCT amount_minor) = 1
+                        AND count(DISTINCT currency) = 1
+                        AND count(*) FILTER (WHERE direction = 'in') = 1
+                        AND count(*) FILTER (WHERE direction = 'out') = 1
+                        AND count(DISTINCT account_id) = 2 AND count(DISTINCT user_id) = 1)
+        """),
+    ),
+    Check(
+        "entries_use_own_accounts",
+        "error",
+        "A personal entry's account belongs to the entry's owner.",
+        "The (account_id, user_id) foreign key normally refuses this. Set the entry's account_id "
+        "to null or to one of its owner's accounts, then reset the owner's stream.",
+        _sql("""
+            SELECT t.id, t.user_id, t.account_id, a.user_id AS account_owner
+            FROM personal_transactions t JOIN personal_accounts a ON a.id = t.account_id
+            WHERE a.user_id <> t.user_id
+        """),
+    ),
+    Check(
+        "goal_contributions_count_once",
+        "error",
+        "No entry counts towards a goal twice: as a contribution, and through the balance of an "
+        "account another goal follows (spec §4.4).",
+        "The API refuses this, so it means a write past it. Delete the contribution, or switch "
+        "the goal that follows the account to another tracking mode.",
+        _sql("""
+            SELECT c.id AS contribution_id, c.goal_id, lg.id AS balance_goal_id, m.account_id
+            FROM personal_goal_contributions c
+            JOIN personal_goals cg ON cg.id = c.goal_id AND cg.deleted_at IS NULL
+                 AND cg.status <> 'archived' AND cg.tracking_mode = 'contribution'
+            JOIN personal_transactions t ON t.id = c.transaction_id
+            JOIN personal_transactions m ON m.user_id = t.user_id AND m.deleted_at IS NULL
+                 AND (m.id = t.id OR m.transfer_group_id = t.transfer_group_id)
+            JOIN personal_goals lg ON lg.user_id = c.user_id
+                 AND lg.tracking_mode = 'linked_balance' AND lg.linked_account_id = m.account_id
+                 AND lg.deleted_at IS NULL AND lg.status <> 'archived'
+            WHERE c.deleted_at IS NULL
+        """),
+    ),
+    Check(
+        "goal_contributions_fit",
+        "error",
+        "A live contribution is to a live goal in its currency, and its entry (if any) is live, "
+        "in that currency and at least as much.",
+        "Deleting an entry or a goal takes its contributions with it, so this means a write past "
+        "the API. Delete the contribution, or fix its amount.",
+        _sql("""
+            SELECT 'goal_deleted' AS problem, c.id FROM personal_goal_contributions c
+                JOIN personal_goals g ON g.id = c.goal_id
+                WHERE c.deleted_at IS NULL AND g.deleted_at IS NOT NULL
+            UNION ALL SELECT 'goal_currency', c.id FROM personal_goal_contributions c
+                JOIN personal_goals g ON g.id = c.goal_id
+                WHERE c.deleted_at IS NULL AND c.currency <> g.currency
+            UNION ALL SELECT 'entry_deleted', c.id FROM personal_goal_contributions c
+                JOIN personal_transactions t ON t.id = c.transaction_id
+                WHERE c.deleted_at IS NULL AND t.deleted_at IS NOT NULL
+            UNION ALL SELECT 'entry_currency', c.id FROM personal_goal_contributions c
+                JOIN personal_transactions t ON t.id = c.transaction_id
+                WHERE c.deleted_at IS NULL AND c.currency <> t.currency
+            UNION ALL SELECT 'more_than_entry', c.id FROM personal_goal_contributions c
+                JOIN personal_transactions t ON t.id = c.transaction_id
+                WHERE c.deleted_at IS NULL AND c.amount_minor > t.amount_minor
+        """),
+    ),
+    Check(
+        "linked_goals_follow_live_accounts",
+        "error",
+        "A live goal that follows an account's balance follows a live account in its currency, "
+        "and no other goal that counts follows the same one.",
+        "The API refuses these, so this means a write past it. Restore the account, or switch "
+        "one of the goals to another tracking mode.",
+        _sql("""
+            SELECT 'account_gone_or_other_currency' AS problem, g.id, g.linked_account_id
+            FROM personal_goals g JOIN personal_accounts a ON a.id = g.linked_account_id
+            WHERE g.deleted_at IS NULL AND (a.deleted_at IS NOT NULL OR a.currency <> g.currency)
+            UNION ALL
+            SELECT 'account_shared', g.id, g.linked_account_id FROM personal_goals g
+            JOIN personal_goals o ON o.linked_account_id = g.linked_account_id AND o.id <> g.id
+                 AND o.deleted_at IS NULL AND o.status <> 'archived'
+            WHERE g.deleted_at IS NULL AND g.status <> 'archived'
+        """),
+    ),
+    Check(
+        "allocation_plans_follow_their_income",
+        "error",
+        "A live allocation plan is for a live income of its owner, in the income's currency.",
+        "Deleting an income cancels its plans and an income with plans can't become anything "
+        "else, so this means a write past the API. Delete the plan.",
+        _sql("""
+            SELECT 'income_deleted' AS problem, p.id FROM personal_allocation_plans p
+                JOIN personal_transactions t ON t.id = p.source_transaction_id
+                WHERE p.deleted_at IS NULL AND t.deleted_at IS NOT NULL
+            UNION ALL SELECT 'not_income', p.id FROM personal_allocation_plans p
+                JOIN personal_transactions t ON t.id = p.source_transaction_id
+                WHERE p.deleted_at IS NULL AND t.type <> 'income'
+            UNION ALL SELECT 'currency', p.id FROM personal_allocation_plans p
+                JOIN personal_transactions t ON t.id = p.source_transaction_id
+                WHERE p.deleted_at IS NULL AND p.currency <> t.currency
+        """),
+    ),
+    Check(
+        "allocation_rules_point_somewhere",
+        "error",
+        "A live allocation rule sends money to a goal that counts contributions (live, not "
+        "archived) or to a live, open account, in the rule's currency.",
+        "The API refuses changes that would leave a rule pointing elsewhere, so this means a "
+        "write past it. Point the rule somewhere else, or delete it.",
+        _sql("""
+            SELECT 'goal' AS problem, r.id FROM personal_allocation_rules r
+                JOIN personal_goals g ON g.id = r.goal_id
+                WHERE r.deleted_at IS NULL AND (g.deleted_at IS NOT NULL OR g.status = 'archived'
+                    OR g.tracking_mode <> 'contribution' OR g.currency <> r.currency)
+            UNION ALL SELECT 'account', r.id FROM personal_allocation_rules r
+                JOIN personal_accounts a ON a.id = r.account_id
+                WHERE r.deleted_at IS NULL AND (a.deleted_at IS NOT NULL OR a.status = 'closed'
+                    OR a.currency <> r.currency)
+        """),
+    ),
+    Check(
+        "holdings_are_in_investment_accounts",
+        "error",
+        "A live holding is in a live investment account in its currency, and every live entry "
+        "that names a holding names a live one in its currency.",
+        "The API refuses these, so this means a write past it. Move the holding to an "
+        "investment account, restore what was deleted, or clear the entry's holding_id.",
+        _sql("""
+            SELECT 'account' AS problem, h.id FROM personal_holdings h
+                JOIN personal_accounts a ON a.id = h.account_id
+                WHERE h.deleted_at IS NULL AND (a.deleted_at IS NOT NULL
+                    OR a.type <> 'investment' OR a.currency <> h.currency)
+            UNION ALL SELECT 'entry', t.id FROM personal_transactions t
+                JOIN personal_holdings h ON h.id = t.holding_id
+                WHERE t.deleted_at IS NULL AND (h.deleted_at IS NOT NULL
+                    OR h.currency <> t.currency)
+        """),
+    ),
+    Check(
+        "reminder_schedules_point_somewhere",
+        "error",
+        "A live reminder schedule is for a live goal or holding.",
+        "Deleting a goal or holding takes its schedules with it, so this means a write past the "
+        "API. Delete the schedule, or restore what it's for.",
+        _sql("""
+            SELECT 'goal' AS problem, s.id FROM personal_reminder_schedules s
+                JOIN personal_goals g ON g.id = s.goal_id
+                WHERE s.deleted_at IS NULL AND g.deleted_at IS NOT NULL
+            UNION ALL SELECT 'holding', s.id FROM personal_reminder_schedules s
+                JOIN personal_holdings h ON h.id = s.holding_id
+                WHERE s.deleted_at IS NULL AND h.deleted_at IS NOT NULL
+        """),
+    ),
     # ---- people and groups ----
     Check(
         "accounts_are_sane",
@@ -166,6 +331,15 @@ CHECKS: list[Check] = [
                 WHERE email IS NULL AND password_hash IS NOT NULL
             UNION ALL SELECT 'placeholder_with_personal', t.user_id FROM personal_transactions t
                 JOIN users u ON u.id = t.user_id WHERE u.email IS NULL
+            UNION ALL SELECT 'placeholder_with_personal', a.user_id FROM personal_accounts a
+                JOIN users u ON u.id = a.user_id WHERE u.email IS NULL
+            UNION ALL SELECT 'placeholder_with_personal', g.user_id FROM personal_goals g
+                JOIN users u ON u.id = g.user_id WHERE u.email IS NULL
+            UNION ALL SELECT 'placeholder_with_personal', r.user_id
+                FROM personal_allocation_rules r
+                JOIN users u ON u.id = r.user_id WHERE u.email IS NULL
+            UNION ALL SELECT 'placeholder_with_personal', h.user_id FROM personal_holdings h
+                JOIN users u ON u.id = h.user_id WHERE u.email IS NULL
             UNION ALL SELECT 'duplicate_email', MIN(id::text)::uuid FROM users
                 WHERE email IS NOT NULL GROUP BY lower(email) HAVING COUNT(*) > 1
         """),
@@ -209,6 +383,19 @@ CHECKS: list[Check] = [
             UNION ALL SELECT 'settlement', id FROM settlements WHERE version < 1
             UNION ALL SELECT 'group', id FROM groups WHERE version < 1
             UNION ALL SELECT 'personal', id FROM personal_transactions WHERE version < 1
+            UNION ALL SELECT 'personal_account', id FROM personal_accounts WHERE version < 1
+            UNION ALL SELECT 'personal_goal', id FROM personal_goals WHERE version < 1
+            UNION ALL SELECT 'personal_goal_contribution', id FROM personal_goal_contributions
+                WHERE version < 1
+            UNION ALL SELECT 'personal_allocation_rule', id FROM personal_allocation_rules
+                WHERE version < 1
+            UNION ALL SELECT 'personal_allocation_plan', id FROM personal_allocation_plans
+                WHERE version < 1
+            UNION ALL SELECT 'personal_holding', id FROM personal_holdings WHERE version < 1
+            UNION ALL SELECT 'personal_reminder_state', id FROM personal_reminder_states
+                WHERE version < 1
+            UNION ALL SELECT 'personal_reminder_schedule', id FROM personal_reminder_schedules
+                WHERE version < 1
             UNION ALL SELECT 'user', id FROM users WHERE version < 1
         """),
     ),
@@ -289,6 +476,14 @@ _TABLES = {
     "settlement": "settlements",
     "group": "groups",
     "personal_transaction": "personal_transactions",
+    "personal_account": "personal_accounts",
+    "personal_goal": "personal_goals",
+    "personal_goal_contribution": "personal_goal_contributions",
+    "personal_allocation_rule": "personal_allocation_rules",
+    "personal_allocation_plan": "personal_allocation_plans",
+    "personal_holding": "personal_holdings",
+    "personal_reminder_state": "personal_reminder_states",
+    "personal_reminder_schedule": "personal_reminder_schedules",
     "profile": "users",
 }
 
@@ -301,7 +496,12 @@ def _sync_matches_tables(session: Session) -> list[dict[str, Any]]:
             SELECT DISTINCT ON (c.stream_id, c.entity, c.entity_id)
                    c.stream_id, c.entity, c.entity_id, c.op, c.version
             FROM change_log c JOIN sync_streams s ON s.id = c.stream_id
-            WHERE c.entity IN ('expense', 'settlement', 'group', 'personal_transaction', 'profile')
+            WHERE c.entity IN ('expense', 'settlement', 'group', 'personal_transaction',
+                               'personal_account', 'personal_goal',
+                               'personal_goal_contribution', 'personal_allocation_rule',
+                               'personal_allocation_plan', 'personal_holding',
+                               'personal_reminder_state', 'personal_reminder_schedule',
+                               'profile')
               AND c.seq > s.oldest_seq  -- older entries are superseded by snapshots
             ORDER BY c.stream_id, c.entity, c.entity_id, c.seq DESC
         """)

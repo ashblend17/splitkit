@@ -12,7 +12,17 @@ from app.modules.auth.deps import Actor
 from app.modules.categories.models import Category, CategoryRule
 from app.modules.expenses.models import Expense
 from app.modules.groups.models import Group, GroupMember
-from app.modules.personal.models import PersonalTransaction
+from app.modules.personal.models import (
+    PersonalAccount,
+    PersonalAllocationPlan,
+    PersonalAllocationRule,
+    PersonalGoal,
+    PersonalGoalContribution,
+    PersonalHolding,
+    PersonalReminderSchedule,
+    PersonalReminderState,
+    PersonalTransaction,
+)
 from app.modules.settlements.models import Settlement
 from app.modules.sync import log
 from app.modules.sync.models import ChangeLog, SyncStream
@@ -116,6 +126,24 @@ def _objects(snap: Session, stream: str) -> list:
             snap.get(User, uid),  # its member entries belong to group streams and are dropped
             *snap.scalars(select(GroupMember).where(GroupMember.user_id == uid)),
             *snap.scalars(select(PersonalTransaction).where(PersonalTransaction.user_id == uid)),
+            *snap.scalars(select(PersonalAccount).where(PersonalAccount.user_id == uid)),
+            *snap.scalars(select(PersonalGoal).where(PersonalGoal.user_id == uid)),
+            *snap.scalars(
+                select(PersonalGoalContribution).where(PersonalGoalContribution.user_id == uid)
+            ),
+            *snap.scalars(
+                select(PersonalAllocationRule).where(PersonalAllocationRule.user_id == uid)
+            ),
+            *snap.scalars(
+                select(PersonalAllocationPlan).where(PersonalAllocationPlan.user_id == uid)
+            ),
+            *snap.scalars(select(PersonalHolding).where(PersonalHolding.user_id == uid)),
+            *snap.scalars(
+                select(PersonalReminderState).where(PersonalReminderState.user_id == uid)
+            ),
+            *snap.scalars(
+                select(PersonalReminderSchedule).where(PersonalReminderSchedule.user_id == uid)
+            ),
             *snap.scalars(select(Category).where(Category.owner_id == uid)),
             *snap.scalars(select(CategoryRule).where(CategoryRule.user_id == uid)),
         ]

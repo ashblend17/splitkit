@@ -7,7 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 
-from app.core.money import format_minor
+from app.core.money import MINUS, format_minor
 from app.modules.analytics.periods import (
     Period,
     Span,
@@ -26,7 +26,8 @@ from app.modules.analytics.schemas import ChartStat as Stat
 
 @dataclass(frozen=True)
 class Entry:
-    """A dated amount with the labels a breakdown might group by."""
+    """A dated amount with the labels a breakdown might group by. A refund's amount is
+    negative, so it comes off what was spent."""
 
     day: date
     amount_minor: int
@@ -36,6 +37,8 @@ class Entry:
     channel: str | None = None
     merchant: str | None = None
     """As the app names it (the entry's description when the merchant was first seen)."""
+    kind: str | None = None
+    """Its category's kind: need or want (income, or None, when it isn't sorted)."""
 
 
 CHANNELS = {
@@ -55,7 +58,9 @@ class Context:
     on: date
     currency: str
     personal: list[Entry] = field(default_factory=list)
-    """Your personal expenses."""
+    """Your counted personal spending: expenses, and refunds as negative amounts."""
+    income: list[Entry] = field(default_factory=list)
+    """Your counted personal income."""
     group_shares: list[Entry] = field(default_factory=list)
     """Your shares of group expenses (all groups)."""
     group_expenses: list[Entry] = field(default_factory=list)
@@ -78,11 +83,15 @@ def _sum(entries: list[Entry], span: Span) -> int:
 
 
 def _whole(minor: int) -> int:
-    """Round to the nearest whole unit, for averages ("₹1,411 per day", not "₹1,410.86")."""
+    """Round to the nearest whole unit, for averages ("₹1,411 per day", not "₹1,410.86").
+    Python's // floors, negatives too (refunds can take a total below zero); the app's port
+    uses floorDiv to match."""
     return (minor + 50) // 100 * 100
 
 
 def _rows(entries: list[Entry], span: Span | None, key: Callable[[Entry], str]) -> list[Row]:
+    """Totals per key, largest first. Keys at zero or below (refunded in full, or more than
+    was spent in the span) are left out: a breakdown has nothing to show for them."""
     totals: dict[str, int] = defaultdict(int)
     for e in entries:
         if span is None or span.contains(e.day):
@@ -90,17 +99,28 @@ def _rows(entries: list[Entry], span: Span | None, key: Callable[[Entry], str]) 
     return [
         Row(label=k, value_minor=v)
         for k, v in sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))
+        if v > 0
     ]
+
+
+def _percent(part: int, whole: int) -> int:
+    """part / whole in whole percent, rounded half away from zero (whole > 0). Integer maths,
+    the same as the app's CashFlow.savingsRatePercent: (2·part·100 + sign·whole) ~/ (2·whole)."""
+    sign = (part > 0) - (part < 0)
+    q = 2 * part * 100 + sign * whole
+    return sign * (abs(q) // (2 * whole))
 
 
 def personal_monthly(ctx: Context) -> CardData:
     buckets = trend_buckets(ctx.period, ctx.on)
-    bars = [Bar(label=b.label, value_minor=_sum(ctx.personal, b)) for b in buckets]
+    totals = [_sum(ctx.personal, b) for b in buckets]
+    # Refunds can take a bucket below zero: its bar shows nothing, the headline the real total.
+    bars = [Bar(label=b.label, value_minor=max(t, 0)) for b, t in zip(buckets, totals, strict=True)]
     if bars:
         bars[-1].highlight = True
     return CardData(
         period_label=trend_label(ctx.period),
-        headline=format_minor(bars[-1].value_minor, ctx.currency) if bars else None,
+        headline=format_minor(totals[-1], ctx.currency) if totals else None,
         bars=bars,
     )
 
@@ -115,7 +135,7 @@ def scope_split(ctx: Context) -> CardData:
     return CardData(
         period_label=span.label,
         rows=[
-            Row(label="Personal", value_minor=_sum(ctx.personal, span)),
+            Row(label="Personal", value_minor=max(_sum(ctx.personal, span), 0)),
             Row(label="Group share", value_minor=_sum(ctx.group_shares, span)),
         ],
     )
@@ -209,6 +229,41 @@ def personal_top_merchants(ctx: Context) -> CardData:
     )
 
 
+def personal_savings_rate(ctx: Context) -> CardData:
+    """How much of the period's income you kept: income less spending (refunds come off it).
+    The headline is the rate, or "—" without income; the stat is what was left."""
+    span = current(ctx.period, ctx.on)
+    income = _sum(ctx.income, span)
+    net = income - _sum(ctx.personal, span)
+    if income > 0:
+        rate = _percent(net, income)
+        headline = f"{MINUS if rate < 0 else ''}{abs(rate)}%"
+        saved, of = format_minor(net, ctx.currency), format_minor(income, ctx.currency)
+        note = f"{saved} saved of {of} income"
+    else:
+        headline, note = "—", f"No income in {span.label}"
+    return CardData(
+        period_label=span.label, headline=headline, stat=Stat(value_minor=net, note=note)
+    )
+
+
+def personal_need_want(ctx: Context) -> CardData:
+    """Spending by its category's kind: Needs and Wants always, and "Not sorted" (Other, and
+    categories you added) when there is some."""
+    span = current(ctx.period, ctx.on)
+    totals: dict[str | None, int] = defaultdict(int)
+    for e in ctx.personal:
+        if span.contains(e.day):
+            totals[e.kind if e.kind in ("need", "want") else None] += e.amount_minor
+    rows = [
+        Row(label="Needs", value_minor=max(totals["need"], 0)),
+        Row(label="Wants", value_minor=max(totals["want"], 0)),
+    ]
+    if totals[None] > 0:
+        rows.append(Row(label="Not sorted", value_minor=totals[None]))
+    return CardData(period_label=span.label, rows=rows)
+
+
 SOURCES: dict[str, Callable[[Context], CardData]] = {
     "personal_monthly": personal_monthly,
     "personal_by_category": personal_by_category,
@@ -217,6 +272,8 @@ SOURCES: dict[str, Callable[[Context], CardData]] = {
     "personal_top_merchants": personal_top_merchants,
     "scope_split": scope_split,
     "personal_daily_avg": personal_daily_avg,
+    "personal_savings_rate": personal_savings_rate,
+    "personal_need_want": personal_need_want,
     "group_total": group_total,
     "group_daily": group_daily,
     "group_by_category": group_by_category,

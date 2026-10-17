@@ -12,7 +12,7 @@ from app.modules.categories import repository, rules
 from app.modules.categories.models import Category
 from app.modules.categories.schemas import CategoryIn, CategoryOut
 from app.modules.expenses.models import Expense
-from app.modules.personal.models import PersonalTransaction
+from app.modules.personal.models import PersonalAllocationRule, PersonalTransaction
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -76,6 +76,7 @@ def delete_category(category_id: uuid.UUID, actor: CurrentActor, session: DbSess
         select(
             exists().where(Expense.category_id == category_id)
             | exists().where(PersonalTransaction.category_id == category_id)
+            | exists().where(PersonalAllocationRule.source_category_id == category_id)
         )
     )
     if in_use:

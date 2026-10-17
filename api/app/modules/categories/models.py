@@ -13,6 +13,7 @@ class Category(Base):
     __tablename__ = "categories"
     __table_args__ = (
         CheckConstraint("scope IN ('group', 'personal', 'all')", name="scope"),
+        CheckConstraint("kind IN ('need', 'want', 'income')", name="kind"),
         Index(
             "uq_categories_system_key",
             "key",
@@ -35,6 +36,9 @@ class Category(Base):
     scope: Mapped[str]
     owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     sort: Mapped[int] = mapped_column(server_default="0")
+    kind: Mapped[str | None]
+    """need, want or income, for the needs-and-wants view of spending. None: not sorted (Other,
+    and categories you add)."""
 
 
 class CategoryRule(Base):

@@ -1,6 +1,7 @@
-from tests.api.conftest import gid, login
+from tests.api.conftest import cat, gid, login, register
 
 API = "/api/v1"
+TXNS = f"{API}/personal/transactions"
 
 
 def cards(client, headers, path):
@@ -19,7 +20,7 @@ def test_personal_dashboard_matches_personal_analytics_mockup(client, seeded):
         ("Apr", 24180),
         ("May", 29640),
         ("Jun", 27310),
-        ("Jul", 35920),
+        ("Jul", 34430),  # ₹35,920 spent (the mockup), less the ₹1,490 price-drop refund
         ("Aug", 30775),
         ("Sep", 32450),
     ]
@@ -43,6 +44,132 @@ def test_personal_dashboard_matches_personal_analytics_mockup(client, seeded):
         "1 – 23 Sep",
         {"value_minor": 141100, "note": "August averaged ₹993 per day"},
     )
+
+
+def test_savings_rate_and_needs_and_wants(client, seeded):
+    """September: ₹85,000 salary, ₹32,450 spent (transfers and the SIP aren't spending)."""
+    h = login(client, "john")
+    c = cards(client, h, "/analytics/personal?period=month&on=2026-09-23")
+    rate = c["savings_rate"]
+    assert (rate["title"], rate["period_label"], rate["headline"], rate["stat"]) == (
+        "Savings rate",
+        "September",
+        "62%",
+        {"value_minor": 5_255_000, "note": "₹52,550 saved of ₹85,000 income"},
+    )
+    needs = c["need_vs_want"]
+    assert (needs["title"], needs["period_label"]) == ("Needs and wants", "September")
+    # Rent, food, transport, bills and health are needs; shopping and fun are wants.
+    assert [(r["label"], r["value_minor"] // 100) for r in needs["rows"]] == [
+        ("Needs", 28491),
+        ("Wants", 3959),
+    ]
+    # July: the refund comes off shopping, a want.
+    july = cards(client, h, "/analytics/personal?period=month&on=2026-07-31")
+    assert july["savings_rate"]["headline"] == "59%"  # 50,570 of 85,000
+    assert [(r["label"], r["value_minor"] // 100) for r in july["need_vs_want"]["rows"]] == [
+        ("Needs", 26230),
+        ("Wants", 8200),
+    ]
+    week = cards(client, h, "/analytics/personal?period=week&on=2026-09-23")
+    assert (week["savings_rate"]["headline"], week["savings_rate"]["stat"]) == (
+        "—",
+        {"value_minor": -358_600, "note": "No income in 17 – 23 Sep"},
+    )
+
+
+def test_refunds_count_and_never_go_below_zero(client, seeded):
+    h, _ = register(client, "Zoya", "zoya@example.com")
+
+    def add(type_: str, amount: int, day: str, category: str | None, **extra) -> dict:
+        body = {
+            "type": type_,
+            "amount_minor": amount,
+            "description": f"{type_} {amount}",
+            "date": day,
+            "category_id": cat(category) if category else None,
+            **extra,
+        }
+        r = client.post(TXNS, headers=h, json=body)
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    jacket = add("expense", 100_000, "2026-08-20", "shopping")
+    add("refund", 60_000, "2026-09-05", "shopping", refund_of_id=jacket["id"])
+    add("expense", 20_000, "2026-09-06", "food")
+    add("expense", 5_000, "2026-09-07", "other")
+    add("expense", 1_000, "2026-09-08", None)
+    c = cards(client, h, "/analytics/personal?period=month&on=2026-09-23")
+    trend = c["spending_trend"]
+    assert [b["value_minor"] for b in trend["bars"]][-2:] == [100_000, 0]
+    assert trend["headline"] == "−₹340"
+    assert [(r["label"], r["value_minor"]) for r in c["spending_by_category"]["rows"]] == [
+        ("Food", 20_000),
+        ("Other", 5_000),
+        ("Uncategorised", 1_000),
+    ]
+    assert c["personal_vs_group"]["rows"][0] == {"label": "Personal", "value_minor": 0}
+    assert [(r["label"], r["value_minor"]) for r in c["need_vs_want"]["rows"]] == [
+        ("Needs", 20_000),
+        ("Wants", 0),
+        ("Not sorted", 6_000),
+    ]
+    rate = c["savings_rate"]
+    assert (rate["headline"], rate["stat"]["value_minor"]) == ("—", 34_000)
+    add("income", 200_000, "2026-09-01", "income")
+    rate = cards(client, h, "/analytics/personal?period=month&on=2026-09-23")["savings_rate"]
+    assert (rate["headline"], rate["stat"]["note"]) == ("117%", "₹2,340 saved of ₹2,000 income")
+
+
+def test_what_isnt_spending_stays_out(client, seeded):
+    """A refund of a split spend belongs to the group, like the spend; transfers, investments
+    and adjustments are never spending or income."""
+    h = login(client, "john")
+    before = cards(client, h, "/analytics/personal?period=month&on=2026-09-23")
+    items = client.get(f"{TXNS}?start=2026-09-23&end=2026-09-23&limit=50", headers=h).json()
+    [groceries] = [i for i in items["items"] if i["description"] == "Groceries"]
+    assert groceries["counted"] is False
+    refund = {
+        "type": "refund",
+        "amount_minor": 50_000,
+        "description": "Short delivery",
+        "date": "2026-09-23",
+        "category_id": cat("food"),
+        "refund_of_id": groceries["id"],
+    }
+    assert client.post(TXNS, headers=h, json=refund).status_code == 201
+    after = cards(client, h, "/analytics/personal?period=month&on=2026-09-23")
+    assert after["spending_trend"]["headline"] == before["spending_trend"]["headline"] == "₹32,450"
+    assert after["savings_rate"] == before["savings_rate"]
+    assert after["need_vs_want"] == before["need_vs_want"]
+
+
+def test_by_account_names_the_account(client, seeded):
+    """An entry in one of your accounts goes under the account's name, else under the label it
+    came with."""
+    h = login(client, "john")
+    accounts = {a["name"]: a for a in client.get(f"{API}/personal/accounts", headers=h).json()}
+    hdfc, cash = accounts["HDFC ··4821"], accounts["Cash"]
+    r = client.put(
+        f"{API}/personal/accounts/{hdfc['id']}",
+        headers=h,
+        json={"name": "HDFC salary", "type": "bank"},
+    )
+    assert r.status_code == 200, r.text
+    chai = {
+        "type": "expense",
+        "amount_minor": 3_000,
+        "description": "Chai",
+        "date": "2026-09-22",
+        "account_id": cash["id"],
+    }
+    assert client.post(TXNS, headers=h, json=chai).status_code == 201
+    c = cards(client, h, "/analytics/personal?period=month&on=2026-09-23")
+    assert [(r["label"], r["value_minor"] // 100) for r in c["spending_by_account"]["rows"]] == [
+        ("HDFC salary", 886),
+        ("ICICI Credit card ··9012", 340),
+        ("Cash", 30),
+    ]
 
 
 def test_personal_cards_from_what_entries_say(client, seeded):
@@ -112,21 +239,22 @@ def test_group_dashboard_matches_group_analytics_mockup(client, seeded):
 def test_layout_is_config_driven(client, seeded):
     headers = login(client, "john")
     layout = client.get(f"{API}/analytics/layout/personal", headers=headers).json()
-    assert layout["customised"] is False and len(layout["cards"]) == 7
-    reordered = [layout["cards"][3], layout["cards"][0]]  # stat first, drop the rest
+    assert layout["customised"] is False and len(layout["cards"]) == 9
+    # stat first, then the trend and the savings rate; drop the rest
+    reordered = [layout["cards"][3], layout["cards"][0], layout["cards"][7]]
     saved = client.put(
         f"{API}/analytics/layout/personal", headers=headers, json={"cards": reordered}
     ).json()
     assert saved["customised"] is True
     dash = client.get(f"{API}/analytics/personal?on=2026-09-23", headers=headers).json()
-    assert [c["type"] for c in dash["cards"]] == ["average_daily", "spending_trend"]
+    assert [c["type"] for c in dash["cards"]] == ["average_daily", "spending_trend", "savings_rate"]
     # other people keep the defaults
     assert (
         len(client.get(f"{API}/analytics/personal", headers=login(client, "rahul")).json()["cards"])
-        == 7
+        == 9
     )
     reset = client.delete(f"{API}/analytics/layout/personal", headers=headers).json()
-    assert reset["customised"] is False and len(reset["cards"]) == 7
+    assert reset["customised"] is False and len(reset["cards"]) == 9
 
 
 def test_unknown_sources_are_rejected(client, seeded):
