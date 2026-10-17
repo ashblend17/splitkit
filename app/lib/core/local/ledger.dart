@@ -4,6 +4,10 @@
 /// generated models parse it and screens don't know where it came from. The Python function each
 /// view mirrors is named in its doc comment; test/core/local_parity_test.dart checks them against
 /// real API answers captured from the seed. Pure Dart: no Flutter, no I/O.
+///
+/// A Ledger never changes (the store builds a new one on every change), so what views share is
+/// worked out once, lazily: the personal entries indexed (personal_index.dart), each group's
+/// flows and totals, the feed's order and the category-suggestion lookups.
 library;
 
 import 'package:intl/intl.dart';
@@ -11,6 +15,10 @@ import 'package:intl/intl.dart';
 import '../categorise/category_rules.dart';
 import '../clock.dart';
 import 'balance_engine.dart';
+import 'personal_index.dart';
+import 'revisions.dart';
+
+export 'revisions.dart';
 
 /// One synced entity, as stored: the full state from a snapshot or a change.
 class LocalEntity {
@@ -77,12 +85,14 @@ typedef PersonalLink = ({bool payment, String id, String? group, String? person,
 const tricountUserId = '1a352678-7c38-5085-8131-bbcad6d0ae9d';
 
 class Ledger {
-  Ledger(Iterable<LocalEntity> entities, {DateTime? today}) : today = today ?? appClock.now() {
+  Ledger(Iterable<LocalEntity> entities, {DateTime? today, this.revisions = LedgerRevisions.none})
+    : today = today ?? appClock.now() {
+    Json? me;
     for (final e in entities) {
       final d = e.data;
       switch (e.entity) {
         case 'profile':
-          profile = d;
+          me = d;
         case 'group':
           _groups[e.entityId] = d;
         case 'member':
@@ -103,7 +113,7 @@ class Ledger {
           _rules.add(d);
       }
     }
-    final me = profile;
+    profile = me;
     if (me != null) {
       _people[me['id'] as String] = {
         'id': me['id'],
@@ -117,8 +127,13 @@ class Ledger {
   /// "Today" for month labels (the API uses its own clock).
   final DateTime today;
 
-  /// The viewer (users/schemas.py UserOut). Null until the user stream has synced.
-  Json? profile;
+  /// How many changes each part of the data had had in the store when this was built: a view
+  /// that reads only some parts is worked out again only when one of those changes.
+  final LedgerRevisions revisions;
+
+  /// The viewer (users/schemas.py UserOut). Null until the user stream has synced. Set once: what
+  /// the views work out for you is kept.
+  late final Json? profile;
 
   final _groups = <String, Json>{};
   final _members = <String, List<Json>>{};
@@ -150,15 +165,21 @@ class Ledger {
 
   String _name(String userId) => _people[userId]?['name'] as String? ?? '';
 
-  /// groups/repository.py active_members: current members by join time, then name.
-  List<Json> _activeMembers(String groupId) {
-    final rows = [for (final m in _members[groupId] ?? const <Json>[]) if (m['left_at'] == null) m];
+  /// groups/repository.py active_members: current members by join time, then name. Shared:
+  /// callers only read it.
+  List<Json> _activeMembers(String groupId) => _activeMembersOf[groupId] ??= () {
+    final rows = [
+      for (final m in _members[groupId] ?? const <Json>[])
+        if (m['left_at'] == null) (m, isoMicros(m['joined_at'])),
+    ];
     rows.sort((a, b) {
-      final t = _time(a['joined_at']).compareTo(_time(b['joined_at']));
-      return t != 0 ? t : _name(a['user_id']).compareTo(_name(b['user_id']));
+      final t = a.$2.compareTo(b.$2);
+      return t != 0 ? t : _name(a.$1['user_id']).compareTo(_name(b.$1['user_id']));
     });
-    return rows;
-  }
+    return [for (final (m, _) in rows) m];
+  }();
+
+  final _activeMembersOf = <String, List<Json>>{};
 
   Set<String> _activeIds(String groupId) => {for (final m in _activeMembers(groupId)) m['user_id'] as String};
 
@@ -167,10 +188,15 @@ class Ledger {
 
   /// groups/repository.py groups_for_user: newest first.
   List<Json> _groupsFor(String userId) {
-    final out = [for (final g in _groups.values) if (_isMember(g['id'], userId)) g];
-    out.sort((a, b) => _time(b['created_at']).compareTo(_time(a['created_at'])));
-    return out;
+    final out = [
+      for (final g in _groups.values)
+        if (_isMember(g['id'], userId)) (g, isoMicros(g['created_at'])),
+    ]..sort((a, b) => b.$2.compareTo(a.$2));
+    return [for (final (g, _) in out) g];
   }
+
+  /// Your groups, newest first. Shared: callers only read it.
+  late final List<Json> _myGroups = _groupsFor(me);
 
   Json _requireGroup(String groupId) {
     final g = _groups[groupId];
@@ -178,23 +204,43 @@ class Ledger {
     return g;
   }
 
-  /// balances/repository.py flows_by_group: live expense splits and settlements.
-  List<Flow> _flows(String groupId) => [
-    for (final e in _expenses.values)
-      if (e['group_id'] == groupId && e['deleted_at'] == null)
-        ...expenseFlows(e['payer_id'], [for (final s in e['splits'] as List) (s['user_id'] as String, s['share_minor'] as int)]),
-    for (final s in _settlements.values)
-      if (s['group_id'] == groupId && s['deleted_at'] == null)
-        settlementFlow(s['from_user'], s['to_user'], s['amount_minor']),
-  ];
+  /// balances/repository.py flows_by_group: live expense splits and settlements, each group's
+  /// expenses then its payments in the order they're stored. Shared: callers only read it.
+  List<Flow> _flows(String groupId) => _byGroup.flows[groupId] ?? const [];
+
+  /// Each group's flows and what its live expenses add up to, in one pass over everything.
+  late final ({Map<String, List<Flow>> flows, Map<String, int> spent}) _byGroup = () {
+    final flows = <String, List<Flow>>{};
+    final spent = <String, int>{};
+    for (final e in _expenses.values) {
+      if (e['deleted_at'] != null) continue;
+      final id = e['group_id'] as String;
+      (flows[id] ??= []).addAll(_flowsOf[e] ??= expenseFlows(
+        e['payer_id'],
+        [for (final s in e['splits'] as List) (s['user_id'] as String, s['share_minor'] as int)],
+      ));
+      spent[id] = (spent[id] ?? 0) + (e['amount_minor'] as int);
+    }
+    for (final s in _settlements.values) {
+      if (s['deleted_at'] != null) continue;
+      (flows[s['group_id'] as String] ??= []).add(settlementFlow(s['from_user'], s['to_user'], s['amount_minor']));
+    }
+    return (flows: flows, spent: spent);
+  }();
+
+  /// Each expense's flows, worked out once per synced map (reused by the next Ledger, as
+  /// PersonalRow is).
+  static final _flowsOf = Expando<List<Flow>>('expense flows');
+
+  /// positions(_flows(groupId)), worked out once per group. Shared: callers only read it.
+  Map<String, int> _positions(String groupId) => _positionsOf[groupId] ??= positions(_flows(groupId));
+
+  final _positionsOf = <String, Map<String, int>>{};
 
   /// groups/service.py _to_out.
   Json _groupOut(Json g) {
     final id = g['id'] as String;
-    var spent = 0;
-    for (final e in _expenses.values) {
-      if (e['group_id'] == id && e['deleted_at'] == null) spent += e['amount_minor'] as int;
-    }
+    final spent = _byGroup.spent[id] ?? 0;
     return {
       'id': id,
       'name': g['name'],
@@ -213,7 +259,7 @@ class Ledger {
           },
       ],
       'total_spent_minor': spent,
-      'my_net_minor': positions(_flows(id))[me] ?? 0,
+      'my_net_minor': _positions(id)[me] ?? 0,
       'last_activity_at': g['last_activity_at'],
       'version': g['version'],
     };
@@ -221,7 +267,7 @@ class Ledger {
 
   /// GET /groups
   List<Json> groups({bool archived = false}) => [
-    for (final g in _groupsFor(me))
+    for (final g in _myGroups)
       if ((g['archived_at'] != null) == archived) _groupOut(g),
   ];
 
@@ -260,7 +306,7 @@ class Ledger {
     final group = _requireGroup(groupId);
     final flows = _flows(groupId);
     final pair = pairwise(me, flows);
-    final pos = positions(flows);
+    final pos = _positions(groupId);
     final active = _activeIds(groupId);
     final peopleIds = {...active, for (final e in pair.entries) if (e.value != 0) e.key}..remove(me);
     final memberIds = {...active, for (final e in pos.entries) if (e.value != 0) e.key};
@@ -280,22 +326,22 @@ class Ledger {
     };
   }
 
-  /// GET /balances. Groups you have left are not on this device; leaving needs a zero balance,
-  /// so they add nothing.
+  /// GET /balances: each group's fewest payments that involve you, added up per friend. Groups
+  /// you have left are not on this device; leaving needs a zero balance, so they add nothing.
   Json overallBalances() {
     final friendNets = <(String, String), int>{};
     final groupNets = <Json>[];
-    for (final g in _groupsFor(me)) {
+    for (final g in _myGroups) {
       final id = g['id'] as String;
       final currency = g['currency'] as String;
       final flows = _flows(id);
-      for (final e in pairwise(me, flows).entries) {
+      for (final e in planned(me, flows).entries) {
         friendNets[(e.key, currency)] = (friendNets[(e.key, currency)] ?? 0) + e.value;
       }
       for (final m in _activeMembers(id)) {
         if (m['user_id'] != me) friendNets.putIfAbsent((m['user_id'], currency), () => 0);
       }
-      groupNets.add({'group_id': id, 'name': g['name'], 'currency': currency, 'net_minor': positions(flows)[me] ?? 0});
+      groupNets.add({'group_id': id, 'name': g['name'], 'currency': currency, 'net_minor': _positions(id)[me] ?? 0});
     }
     final byCurrency = <String, List<int>>{};
     for (final e in friendNets.entries) {
@@ -349,113 +395,116 @@ class Ledger {
 
   // ---- feed (balances/feed.py) ----
 
-  static bool _like(String? text, String needle) => text != null && text.toLowerCase().contains(needle.toLowerCase());
-
   /// GET /feed
   List<Json> feed({String? groupId, bool deleted = false, FeedFilters filters = const FeedFilters(), int limit = 30, int offset = 0}) {
     final f = filters;
-    final groupIds = groupId != null ? {_requireGroup(groupId)['id'] as String} : {for (final g in _groupsFor(me)) g['id'] as String};
+    final groupIds = groupId != null ? {_requireGroup(groupId)['id'] as String} : {for (final g in _myGroups) g['id'] as String};
     if (groupIds.isEmpty) return [];
     final search = f.search;
-    bool named(String userId) => search != null && _like(_name(userId), search);
+    final needle = search?.toLowerCase();
+    bool like(Object? text) => text != null && (text as String).toLowerCase().contains(needle!);
+    bool named(String userId) => search != null && like(_name(userId));
 
-    final expenses = [
-      for (final e in _expenses.values)
-        if (groupIds.contains(e['group_id']) &&
-            (e['deleted_at'] != null) == deleted &&
-            (f.category == null || (e['category'] as Map?)?['key'] == f.category) &&
-            (f.start == null || (e['date'] as String).compareTo(f.start!) >= 0) &&
-            (f.end == null || (e['date'] as String).compareTo(f.end!) <= 0) &&
-            (search == null || _like(e['description'], search) || named(e['payer_id'])))
-          e,
+    // Walk everything newest first and keep what passes the filters, up to the end of the page
+    // (all of it if offset or limit is negative, which the slicing below then rejects as before).
+    final want = offset >= 0 && limit >= 0 ? offset + limit : null;
+    final hits = <({_FeedRow row, int myShare, int position})>[];
+    for (final r in _feedRows) {
+      if (want != null && hits.length >= want) break;
+      if (!groupIds.contains(r.groupId) ||
+          r.deleted != deleted ||
+          (f.start != null && r.date.compareTo(f.start!) < 0) ||
+          (f.end != null && r.date.compareTo(f.end!) > 0)) {
+        continue;
+      }
+      final x = r.raw;
+      if (r.expense) {
+        if (f.category != null && (x['category'] as Map?)?['key'] != f.category) continue;
+        if (search != null && !like(x['description']) && !named(x['payer_id'])) continue;
+        final splits = (x['splits'] as List).cast<Map>();
+        final myShare = splits.where((s) => s['user_id'] == me).map((s) => s['share_minor'] as int).firstOrNull ?? 0;
+        final position = _positions(r.groupId)[me] ?? 0;
+        if (f.openOnly && !_open(x['payer_id'] as String, splits, myShare, position)) continue;
+        hits.add((row: r, myShare: myShare, position: position));
+      } else {
+        if (!f.payments) continue;
+        if (search != null && !named(x['from_user']) && !named(x['to_user'])) continue;
+        hits.add((row: r, myShare: 0, position: 0));
+      }
+    }
+    final end = offset + limit < hits.length ? offset + limit : hits.length;
+    if (offset >= hits.length) return [];
+    return [
+      for (final h in hits.sublist(offset, end))
+        h.row.expense ? _feedExpense(h.row.raw, h.myShare, h.position) : _feedSettlement(h.row.raw),
     ];
-    final settlements = !f.payments
-        ? const <Json>[]
-        : [
-            for (final s in _settlements.values)
-              if (groupIds.contains(s['group_id']) &&
-                  (s['deleted_at'] != null) == deleted &&
-                  (f.start == null || (s['date'] as String).compareTo(f.start!) >= 0) &&
-                  (f.end == null || (s['date'] as String).compareTo(f.end!) <= 0) &&
-                  (search == null || named(s['from_user']) || named(s['to_user'])))
-                s,
-          ];
-
-    final pairs = <String, Map<String, int>>{};
-    Map<String, int> pairsFor(String gid) => pairs[gid] ??= pairwise(me, _flows(gid));
-
-    final items = <Json>[];
-    for (final e in expenses) {
-      final splits = (e['splits'] as List).cast<Map>();
-      final myShare = splits.where((s) => s['user_id'] == me).map((s) => s['share_minor'] as int).firstOrNull ?? 0;
-      final p = pairsFor(e['group_id']);
-      final payer = e['payer_id'] as String;
-      if (f.openOnly && !_open(payer, splits, myShare, p)) continue;
-      final category = e['category'] as Map?;
-      items.add({
-        'kind': 'expense',
-        'id': e['id'],
-        'group_id': e['group_id'],
-        'group_name': _groups[e['group_id']]?['name'],
-        'title': e['description'],
-        'date': e['date'],
-        'created_at': e['created_at'],
-        'amount_minor': e['amount_minor'],
-        'currency': e['currency'],
-        'category': category == null ? null : _categoryOut(category.cast()),
-        'payer': _brief(payer),
-        'to_user': null,
-        'method': e['split_method'],
-        'participant_count': splits.where((s) => s['share_minor'] != 0).length,
-        'my_share_minor': myShare,
-        'my_net_minor': (payer == me ? e['amount_minor'] as int : 0) - myShare,
-        'settled': payer != me && myShare > 0 && (p[payer] ?? 0) >= 0,
-        'by_admin': e['acting_admin_id'] != null,
-        'deleted_at': e['deleted_at'],
-      });
-    }
-    for (final s in settlements) {
-      final amount = s['amount_minor'] as int;
-      final effect = s['from_user'] == me ? amount : s['to_user'] == me ? -amount : 0;
-      items.add({
-        'kind': 'settlement',
-        'id': s['id'],
-        'group_id': s['group_id'],
-        'group_name': _groups[s['group_id']]?['name'],
-        'title': null,
-        'date': s['date'],
-        'created_at': s['created_at'],
-        'amount_minor': amount,
-        'currency': s['currency'],
-        'category': null,
-        'payer': _brief(s['from_user']),
-        'to_user': _brief(s['to_user']),
-        'method': s['method'],
-        'participant_count': 2,
-        'my_share_minor': 0,
-        'my_net_minor': effect,
-        'settled': false,
-        'by_admin': s['acting_admin_id'] != null,
-        'deleted_at': s['deleted_at'],
-      });
-    }
-    // Newest first; id breaks ties (imported rows share a timestamp).
-    items.sort((a, b) {
-      final d = (b['date'] as String).compareTo(a['date'] as String);
-      if (d != 0) return d;
-      final t = _time(b['created_at']).compareTo(_time(a['created_at']));
-      return t != 0 ? t : (b['id'] as String).compareTo(a['id'] as String);
-    });
-    final end = offset + limit < items.length ? offset + limit : items.length;
-    return offset >= items.length ? [] : items.sublist(offset, end);
   }
 
-  /// You owe the payer, or you paid and someone in the split still owes you.
-  bool _open(String payer, List<Map> splits, int myShare, Map<String, int> pairs) {
-    if (payer == me) {
-      return splits.any((s) => s['user_id'] != me && s['share_minor'] != 0 && (pairs[s['user_id']] ?? 0) > 0);
-    }
-    return myShare > 0 && (pairs[payer] ?? 0) < 0;
+  /// Every expense and payment on the device, deleted ones too, in the feed's order: newest
+  /// first, then newest made, and the id breaks ties (imported rows share a timestamp).
+  late final List<_FeedRow> _feedRows = [
+    for (final e in _expenses.values) _FeedRow(e, expense: true),
+    for (final s in _settlements.values) _FeedRow(s, expense: false),
+  ]..sort(_FeedRow.newestFirst);
+
+  Json _feedExpense(Json e, int myShare, int position) {
+    final splits = (e['splits'] as List).cast<Map>();
+    final payer = e['payer_id'] as String;
+    final category = e['category'] as Map?;
+    return {
+      'kind': 'expense',
+      'id': e['id'],
+      'group_id': e['group_id'],
+      'group_name': _groups[e['group_id']]?['name'],
+      'title': e['description'],
+      'date': e['date'],
+      'created_at': e['created_at'],
+      'amount_minor': e['amount_minor'],
+      'currency': e['currency'],
+      'category': category == null ? null : _categoryOut(category.cast()),
+      'payer': _brief(payer),
+      'to_user': null,
+      'method': e['split_method'],
+      'participant_count': splits.where((s) => s['share_minor'] != 0).length,
+      'my_share_minor': myShare,
+      'my_net_minor': (payer == me ? e['amount_minor'] as int : 0) - myShare,
+      'settled': payer != me && myShare > 0 && position >= 0,
+      'by_admin': e['acting_admin_id'] != null,
+      'deleted_at': e['deleted_at'],
+    };
+  }
+
+  Json _feedSettlement(Json s) {
+    final amount = s['amount_minor'] as int;
+    final effect = s['from_user'] == me ? amount : s['to_user'] == me ? -amount : 0;
+    return {
+      'kind': 'settlement',
+      'id': s['id'],
+      'group_id': s['group_id'],
+      'group_name': _groups[s['group_id']]?['name'],
+      'title': null,
+      'date': s['date'],
+      'created_at': s['created_at'],
+      'amount_minor': amount,
+      'currency': s['currency'],
+      'category': null,
+      'payer': _brief(s['from_user']),
+      'to_user': _brief(s['to_user']),
+      'method': s['method'],
+      'participant_count': 2,
+      'my_share_minor': 0,
+      'my_net_minor': effect,
+      'settled': false,
+      'by_admin': s['acting_admin_id'] != null,
+      'deleted_at': s['deleted_at'],
+    };
+  }
+
+  /// As the group's fewest payments see it ([position] is yours in the group): you have a share
+  /// and still pay someone in the group, or you paid for others and someone still pays you.
+  bool _open(String payer, List<Map> splits, int myShare, int position) {
+    if (payer == me) return position > 0 && splits.any((s) => s['user_id'] != me && s['share_minor'] != 0);
+    return myShare > 0 && position < 0;
   }
 
   // ---- expenses (expenses/service.py to_out) ----
@@ -467,7 +516,7 @@ class Ledger {
     final payer = e['payer_id'] as String;
     final splits = (e['splits'] as List).cast<Map>();
     final myShare = splits.where((s) => s['user_id'] == me).map((s) => s['share_minor'] as int).firstOrNull ?? 0;
-    final owedToPayer = pairwise(payer, _flows(e['group_id']));
+    final pos = _positions(e['group_id']);
     final c = (e['category'] as Map?)?.cast<String, dynamic>();
     // get_visible: built-in or yours, and usable in groups.
     final visible = c != null && (c['owner_id'] == null || c['owner_id'] == me) && (c['scope'] == 'group' || c['scope'] == 'all');
@@ -488,7 +537,8 @@ class Ledger {
             'user': _brief(s['user_id']),
             'share_minor': s['share_minor'],
             'input_value': s['input_value'],
-            'status': s['user_id'] == payer ? 'paid' : (owedToPayer[s['user_id']] ?? 0) > 0 ? 'owes' : 'settled',
+            // Settled once they pay nobody in the group's fewest payments (expenses/service.py).
+            'status': s['user_id'] == payer ? 'paid' : (pos[s['user_id']] ?? 0) < 0 ? 'owes' : 'settled',
           },
       ],
       'my_share_minor': myShare,
@@ -505,7 +555,8 @@ class Ledger {
 
   // ---- settle up (settlements/service.py _shared_balances, settle_up_plan) ----
 
-  /// Your balance with a friend in each current group you share in [currency], oldest first.
+  /// What each group's fewest payments have between you and a friend, in each current group you
+  /// share in [currency], oldest first.
   List<(Json, int)> sharedBalances(String friendId, String currency) {
     if (friendId == me || !_people.containsKey(friendId)) throw const LocalNotFound('Person');
     final shared = [
@@ -513,7 +564,7 @@ class Ledger {
         if (_isMember(g['id'], me) && g['currency'] == currency) g,
     ]..sort((a, b) => _time(a['created_at']).compareTo(_time(b['created_at'])));
     if (shared.isEmpty) throw const LocalNotFound('Person');
-    return [for (final g in shared) (g, pairwise(me, _flows(g['id']))[friendId] ?? 0)];
+    return [for (final g in shared) (g, planned(me, _flows(g['id']))[friendId] ?? 0)];
   }
 
   /// GET /friends/{id}/settle-up
@@ -533,7 +584,12 @@ class Ledger {
 
   // ---- personal finance (personal/service.py, personal/repository.py) ----
 
-  List<Json> _personalRows({
+  /// The personal entries, indexed the first time a view needs them.
+  late final PersonalIndex _index = PersonalIndex(_personal);
+
+  /// Live (or [deleted]) entries in the API's order that pass the filters. Filters the list
+  /// sorted once per Ledger; shared when nothing is filtered, so callers only read it.
+  List<PersonalRow> _personalRows({
     String? start,
     String? end,
     String? type,
@@ -544,44 +600,36 @@ class Ledger {
     String? source,
     bool? reviewed,
   }) {
-    final rows = [
-      for (final t in _personal)
-        if ((t['deleted_at'] != null) == deleted &&
-            (start == null || (t['date'] as String).compareTo(start) >= 0) &&
-            (end == null || (t['date'] as String).compareTo(end) <= 0) &&
-            (type == null || t['type'] == type) &&
-            (categoryKeys == null || categoryKeys.isEmpty || categoryKeys.contains(_categories[t['category_id']]?['key'])) &&
-            (account == null || t['account'] == account) &&
-            (channel == null || t['channel'] == channel) &&
-            (source == null || _source(t) == source) &&
-            (reviewed == null || _reviewed(t) == reviewed))
+    final rows = PersonalIndex.dated(deleted ? _index.deleted : _index.live, start, end);
+    final anyCategory = categoryKeys == null || categoryKeys.isEmpty;
+    if (type == null && anyCategory && account == null && channel == null && source == null && reviewed == null) {
+      return rows;
+    }
+    return [
+      for (final t in rows)
+        if ((type == null || t.type == type) &&
+            (anyCategory || categoryKeys.contains(_categories[t.categoryId]?['key'])) &&
+            (account == null || t.account == account) &&
+            (channel == null || t.channel == channel) &&
+            (source == null || t.source == source) &&
+            (reviewed == null || t.reviewed == reviewed))
           t,
     ];
-    rows.sort((a, b) {
-      final d = (b['date'] as String).compareTo(a['date'] as String);
-      if (d != 0) return d;
-      final t = _time(b['created_at']).compareTo(_time(a['created_at']));
-      return t != 0 ? t : (b['id'] as String).compareTo(a['id'] as String);
-    });
-    return rows;
   }
-
-  // Rows synced before these columns existed (migration 0010) have no such keys.
-  static String _source(Json t) => t['source'] as String? ?? 'manual';
-  static bool _reviewed(Json t) => t['reviewed'] as bool? ?? true;
 
   /// Entries linked to a live expense or payment in a group you're in
   /// (personal/repository.py covered_ids): listed, but not counted.
   late final Set<String> _covered = {
-    for (final t in _personal)
-      if (_linkedLive(_expenses[t['expense_id']]) || _linkedLive(_settlements[t['settlement_id']])) t['id'] as String,
+    for (final t in _index.rows)
+      if (_linkedLive(_expenses[t.expenseId]) || _linkedLive(_settlements[t.settlementId])) t.id,
   };
 
   bool _linkedLive(Json? row) => row != null && row['deleted_at'] == null && _isMember(row['group_id'] as String, me);
 
-  bool _counted(Json t) => !_covered.contains(t['id']);
+  bool _counted(PersonalRow t) => !_covered.contains(t.id);
 
-  Json _txnOut(Json t) {
+  Json _txnOut(PersonalRow row) {
+    final t = row.raw;
     final c = _categories[t['category_id']];
     return {
       'id': t['id'],
@@ -595,14 +643,14 @@ class Ledger {
       'channel': t['channel'],
       'merchant': t['merchant'],
       'account': t['account'],
-      'source': _source(t),
+      'source': row.source,
       'reference': t['reference'],
       'balance_minor': t['balance_minor'],
       'sms_at': t['sms_at'],
-      'reviewed': _reviewed(t),
+      'reviewed': row.reviewed,
       'expense_id': t['expense_id'],
       'settlement_id': t['settlement_id'],
-      'counted': _counted(t),
+      'counted': _counted(row),
       'acting_admin_id': t['acting_admin_id'],
       'created_at': t['created_at'],
       'deleted_at': t['deleted_at'],
@@ -639,15 +687,21 @@ class Ledger {
     // Entries in another currency (from before you changed yours) are listed but not counted,
     // nor are entries that became a group expense or payment.
     final currency = userOut()['currency'];
-    int sum(String kind) => rows
-        .where((t) => t['type'] == kind && t['currency'] == currency && _counted(t))
-        .fold(0, (a, t) => a + (t['amount_minor'] as int));
-    return {'items': [for (final t in page) _txnOut(t)], 'spent_minor': sum('expense'), 'income_minor': sum('income'), 'count': rows.length};
+    var spent = 0, income = 0;
+    for (final t in rows) {
+      if (t.currency != currency || !_counted(t)) continue;
+      if (t.type == 'expense') {
+        spent += t.amount;
+      } else if (t.type == 'income') {
+        income += t.amount;
+      }
+    }
+    return {'items': [for (final t in page) _txnOut(t)], 'spent_minor': spent, 'income_minor': income, 'count': rows.length};
   }
 
   /// GET /personal/transactions/{id}
   Json personalTransaction(String id) {
-    final t = _personal.where((t) => t['id'] == id).firstOrNull;
+    final t = _index.byId[id];
     if (t == null) throw const LocalNotFound('Transaction');
     return _txnOut(t);
   }
@@ -658,16 +712,15 @@ class Ledger {
     final last = DateTime(month.year, month.month + 1, 0);
     final s = _day(start), e = _day(last);
     final currency = userOut()['currency'];
-    final rows = _personalRows(start: s, end: e).where((t) => t['currency'] == currency && _counted(t));
     var spent = 0, income = 0;
     final byCat = <String?, int>{};
-    for (final t in rows) {
-      final amount = t['amount_minor'] as int;
-      if (t['type'] == 'expense') {
-        spent += amount;
-        byCat[t['category_id'] as String?] = (byCat[t['category_id']] ?? 0) + amount;
-      } else if (t['type'] == 'income') {
-        income += amount;
+    for (final t in _personalRows(start: s, end: e)) {
+      if (t.currency != currency || !_counted(t)) continue;
+      if (t.type == 'expense') {
+        spent += t.amount;
+        byCat[t.categoryId] = (byCat[t.categoryId] ?? 0) + t.amount;
+      } else if (t.type == 'income') {
+        income += t.amount;
       }
     }
     final totals = [
@@ -681,12 +734,9 @@ class Ledger {
         return byAmount != 0 ? byAmount : (a['label'] as String).compareTo(b['label'] as String);
       });
     var groupShare = 0;
-    for (final x in _expenses.values) {
-      final date = x['date'] as String;
-      if (x['deleted_at'] != null || x['currency'] != currency || date.compareTo(s) < 0 || date.compareTo(e) > 0) continue;
-      for (final split in x['splits'] as List) {
-        if (split['user_id'] == me) groupShare += split['share_minor'] as int;
-      }
+    for (final (date, cur, share) in _myShares) {
+      if (cur != currency || date.compareTo(s) < 0 || date.compareTo(e) > 0) continue;
+      groupShare += share;
     }
     final monthName = DateFormat('MMMM', 'en_US').format(start);
     return {
@@ -701,33 +751,43 @@ class Ledger {
     };
   }
 
+  /// Your share of each live expense you have a share in: (date, currency, share).
+  late final List<(String, Object?, int)> _myShares = () {
+    final me = this.me;
+    final out = <(String, Object?, int)>[];
+    for (final x in _expenses.values) {
+      if (x['deleted_at'] != null) continue;
+      int? share;
+      for (final split in x['splits'] as List) {
+        if (split['user_id'] == me) share = (share ?? 0) + (split['share_minor'] as int);
+      }
+      if (share != null) out.add((x['date'] as String, x['currency'], share));
+    }
+    return out;
+  }();
+
   /// GET /personal/accounts: each account or card your entries went through, most recently
   /// used first, with the latest balance its bank reported (personal/service.py accounts).
   List<Json> personalAccounts() {
-    final byAccount = <String, List<Json>>{};
-    for (final t in _personalRows()) {
-      final account = t['account'] as String?;
-      if (account != null) (byAccount[account] ??= []).add(t);
-    }
-    int when(Json a, Json b) {
-      final at = _time(a['sms_at'] ?? a['created_at']).compareTo(_time(b['sms_at'] ?? b['created_at']));
+    // Latest by when it happened, then when it was made, then id.
+    int when(PersonalRow a, PersonalRow b) {
+      final at = a.atMicros.compareTo(b.atMicros);
       if (at != 0) return at;
-      final made = _time(a['created_at']).compareTo(_time(b['created_at']));
-      return made != 0 ? made : (a['id'] as String).compareTo(b['id'] as String);
+      final made = a.createdMicros.compareTo(b.createdMicros);
+      return made != 0 ? made : a.id.compareTo(b.id);
     }
 
-    Json latest(Iterable<Json> rows) => rows.reduce((a, b) => when(a, b) >= 0 ? a : b);
-    final out = [
-      for (final MapEntry(key: name, value: rows) in byAccount.entries)
-        (
-          last: latest(rows),
-          reported: rows.where((t) => t['balance_minor'] != null).isEmpty
-              ? null
-              : latest(rows.where((t) => t['balance_minor'] != null)),
-          name: name,
-          count: rows.length,
-        ),
-    ]..sort((a, b) {
+    final byAccount = <String, _AccountUse>{};
+    for (final t in _index.live) {
+      final name = t.account;
+      if (name == null) continue;
+      final a = byAccount[name] ??= _AccountUse(name, t);
+      a.count++;
+      if (when(t, a.last) > 0) a.last = t;
+      if (t.balance != null && (a.reported == null || when(t, a.reported!) > 0)) a.reported = t;
+    }
+    final out = byAccount.values.toList()
+      ..sort((a, b) {
         final byTime = when(b.last, a.last);
         return byTime != 0 ? byTime : a.name.compareTo(b.name);
       });
@@ -735,9 +795,9 @@ class Ledger {
       for (final a in out)
         {
           'account': a.name,
-          'currency': a.last['currency'],
-          'balance_minor': a.reported?['balance_minor'],
-          'balance_at': a.reported == null ? null : a.reported!['sms_at'] ?? a.reported!['created_at'],
+          'currency': a.last.currency,
+          'balance_minor': a.reported?.balance,
+          'balance_at': a.reported == null ? null : a.reported!.raw['sms_at'] ?? a.reported!.raw['created_at'],
           'count': a.count,
         },
     ];
@@ -749,29 +809,31 @@ class Ledger {
   /// currency, dated within [windowDays] of it, live in a group you're in, and not linked to
   /// another entry. Closest date first; each as GET /expenses/{id} answers.
   List<Json> linkCandidates(String txnId, {int windowDays = 3}) {
-    final t = rawPersonal(txnId) ?? (throw const LocalNotFound('Transaction'));
-    final day = DateTime.parse(t['date'] as String);
-    int apart(Json e) => DateTime.parse(e['date'] as String).difference(day).inDays.abs();
-    final taken = {
-      for (final p in _personal)
-        if (p['deleted_at'] == null && p['id'] != txnId && p['expense_id'] != null) p['expense_id'],
-    };
-    final found = [
-      for (final e in _expenses.values)
-        if (e['deleted_at'] == null &&
-            e['payer_id'] == me &&
-            e['amount_minor'] == t['amount_minor'] &&
-            e['currency'] == t['currency'] &&
-            _isMember(e['group_id'] as String, me) &&
-            !taken.contains(e['id']) &&
-            apart(e) <= windowDays)
-          e,
-    ]..sort((a, b) {
-        final byDay = apart(a).compareTo(apart(b));
-        return byDay != 0 ? byDay : _time(b['created_at']).compareTo(_time(a['created_at']));
-      });
-    return [for (final e in found) expense(e['id'] as String)];
+    final t = _index.byId[txnId] ?? (throw const LocalNotFound('Transaction'));
+    final day = localDay(t.day);
+    final found = <(Json, int, int)>[];
+    for (final e in _paidByMe[(t.amount, t.currency)] ?? const <Json>[]) {
+      if (!_isMember(e['group_id'] as String, me)) continue;
+      if (_index.linkedTo(e['id'] as String).any((p) => p.id != txnId)) continue;
+      final apart = localDay(dayKey(e['date'] as String)).difference(day).inDays.abs();
+      if (apart <= windowDays) found.add((e, apart, isoMicros(e['created_at'])));
+    }
+    found.sort((a, b) {
+      final byDay = a.$2.compareTo(b.$2);
+      return byDay != 0 ? byDay : b.$3.compareTo(a.$3);
+    });
+    return [for (final (e, _, _) in found) expense(e['id'] as String)];
   }
+
+  /// Your live expenses (that you paid) by amount and currency, in the order they're stored.
+  late final Map<(Object?, Object?), List<Json>> _paidByMe = () {
+    final me = this.me;
+    final out = <(Object?, Object?), List<Json>>{};
+    for (final e in _expenses.values) {
+      if (e['deleted_at'] == null && e['payer_id'] == me) (out[(e['amount_minor'], e['currency'])] ??= []).add(e);
+    }
+    return out;
+  }();
 
   /// What entry [txnId] became in Split, or null: a split or a payment, its group, the other
   /// person for a payment, and whether it still stands (live, in a group you're in; only then
@@ -794,11 +856,12 @@ class Ledger {
 
   /// Who you paid, or were paid by, the last time an entry from [merchant] became a payment.
   String? friendPaidBefore(String merchant) {
-    final earlier = [
-      for (final t in _personal)
-        if (t['merchant'] == merchant && t['deleted_at'] == null && _settlements[t['settlement_id']] != null) t,
-    ]..sort((a, b) => _time(b['created_at']).compareTo(_time(a['created_at'])));
-    final s = earlier.isEmpty ? null : _settlements[earlier.first['settlement_id']]!;
+    // The newest made; of two made at once, the first synced.
+    PersonalRow? latest;
+    for (final t in _index.paymentsFrom(merchant)) {
+      if (_settlements[t.settlementId] != null && (latest == null || t.createdMicros > latest.createdMicros)) latest = t;
+    }
+    final s = latest == null ? null : _settlements[latest.settlementId]!;
     return s == null ? null : (s['from_user'] == me ? s['to_user'] : s['from_user']) as String;
   }
 
@@ -806,68 +869,125 @@ class Ledger {
   /// the same [merchant], or with the same description as [text] (core/categorise). Merchants are
   /// compared by [merchantKey], so "ZOMATO LIMITED" and "Zomato" are one. First the rules learned
   /// from your choices, newest first; then, from before rules were kept, your own manual entries
-  /// and splits (an SMS entry's category was the app's guess, not yours). A category not offered
-  /// in [scope] gives the one there with its key, if any. [income] keeps income and spending apart.
+  /// (in Personal) or the splits you created (in groups), newest first: an SMS entry's category
+  /// was the app's guess, not yours. A category not offered in [scope] gives the one there with
+  /// its key, if any. [income] keeps income and spending apart.
+  ///
+  /// Each source is filed by merchant key once per Ledger, so this is two [merchantKey] calls and
+  /// a few lookups, however much data there is.
   String? learnedCategory(String text, {String? merchant, required String scope, bool income = false}) {
     final keys = {merchantKey(merchant), merchantKey(text)}..remove('');
     if (keys.isEmpty) return null;
-    final offered = categories(scope: scope);
-    String? usable(Object? categoryId) {
-      if (categoryId == null) return null;
-      if (offered.any((c) => c['id'] == categoryId)) return categoryId as String;
-      final key = _categories[categoryId]?['key'];
-      if (key == null) return null;
-      // Built-in first: your own category could have the same key.
-      return (offered.where((c) => c['key'] == key && c['owner_id'] == null).firstOrNull ??
-              offered.where((c) => c['key'] == key).firstOrNull)?['id']
-          as String?;
-    }
-
-    final rules = [
-      for (final r in _rules)
-        if (r['income'] == income && keys.contains(merchantKey(r['pattern'] as String?))) r,
-    ]..sort((a, b) => _time(b['updated_at']).compareTo(_time(a['updated_at'])));
-    bool same(Json row) =>
-        keys.contains(merchantKey(row['merchant'] as String?)) || keys.contains(merchantKey(row['description'] as String?));
-    final chosen = [
-      if (scope == 'personal')
-        for (final t in _personal)
-          if (t['deleted_at'] == null && _source(t) == 'manual' && (t['type'] == 'income') == income && same(t)) t
-      else
-        for (final e in _expenses.values)
-          if (e['deleted_at'] == null && e['created_by'] == me && same(e)) e,
-    ]..sort((a, b) => _time(b['created_at']).compareTo(_time(a['created_at'])));
-    for (final row in [...rules, ...chosen]) {
-      if (usable(row['category_id']) case final id?) return id;
-    }
-    return null;
+    final offered = _offered(scope);
+    String? usable(Object? categoryId) => _usable(offered, categoryId);
+    if ((income ? _incomeRules : _spendRules).first(keys, (r) => usable(r['category_id'])) case final id?) return id;
+    return scope == 'personal'
+        ? (income ? _index.chosenIncome : _index.chosenSpend).first(keys, (t) => usable(t.categoryId))
+        : _mySplits.first(keys, (e) => usable(e['category_id']));
   }
 
+  /// [categoryId] if it's offered (see [_offered]), else the offered one with its key, if any.
+  String? _usable(({Set<Object?> ids, Map<Object?, String> byKey}) offered, Object? categoryId) {
+    if (categoryId == null) return null;
+    if (offered.ids.contains(categoryId)) return categoryId as String;
+    final key = _categories[categoryId]?['key'];
+    return key == null ? null : offered.byKey[key];
+  }
+
+  /// [learnedCategory]'s answers for [scope] as plain maps, for working them out away from this
+  /// Ledger (core/sms/sms_scan.dart).
+  LearnedCategories learnedCategories(String scope) {
+    final offered = _offered(scope);
+    Map<String, (int, String)> table<T>(MerchantIndex<T> index, Object? Function(T row) categoryOf) =>
+        index.firstByKey((row) => _usable(offered, categoryOf(row)));
+    final splits = scope == 'personal' ? null : table(_mySplits, (e) => e['category_id']);
+    return LearnedCategories(
+      spendRules: table(_spendRules, (r) => r['category_id']),
+      incomeRules: table(_incomeRules, (r) => r['category_id']),
+      spendChosen: splits ?? table(_index.chosenSpend, (t) => t.categoryId),
+      incomeChosen: splits ?? table(_index.chosenIncome, (t) => t.categoryId),
+      offeredByKey: {for (final MapEntry(:key, :value) in offered.byKey.entries) key as String: value},
+    );
+  }
+
+  /// The categories offered in [scope] (as categories(scope:) lists them): their ids, and by key
+  /// the one a key gives (built-in first: your own category could have the same key).
+  ({Set<Object?> ids, Map<Object?, String> byKey}) _offered(String? scope) => _offeredIn[scope] ??= () {
+    final ids = <Object?>{};
+    final builtIn = <Object?, String>{}, any = <Object?, String>{};
+    for (final c in _visibleCategories(scope)) {
+      ids.add(c['id']);
+      any.putIfAbsent(c['key'], () => c['id'] as String);
+      if (c['owner_id'] == null) builtIn.putIfAbsent(c['key'], () => c['id'] as String);
+    }
+    return (ids: ids, byKey: {...any, ...builtIn});
+  }();
+
+  final _offeredIn = <String?, ({Set<Object?> ids, Map<Object?, String> byKey})>{};
+
+  /// Learned rules for spending ([_spendRules]) or income ([_incomeRules]), newest first, filed by
+  /// their pattern's merchant key.
+  late final MerchantIndex<Json> _spendRules = _rulesFor(false), _incomeRules = _rulesFor(true);
+
+  MerchantIndex<Json> _rulesFor(bool income) => MerchantIndex(
+    newestMadeFirst([
+      for (final r in _rules)
+        if (r['income'] == income) (r, isoMicros(r['updated_at'])),
+    ]),
+    (r) => [r['pattern'] as String?],
+  );
+
+  /// The live splits you created, newest first, filed by merchant and description.
+  late final MerchantIndex<Json> _mySplits = MerchantIndex(
+    newestMadeFirst([
+      for (final e in _expenses.values)
+        if (e['deleted_at'] == null && e['created_by'] == me) (e, isoMicros(e['created_at'])),
+    ]),
+    (e) => [e['merchant'] as String?, e['description'] as String?],
+  );
+
   /// "reference|type" for every entry with a bank reference, deleted ones too: a payment
-  /// already here (or removed) whatever message it came from.
-  Set<String> personalReferences() => {
-    for (final t in _personal)
-      if (t['reference'] != null) '${t['reference']}|${t['type']}',
-  };
+  /// already here (or removed) whatever message it came from. A copy, yours to add to.
+  Set<String> personalReferences() => {..._index.references};
 
   /// Your newest entry made by hand (live, with no account yet) of [type] and [amountMinor],
   /// dated within a day of [day]: one the bank's SMS is about.
   Json? manualMatch(String type, int amountMinor, DateTime day) {
-    final close = [
-      for (final t in _personalRows(type: type))
-        if (_source(t) == 'manual' &&
-            t['account'] == null &&
-            t['amount_minor'] == amountMinor &&
-            DateTime.parse(t['date'] as String).difference(DateTime(day.year, day.month, day.day)).inDays.abs() <= 1)
-          t,
-    ];
-    return close.isEmpty ? null : _txnOut(close.first);
+    final target = DateTime(day.year, day.month, day.day);
+    for (final t in _index.manualWithoutAccount(type, amountMinor)) {
+      if (localDay(t.day).difference(target).inDays.abs() <= 1) return _txnOut(t);
+    }
+    return null;
   }
 
   /// Your live entry linked to expense [expenseId], as GET /personal/transactions/{id} answers.
   Json? personalLinkedTo(String expenseId) {
-    final t = _personal.where((t) => t['expense_id'] == expenseId && t['deleted_at'] == null).firstOrNull;
+    final t = _index.linkedTo(expenseId).firstOrNull;
     return t == null ? null : _txnOut(t);
+  }
+
+  // ---- for reading bank SMS (core/sms/sms_scan.dart, features/sms/sms_importer.dart) ----
+
+  /// The id of every personal entry here, deleted ones too.
+  Set<String> personalIds() => {..._index.byId.keys};
+
+  /// What [manualMatch] chooses from: by type and amount, the id and day (dayKey) of each live
+  /// entry made by hand with no account yet, in the API's order.
+  Map<(String, int), List<(String, int)>> manualCandidates() => {
+    for (final MapEntry(:key, :value) in _index.manualByTypeAndAmount.entries)
+      key: [for (final t in value) (t.id, t.day)],
+  };
+
+  /// Your live entry (the first in the API's order) with bank reference [reference] and [type].
+  String? personalWithReference(String reference, String type) => _index.liveWithReference(reference, type)?.id;
+
+  /// Your live entry (the first in the API's order) of [type] and [amount] from [merchant] (null
+  /// when none was named), through [account] (null: any account).
+  String? personalPaid({required String type, required int amount, String? account, String? merchant}) {
+    for (final t in _index.liveOf(type, amount)) {
+      if ((account == null || t.account == account) && t.merchant == merchant) return t.id;
+    }
+    return null;
   }
 
   // ---- raw entities, for building writes ----
@@ -875,10 +995,88 @@ class Ledger {
   Json? rawGroup(String id) => _groups[id];
   Json? rawExpense(String id) => _expenses[id];
   Json? rawSettlement(String id) => _settlements[id];
-  Json? rawPersonal(String id) => _personal.where((t) => t['id'] == id).firstOrNull;
+  Json? rawPersonal(String id) => _index.byId[id]?.raw;
   Json? rawCategory(String id) => _categories[id];
   List<Json> rawMembers(String groupId) => _members[groupId] ?? const [];
   Json brief(String userId) => _brief(userId);
+}
+
+/// What Ledger.learnedCategory answers for one scope, as plain maps that can go to another
+/// isolate. For each merchant key: where the first row filed under it that gives a category
+/// offered in the scope comes, and that category. The learned rules come first, then your own
+/// rows (manual entries in Personal, the splits you made in groups); spending and income apart.
+class LearnedCategories {
+  const LearnedCategories({
+    required this.spendRules,
+    required this.incomeRules,
+    required this.spendChosen,
+    required this.incomeChosen,
+    required this.offeredByKey,
+  });
+
+  final Map<String, (int, String)> spendRules, incomeRules, spendChosen, incomeChosen;
+
+  /// The category offered in the scope for each category key (built-in first).
+  final Map<String, String> offeredByKey;
+
+  /// What learnedCategory gives for these merchant keys (merchantKey of the merchant and of the
+  /// text, without empty ones).
+  String? lookup(Set<String> keys, {bool income = false}) =>
+      _first(income ? incomeRules : spendRules, keys) ?? _first(income ? incomeChosen : spendChosen, keys);
+
+  static String? _first(Map<String, (int, String)> table, Set<String> keys) {
+    (int, String)? best;
+    for (final key in keys) {
+      final found = table[key];
+      if (found != null && (best == null || found.$1 < best.$1)) best = found;
+    }
+    return best?.$2;
+  }
+}
+
+/// One account's entries while Ledger.personalAccounts goes through them: the latest, the latest
+/// with a balance its bank reported, and how many.
+class _AccountUse {
+  _AccountUse(this.name, this.last);
+
+  final String name;
+  PersonalRow last;
+  PersonalRow? reported;
+  var count = 0;
+}
+
+/// An expense ([expense]) or a payment in the feed's order, with what it's sorted and filtered
+/// by read once per synced map (reused by the next Ledger, as PersonalRow is).
+class _FeedRow {
+  factory _FeedRow(Json raw, {required bool expense}) => _read[raw] ??= _FeedRow._(raw, expense: expense);
+
+  static final _read = Expando<_FeedRow>('_FeedRow');
+
+  _FeedRow._(this.raw, {required this.expense})
+    : id = raw['id'] as String,
+      groupId = raw['group_id'] as String,
+      date = raw['date'] as String,
+      day = plainDayKey(raw['date'] as String),
+      createdMicros = isoMicros(raw['created_at']),
+      deleted = raw['deleted_at'] != null;
+
+  final Json raw;
+  final bool expense;
+  final String id;
+  final String groupId;
+  final String date;
+
+  /// plainDayKey(date), for sorting.
+  final int day;
+  final int createdMicros;
+  final bool deleted;
+
+  static int newestFirst(_FeedRow a, _FeedRow b) {
+    final d = compareDates(b.date, b.day, a.date, a.day);
+    if (d != 0) return d;
+    final t = b.createdMicros.compareTo(a.createdMicros);
+    return t != 0 ? t : b.id.compareTo(a.id);
+  }
 }
 
 String _day(DateTime d) => DateFormat('yyyy-MM-dd').format(d);

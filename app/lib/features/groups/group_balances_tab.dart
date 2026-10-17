@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
@@ -12,73 +11,19 @@ import '../common/common.dart';
 import '../settlements/settlement_sheet.dart';
 import 'settle_plan.dart';
 
-class GroupBalancesPage extends ConsumerWidget {
-  const GroupBalancesPage({super.key, required this.groupId});
-  final String groupId;
+/// A group's Balances tab, under its header and tabs (GroupDetailPage): the fewest payments that
+/// settle everyone, yours first, then the one-to-one balances. Your own total is in the header.
+class GroupBalancesTab extends ConsumerWidget {
+  const GroupBalancesTab({super.key, required this.group});
+  final GroupOut group;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final group = ref.watch(groupProvider(groupId));
-    final balances = ref.watch(groupBalancesProvider(groupId));
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: SkColors.brand,
-          onRefresh: () async {
-            refreshLedger(ref.invalidate);
-            await ref.read(groupBalancesProvider(groupId).future);
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            children: [
-              ContentWidth(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(
-                      height: 52,
-                      child: Row(
-                        children: [
-                          Transform.translate(
-                            offset: const Offset(-8, 0),
-                            child: HeaderIconButton(
-                              glyph: 'back',
-                              label: 'Back to ${group.value?.name ?? 'group'}',
-                              onPressed: () => context.go('/groups/$groupId'),
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Semantics(header: true, child: Text('Balances', style: SkText.display(20, 700))),
-                                if (group.hasValue)
-                                  Text(
-                                    '${group.value!.name} · ${group.value!.members.length} members',
-                                    style: SkText.body(12, 400, color: SkColors.ink2),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    AsyncBody(
-                      value: balances,
-                      onRetry: () => ref.invalidate(groupBalancesProvider(groupId)),
-                      builder: (b) =>
-                          group.hasValue ? _Body(group: group.value!, balances: b) : const LoadingSkeleton(),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    final balances = ref.watch(groupBalancesProvider(group.id));
+    return AsyncBody(
+      value: balances,
+      onRetry: () => ref.invalidate(groupBalancesProvider(group.id)),
+      builder: (b) => _Body(group: group, balances: b),
     );
   }
 }
@@ -92,53 +37,20 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
     final b = balances;
-    final c = b.currency;
     final plan = SettlePlan(b, me.id);
-    final (bg, ink, headline) = b.netMinor > 0
-        ? (SkColors.owedSoft, SkColors.owedInk, 'In this group, overall you are owed')
-        : b.netMinor < 0
-        ? (SkColors.oweSoft, SkColors.oweInk, 'In this group, overall you owe')
-        : (SkColors.settledSoft, SkColors.ink2, "In this group, you're all square");
-    final n = plan.mine.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Semantics(
-          container: true,
-          child: Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(18)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(headline, style: SkText.body(14, 600, color: ink)),
-                const SizedBox(height: 4),
-                Text(
-                  money(b.netMinor.abs(), c),
-                  style: SkText.display(40, 800, height: 1.05, color: textColorFor(b.netMinor)),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  n == 0
-                      ? 'Nothing for you to pay or get'
-                      : n == 1
-                      ? '1 payment settles you up'
-                      : '$n payments settle you up',
-                  style: SkText.body(13, 400, color: ink),
-                ),
-              ],
-            ),
-          ),
+        const Overline('Fewest payments'),
+        const SizedBox(height: 4),
+        Text(
+          b.suggested.isEmpty
+              ? 'Everyone in ${group.name} is square.'
+              : 'The fewest payments that settle everyone in the group.',
+          style: SkText.body(12, 400, color: SkColors.ink2),
         ),
         if (b.suggested.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          const Overline('Fewest payments'),
-          const SizedBox(height: 4),
-          Text(
-            'The fewest payments that settle everyone in the group.',
-            style: SkText.body(12, 400, color: SkColors.ink2),
-          ),
           const SizedBox(height: 8),
           for (final p in plan.mine) ...[_yours(context, me, plan, p), const SizedBox(height: 8)],
           if (plan.others.isNotEmpty) _theirs(context, plan),

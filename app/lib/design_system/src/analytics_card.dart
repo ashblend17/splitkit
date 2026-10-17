@@ -55,7 +55,11 @@ typedef TrendBar = ({String label, int value, bool highlight});
 
 /// Vertical bars (spending per month / per day). The highlighted bar is indigo with its value
 /// on top; the rest are pale. Bars are scaled to the largest value (112px of a 140px plot).
-class TrendBars extends StatelessWidget {
+///
+/// Tapping a bar picks it (the whole column, so short bars are easy to hit): it turns indigo and
+/// [formatTip] ("12 Sep: ₹19,160") shows above it. Tapping it again puts the chart back. With a
+/// mouse, pointing at a bar shows it too.
+class TrendBars extends StatefulWidget {
   const TrendBars({super.key, required this.bars, required this.formatTop, required this.formatTip, this.headline});
 
   final List<TrendBar> bars;
@@ -64,54 +68,64 @@ class TrendBars extends StatelessWidget {
   final String? headline;
 
   @override
+  State<TrendBars> createState() => _TrendBarsState();
+}
+
+class _TrendBarsState extends State<TrendBars> {
+  /// The bar tapped, and the one under the mouse (which wins while it's there).
+  int? _picked, _hovered;
+
+  static const _plot = 140.0, _tallest = 112.0;
+
+  @override
+  void didUpdateWidget(TrendBars old) {
+    super.didUpdateWidget(old);
+    // Another period: the same index is another day or month.
+    final same = old.bars.length == widget.bars.length &&
+        [for (final (i, b) in widget.bars.indexed) b.label == old.bars[i].label].every((x) => x);
+    if (!same) _picked = _hovered = null;
+  }
+
+  void _pick(int i) => setState(() => _picked = _picked == i ? null : i);
+
+  @override
   Widget build(BuildContext context) {
+    final bars = widget.bars;
     final max = bars.fold(0, (m, b) => b.value > m ? b.value : m);
     final gap = bars.length > 9 ? 6.0 : 10.0;
+    final shown = _hovered ?? _picked;
+    double height(TrendBar b) => max == 0 ? 0 : (b.value / max * _tallest).roundToDouble();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (headline != null) ...[Text(headline!, style: SkText.display(26, 800)), const SizedBox(height: 6)],
-        Container(
-          height: 140,
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: SkColors.lineStrong)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (final (i, b) in bars.indexed) ...[
-                if (i > 0) SizedBox(width: gap),
-                Expanded(
-                  child: Tooltip(
-                    message: formatTip(b),
-                    child: Semantics(
-                      label: formatTip(b),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          if (b.highlight)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: _TopLabel(formatTop(b.value), first: i == 0, last: i == bars.length - 1),
-                            ),
-                          ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 28),
-                            child: Container(
-                              height: max == 0 ? 0 : (b.value / max * 112).roundToDouble(),
-                              decoration: BoxDecoration(
-                                color: b.highlight ? SkColors.brand : SkPalette.chartBar,
-                                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                              ),
-                            ),
-                          ),
+        if (widget.headline != null) ...[Text(widget.headline!, style: SkText.display(26, 800)), const SizedBox(height: 6)],
+        SizedBox(
+          height: _plot,
+          child: LayoutBuilder(
+            builder: (context, c) => Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: SkColors.lineStrong)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (final (i, b) in bars.indexed) ...[
+                          if (i > 0) SizedBox(width: gap),
+                          Expanded(child: _bar(i, b, shown, height(b))),
                         ],
-                      ),
+                      ],
                     ),
                   ),
                 ),
+                if (shown != null && shown < bars.length)
+                  _readout(context, c.maxWidth, gap, shown, height(bars[shown])),
               ],
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 6),
@@ -150,6 +164,73 @@ class TrendBars extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// One bar's column, tappable from the axis to the top of the plot.
+  Widget _bar(int i, TrendBar b, int? shown, double height) {
+    final indigo = shown == null ? b.highlight : shown == i;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = i),
+      onExit: (_) => setState(() => _hovered = _hovered == i ? null : _hovered),
+      child: Semantics(
+        button: true,
+        selected: _picked == i,
+        label: widget.formatTip(b),
+        onTap: () => _pick(i),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          excludeFromSemantics: true,
+          onTap: () => _pick(i),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // A picked bar says its own amount, above the chart (_readout), instead.
+              if (shown == null && b.highlight)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: _TopLabel(widget.formatTop(b.value), first: i == 0, last: i == widget.bars.length - 1),
+                ),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 28),
+                child: Container(
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: indigo ? SkColors.brand : SkPalette.chartBar,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// "12 Sep: ₹19,160" in a dark pill over the picked bar, kept inside the chart.
+  Widget _readout(BuildContext context, double width, double gap, int i, double barHeight) {
+    final text = widget.formatTip(widget.bars[i]);
+    final style = SkText.body(12, 700, color: SkColors.surface);
+    const pad = EdgeInsets.symmetric(horizontal: 8, vertical: 4);
+    final pillWidth = _textWidth(context, text, style).ceilToDouble() + pad.horizontal;
+    final pillHeight = (style.fontSize! * 1.4).ceilToDouble() + pad.vertical;
+    final n = widget.bars.length;
+    final column = (width - gap * (n - 1)) / n;
+    final centre = i * (column + gap) + column / 2;
+    return Positioned(
+      left: (centre - pillWidth / 2).clamp(0.0, math.max(0.0, width - pillWidth)),
+      top: (_plot - barHeight - 6 - pillHeight).clamp(0.0, _plot),
+      child: IgnorePointer(
+        child: ExcludeSemantics(
+          child: Container(
+            padding: pad,
+            decoration: BoxDecoration(color: SkColors.ink, borderRadius: BorderRadius.circular(6)),
+            child: Text(text, style: style, maxLines: 1, softWrap: false),
+          ),
+        ),
+      ),
     );
   }
 }

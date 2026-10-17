@@ -1,7 +1,9 @@
+import 'dart:isolate';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api.dart';
-import '../../core/categorise/category_guesser.dart';
 import '../../core/clock.dart';
 import '../../core/config.dart';
 import '../../core/integrations.dart';
@@ -11,11 +13,13 @@ import '../../core/local/store.dart';
 import '../../core/local/writes.dart';
 import '../../core/session/session.dart';
 import '../../core/sms/banks.dart';
-import '../../core/sms/merchant_names.dart';
 import '../../core/sms/sms.dart';
 import '../../core/sms/sms_ids.dart';
 import '../../core/sms/sms_parser.dart';
+import '../../core/sms/sms_scan.dart';
 import 'sms_source.dart';
+
+export '../../core/sms/sms_scan.dart' show SkippedSms;
 
 /// This phone's bank SMS settings for the signed-in user (in the device store, so another
 /// phone or the web never reads anything).
@@ -33,10 +37,6 @@ class SmsSettings {
   static SmsSettings fromJson(Map<Object?, Object?> j) =>
       SmsSettings(since: DateTime.parse(j['since']! as String), notify: j['notify'] as bool? ?? true);
 }
-
-/// A message from a bank sender that wasn't added, and why (shown on "Messages we skipped").
-/// OTPs are never kept.
-typedef SkippedSms = ({RawSms sms, SmsSkip reason});
 
 /// What one read of the inbox did.
 class SmsScan {
@@ -146,16 +146,10 @@ class SmsImporter {
     if (ledger.rawPersonal(id) != null) return id;
     final type = txn.direction == SmsDirection.spent ? 'expense' : 'income';
     // Known by its reference (another message about it), or matched to an entry made by hand.
-    final byRef = txn.reference == null
-        ? null
-        : (ledger.personalList(limit: 100000)['items'] as List).cast<Map<String, dynamic>>().where(
-            (t) => t['reference'] == txn.reference && t['type'] == type,
-          );
-    if (byRef != null && byRef.isNotEmpty) return byRef.first['id'] as String;
-    final matched = (ledger.personalList(account: txn.account, type: type, limit: 100000)['items'] as List)
-        .cast<Map<String, dynamic>>()
-        .where((t) => t['merchant'] == txn.merchant && t['amount_minor'] == txn.amountMinor);
-    return matched.isEmpty ? null : matched.first['id'] as String;
+    if (txn.reference case final reference?) {
+      if (ledger.personalWithReference(reference, type) case final known?) return known;
+    }
+    return ledger.personalPaid(type: type, amount: txn.amountMinor, account: txn.account, merchant: txn.merchant);
   }
 
   /// Reads what arrived since the last read (a few days before, in case a message was stored
@@ -182,41 +176,41 @@ class SmsImporter {
     if (since.isBefore(settings.since)) since = settings.since;
 
     final attachedBefore = ((await store.deviceValue(SmsKeys.attached)) as List?)?.cast<String>() ?? const <String>[];
-    final read = _Read(ledger, features, attachedBefore.toSet());
-    DateTime? last;
+    final messages = <RawSms>[];
     while (true) {
       final page = await source.inbox(since: since, senderPattern: senderPatternWithTests, limit: _page);
-      page.forEach(read.add);
-      if (page.isNotEmpty) last = page.last.receivedAt;
+      messages.addAll(page);
       if (page.length < _page) break;
       since = page.last.receivedAt; // inclusive: the overlap is known by its ids
     }
+    final read = await runSmsScan(smsScanInput(ledger, messages, features, attachedBefore: attachedBefore.toSet()));
 
-    final writes = _ref.read(writesProvider);
-    await writes.importPersonal(read.created, chunk: features.importChunk);
-    for (final (txn, sms, _) in read.attached) {
-      await writes.updatePersonal(
-        txn.id,
-        personalBody(txn)
-          ..merchant = sms.merchant
-          ..account = sms.account
-          ..channel ??= PersonalTxnInChannelEnum.fromJson(sms.channel),
-      );
-    }
+    // Everything read is queued together: one rebuild however many entries.
+    await _ref.read(writesProvider).importSms(read.created, [
+      for (final a in read.attached)
+        (
+          a.entryId,
+          personalBody(PersonalTxnOut.fromJson(ledger.personalTransaction(a.entryId))!)
+            ..merchant = a.merchant
+            ..account = a.account
+            ..channel ??= PersonalTxnInChannelEnum.fromJson(a.channel),
+        ),
+    ], chunk: features.importChunk);
     final kept = ((await store.deviceValue(SmsKeys.skipped)) as List?)?.cast<Map<Object?, Object?>>() ?? const [];
     final skipped = [
       for (final s in read.skipped) {...s.sms.toJson(), 'reason': s.reason.name},
       ...kept,
     ];
     final seen = <String>{};
+    final last = read.last;
     await store.setDeviceValues({
-      ...read.bodies,
+      for (final MapEntry(:key, :value) in read.bodies.entries) SmsKeys.body(key): value,
       SmsKeys.skipped: [
         for (final s in skipped)
           if (seen.add('${s['address']}|${s['body']}')) s,
       ].take(_keepSkipped).toList(),
       if (last != null) SmsKeys.cursor: last.toIso8601String(),
-      if (read.attached.isNotEmpty) SmsKeys.attached: [...attachedBefore, for (final a in read.attached) a.$3],
+      if (read.attached.isNotEmpty) SmsKeys.attached: [...attachedBefore, for (final a in read.attached) a.smsId],
     });
     return SmsScan(added: read.created.length, attached: read.attached.length, skipped: read.skipped.length, known: read.known);
   }
@@ -237,91 +231,32 @@ class SmsImporter {
   }
 }
 
-/// One read's decisions, message by message.
-class _Read {
-  _Read(this.ledger, this.features, this._attachedBefore) : _references = ledger.personalReferences();
+/// What a read of [messages] needs from [ledger] (core/sms/sms_scan.dart), taken now.
+SmsScanInput smsScanInput(
+  Ledger ledger,
+  List<RawSms> messages,
+  Features features, {
+  Set<String> attachedBefore = const {},
+}) => SmsScanInput(
+  messages: messages,
+  userId: ledger.me,
+  knownIds: ledger.personalIds(),
+  references: ledger.personalReferences(),
+  attachedBefore: attachedBefore,
+  manual: ledger.manualCandidates(),
+  categories: features.suggestCategories ? ledger.learnedCategories('personal') : null,
+  features: features,
+  now: appClock.now(),
+  testSenders: SmsImporter._testSenders,
+);
 
-  final Ledger ledger;
-  final Features features;
-  final Set<String> _attachedBefore;
-  final Set<String> _references;
-  final _ids = <String>{};
+/// Messages up to which a read runs on the UI isolate; more go to another isolate, so a first
+/// read of months of SMS doesn't freeze the screen. The web has no isolates (nor SMS).
+const smsScanInlineUpTo = 40;
 
-  final created = <(String, PersonalTxnIn)>[];
-
-  /// The entry, what the message said, and the message's id.
-  final attached = <(PersonalTxnOut, SmsTxn, String)>[];
-  final skipped = <SkippedSms>[];
-  final bodies = <String, Object?>{};
-  var known = 0;
-
-  void add(RawSms sms) {
-    switch (parseSms(sms, testSenders: SmsImporter._testSenders)) {
-      case SmsSkipped(:final reason):
-        // Not kept: codes, and anything not from a bank.
-        if (reason != SmsSkip.otp && reason != SmsSkip.notABank) skipped.add((sms: sms, reason: reason));
-      case SmsParsed(:final txn):
-        _payment(sms, txn);
-    }
-  }
-
-  void _payment(RawSms sms, SmsTxn txn) {
-    final id = smsEntryId(ledger.me, sms, txn);
-    final type = txn.direction == SmsDirection.spent ? 'expense' : 'income';
-    final ref = txn.reference == null ? null : '${txn.reference}|$type';
-    // Already here: read before (even if deleted since), or another message about it.
-    if (!_ids.add(id) ||
-        ledger.rawPersonal(id) != null ||
-        _attachedBefore.contains(id) ||
-        (ref != null && _references.contains(ref))) {
-      known++;
-      return;
-    }
-    if (ref != null) _references.add(ref);
-    if (txn.channel == 'atm' && !features.countAtmAsSpending) return;
-    // Entered by hand already: give that entry the bank's details instead.
-    if (ledger.manualMatch(type, txn.amountMinor, txn.date) case final manual?) {
-      final out = PersonalTxnOut.fromJson(manual)!;
-      if (!attached.any((a) => a.$1.id == out.id)) {
-        attached.add((out, txn, id));
-        return;
-      }
-    }
-    final description = smsDescription(txn);
-    final income = type == 'income';
-    final justIn = sms.receivedAt.isAfter(appClock.now().subtract(Duration(days: features.justInBackfillDays)));
-    created.add((
-      id,
-      PersonalTxnIn(
-        type: PersonalTxnInTypeEnum.fromJson(type)!,
-        amountMinor: txn.amountMinor,
-        description: description,
-        date: apiDate(txn.date),
-        categoryId: features.suggestCategories
-            ? categoryFor(
-                ledger,
-                description,
-                scope: 'personal',
-                merchant: txn.merchant,
-                income: income,
-                learn: features.learnCategories,
-                fuzzy: false,
-              )
-            : null,
-        channel: PersonalTxnInChannelEnum.fromJson(txn.channel),
-        merchant: txn.merchant,
-        account: txn.account,
-        reference: txn.reference,
-        balanceMinor: txn.balanceMinor,
-        smsAt: sms.receivedAt.toUtc(),
-        source_: PersonalTxnInSource_Enum.sms,
-        // A first read going back months: only the last few days are "just in".
-        reviewed: !justIn,
-      ),
-    ));
-    bodies[SmsKeys.body(id)] = sms.toJson();
-  }
-}
+/// Runs [scanSms] on [input], on another isolate when there are many messages.
+Future<SmsScanResult> runSmsScan(SmsScanInput input) async =>
+    kIsWeb || input.messages.length <= smsScanInlineUpTo ? scanSms(input) : await Isolate.run(() => scanSms(input));
 
 final smsImporterProvider = Provider<SmsImporter>((ref) {
   final importer = SmsImporter(ref);

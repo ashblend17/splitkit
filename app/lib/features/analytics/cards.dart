@@ -71,10 +71,11 @@ class DashboardCards extends StatelessWidget {
   Widget build(BuildContext context) {
     final scope = dashboard.scope.value;
     final cards = [for (final c in dashboard.cards) if (!hideTypes.contains(c.type)) c];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    if (cards.isEmpty) return const EmptyState(glyph: 'chart', title: 'No cards', body: 'Use Edit layout to add some.');
+    // In columns where there's room (desktop).
+    return CardColumns(
       children: [
-        for (final c in cards) ...[
+        for (final c in cards)
           AnalyticsCard(
             title: c.title,
             period: c.periodLabel,
@@ -84,10 +85,6 @@ class DashboardCards extends StatelessWidget {
               scope,
             ),
           ),
-          const SizedBox(height: 14),
-        ],
-        if (cards.isEmpty)
-          const EmptyState(glyph: 'chart', title: 'No cards', body: 'Use Edit layout to add some.'),
       ],
     );
   }

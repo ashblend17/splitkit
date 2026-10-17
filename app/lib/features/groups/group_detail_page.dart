@@ -11,26 +11,46 @@ import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
+import '../analytics/group_analytics_tab.dart';
 import '../common/common.dart';
 import '../expenses/activity_table.dart';
 import '../expenses/feed_list.dart';
 import '../home/home_wide.dart' show ListCard;
 import '../settlements/settlement_sheet.dart';
 import '../tricount_sync/tricount_status_line.dart';
+import 'group_balances_tab.dart';
 import 'settle_plan.dart';
 
-enum _Tab { expenses, balances, analytics, members }
+/// A group's tabs. Each has its own address (`/groups/<id>`, `/groups/<id>/balances`, ...), and
+/// all of them are this one page, so the header, tabs and width stay put and only what's under
+/// the tabs changes.
+enum GroupTab {
+  expenses('Expenses'),
+  balances('Balances'),
+  analytics('Analytics'),
+  members('Members');
+
+  const GroupTab(this.label);
+  final String label;
+
+  String path(String groupId) => this == expenses ? '/groups/$groupId' : '/groups/$groupId/$name';
+}
 
 class GroupDetailPage extends ConsumerStatefulWidget {
-  const GroupDetailPage({super.key, required this.groupId});
+  const GroupDetailPage({super.key, required this.groupId, this.tab = GroupTab.expenses});
   final String groupId;
+  final GroupTab tab;
 
   @override
   ConsumerState<GroupDetailPage> createState() => _GroupDetailPageState();
 }
 
 class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
-  _Tab _tab = _Tab.expenses;
+  GroupTab get _tab => widget.tab;
+
+  void _open(GroupTab tab) {
+    if (tab != _tab) context.go(tab.path(widget.groupId));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,26 +69,50 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
           color: SkColors.brand,
           onRefresh: () async {
             refreshLedger(ref.invalidate);
+            if (_tab == GroupTab.analytics) ref.invalidate(groupDashboardProvider(widget.groupId));
             await ref.read(groupProvider(widget.groupId).future);
           },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-            children: [
-              ContentWidth(
-                child: AsyncBody(
-                  value: group,
-                  onRetry: () => ref.invalidate(groupProvider(widget.groupId)),
-                  builder: (g) => _content(g),
+          child: CustomScrollView(
+            slivers: paddedSlivers(const EdgeInsets.fromLTRB(16, 8, 16, 120), switch (AsyncBody.dataOf(group)) {
+              final g? => _content(g),
+              null => [
+                SliverToBoxAdapter(
+                  child: ContentWidth(
+                    child: AsyncBody(
+                      value: group,
+                      onRetry: () => ref.invalidate(groupProvider(widget.groupId)),
+                      builder: (_) => const SizedBox.shrink(),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            }),
           ),
         ),
       ),
     );
   }
 
-  Widget _content(GroupOut g) {
+  /// The group on a phone: its header, then the tab (the expenses as a list that builds only
+  /// the cards on screen).
+  List<Widget> _content(GroupOut g) => [
+    SliverToBoxAdapter(child: ContentWidth(child: _head(g))),
+    if (_tab == GroupTab.expenses)
+      ..._expenses(g)
+    else
+      SliverToBoxAdapter(
+        child: ContentWidth(
+          child: switch (_tab) {
+            GroupTab.balances => GroupBalancesTab(group: g),
+            GroupTab.analytics => GroupAnalyticsTab(groupId: g.id),
+            GroupTab.members => _MembersTab(group: g),
+            GroupTab.expenses => const SizedBox.shrink(), // above
+          },
+        ),
+      ),
+  ];
+
+  Widget _head(GroupOut g) {
     final n = g.members.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -111,16 +155,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
         const SizedBox(height: 16),
         _tabs(),
         const SizedBox(height: 16),
-        switch (_tab) {
-          _Tab.expenses => _expenses(g),
-          _Tab.balances || _Tab.analytics => const SizedBox.shrink(),
-          _Tab.members => _MembersTab(group: g),
-        },
       ],
     );
   }
 
-  /// GroupDesktop: breadcrumb header, section tabs, the expense table and your balances.
+  /// GroupDesktop: breadcrumb header, section tabs, the tab (the expense table first) and your
+  /// balances beside it on every tab.
   Widget _desktop(GroupOut g) {
     final n = g.members.length;
     return Padding(
@@ -197,16 +237,19 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             ],
           ),
           const SizedBox(height: 18),
-          _tabs(balancesLabel: 'Settlements'),
+          _tabs(),
           const SizedBox(height: 18),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: _tab == _Tab.members
-                      ? SingleChildScrollView(child: _MembersTab(group: g))
-                      : SkCard(padding: EdgeInsets.zero, child: _expenseTable(g)),
+                  child: switch (_tab) {
+                    GroupTab.expenses => SkCard(padding: EdgeInsets.zero, child: _expenseTable(g)),
+                    GroupTab.balances => SingleChildScrollView(child: GroupBalancesTab(group: g)),
+                    GroupTab.analytics => SingleChildScrollView(child: GroupAnalyticsTab(groupId: g.id)),
+                    GroupTab.members => SingleChildScrollView(child: _MembersTab(group: g)),
+                  },
                 ),
                 const SizedBox(width: 16),
                 SizedBox(width: 360, child: SingleChildScrollView(child: _balancesAside(g))),
@@ -391,7 +434,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                   variant: SkButtonVariant.secondary,
                   size: SkButtonSize.small,
                   expand: true,
-                  onPressed: () => context.go('/groups/${g.id}/balances'),
+                  onPressed: () => _open(GroupTab.balances),
                 ),
               ),
             ],
@@ -411,18 +454,14 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
     showGroupPaymentSheet(context, plan.target(g, plan.mine.first));
   }
 
-  Widget _tabs({String balancesLabel = 'Balances'}) {
-    Widget tab(_Tab t, String label) {
+  Widget _tabs() {
+    Widget tab(GroupTab t) {
       final on = _tab == t;
       return Semantics(
         selected: on,
         button: true,
         child: InkWell(
-          onTap: () => switch (t) {
-            _Tab.balances => context.go('/groups/${widget.groupId}/balances'),
-            _Tab.analytics => context.go('/groups/${widget.groupId}/analytics'),
-            _ => setState(() => _tab = t),
-          },
+          onTap: () => _open(t),
           child: Container(
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -430,7 +469,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
               border: Border(bottom: BorderSide(color: on ? SkColors.brand : Colors.transparent, width: 2.5)),
             ),
             alignment: Alignment.center,
-            child: Text(label, style: SkText.body(14, on ? 700 : 600, color: on ? SkColors.brandInk : SkColors.ink2)),
+            child: Text(t.label, style: SkText.body(14, on ? 700 : 600, color: on ? SkColors.brandInk : SkColors.ink2)),
           ),
         ),
       );
@@ -444,45 +483,44 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            tab(_Tab.expenses, 'Expenses'),
-            const SizedBox(width: 4),
-            tab(_Tab.balances, balancesLabel),
-            const SizedBox(width: 4),
-            tab(_Tab.analytics, 'Analytics'),
-            const SizedBox(width: 4),
-            tab(_Tab.members, 'Members'),
+            for (final (i, t) in GroupTab.values.indexed) ...[if (i > 0) const SizedBox(width: 4), tab(t)],
           ],
         ),
       ),
     );
   }
 
-  Widget _expenses(GroupOut g) {
+  List<Widget> _expenses(GroupOut g) {
     final feed = ref.watch(feedProvider((groupId: g.id, deleted: false, limit: ref.watch(feedLimitProvider('group:${g.id}')))));
-    return AsyncBody(
-      value: feed,
-      onRetry: () => ref.invalidate(feedProvider),
-      builder: (items) => items.isEmpty && g.members.length < 2
-          ? EmptyState(
-              title: 'Just you so far',
-              body: "Add the people you're splitting with, then add what you spend.",
-              actionLabel: 'Add people',
-              onAction: () => addGroupMember(context, g),
-            )
-          : items.isEmpty
-          ? EmptyState(
-              title: 'No expenses yet',
-              body: "Add the first one and we'll keep the balances.",
-              actionLabel: 'Add split',
-              onAction: () => context.push('/expenses/new?group=${g.id}'),
-            )
-          : Column(
-              children: [
-                FeedList(items: items, onHome: false, byDay: false),
-                ShowOlder(list: 'group:${g.id}', shown: items.length),
-              ],
-            ),
-    );
+    if (AsyncBody.dataOf(feed) case final items? when items.isNotEmpty) {
+      return [
+        SliverFeedList(items: items, onHome: false, byDay: false, frame: (row) => ContentWidth(child: row)),
+        SliverToBoxAdapter(child: ContentWidth(child: ShowOlder(list: 'group:${g.id}', shown: items.length))),
+      ];
+    }
+    return [
+      SliverToBoxAdapter(
+        child: ContentWidth(
+          child: AsyncBody(
+            value: feed,
+            onRetry: () => ref.invalidate(feedProvider),
+            builder: (_) => g.members.length < 2
+                ? EmptyState(
+                    title: 'Just you so far',
+                    body: "Add the people you're splitting with, then add what you spend.",
+                    actionLabel: 'Add people',
+                    onAction: () => addGroupMember(context, g),
+                  )
+                : EmptyState(
+                    title: 'No expenses yet',
+                    body: "Add the first one and we'll keep the balances.",
+                    actionLabel: 'Add split',
+                    onAction: () => context.push('/expenses/new?group=${g.id}'),
+                  ),
+          ),
+        ),
+      ),
+    ];
   }
 
   Future<void> _menu(GroupOut g) async {
@@ -519,7 +557,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
     if (!mounted) return;
     switch (choice) {
       case 'members':
-        setState(() => _tab = _Tab.members);
+        _open(GroupTab.members);
       case 'deleted':
         context.go('/groups/${g.id}/deleted');
       case 'tricount':

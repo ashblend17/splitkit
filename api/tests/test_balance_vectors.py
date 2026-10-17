@@ -14,6 +14,7 @@ import pytest
 from app.modules.balances.engine import (
     expense_flows,
     pairwise,
+    planned,
     positions,
     settlement_flow,
     simplify,
@@ -32,6 +33,7 @@ def expected_balances(case: dict) -> dict:
     pos = positions(flows)
     return {
         "pairwise": dict(sorted(pairwise(case["me"], flows).items())),
+        "planned": dict(sorted(planned(case["me"], flows).items())),
         "positions": dict(sorted(pos.items())),
         "simplified": [
             [f.debtor, f.creditor, f.amount] for f in simplify({p: n for p, n in pos.items() if n})
@@ -51,7 +53,9 @@ def expected_plan(case: dict) -> dict:
 
 @pytest.mark.parametrize("case", VECTORS["cases"], ids=lambda c: c["name"])
 def test_balance_vector(case):
-    assert {k: case[k] for k in ("pairwise", "positions", "simplified")} == expected_balances(case)
+    assert {
+        k: case[k] for k in ("pairwise", "planned", "positions", "simplified")
+    } == expected_balances(case)
 
 
 @pytest.mark.parametrize("case", VECTORS["settle_up"], ids=lambda c: c["name"])

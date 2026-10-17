@@ -57,7 +57,7 @@ def main():
         "expense_history": call(f"/expenses/{scooter['id']}/history", token=token),
         "split_methods": call("/splits/methods", token=token),
         "categories": call("/categories?scope=group", token=token),
-        "settle_up_plan": call(f"/friends/{members['Aman Verma']}/settle-up", token=token),
+        "settle_up_plan": call(f"/friends/{members['Vivek Iyer']}/settle-up", token=token),
         "personal_summary": call("/personal/summary?month=2026-09-23", token=token),
         "personal_list": call("/personal/transactions?start=2026-09-01&end=2026-09-23", token=token),
         "personal_categories": call("/categories?scope=personal", token=token),

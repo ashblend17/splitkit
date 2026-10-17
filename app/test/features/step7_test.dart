@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/data/providers.dart';
 import 'package:splitkit/core/layout/layout.dart';
@@ -76,7 +77,7 @@ void main() {
     expect(find.byType(AddSplitFab), findsNothing);
     expect(tester.widget<BalanceCard>(find.byType(BalanceCard)).layout, BalanceCardLayout.stacked);
     expect(find.text('Friends'), findsOneWidget);
-    expect(find.text('you owe ₹750'), findsOneWidget); // Kabir
+    expect(find.text('owes you ₹1,470'), findsOneWidget); // Vivek, by the groups' fewest payments
     expect(find.text('Recent activity'), findsOneWidget);
     expect(find.widgetWithText(TransactionCard, 'Dinner at Thalassa'), findsOneWidget);
   });
@@ -105,11 +106,11 @@ void main() {
     expect(find.text('Administrator'), findsOneWidget);
     expect(find.byType(AddSplitFab), findsNothing);
     expect(find.text('Overall, you are owed'), findsOneWidget);
-    expect(find.text('to Kabir and Rahul'), findsOneWidget);
-    expect(find.text('by Priya and Aman'), findsOneWidget);
+    expect(find.text("You don't owe anyone"), findsOneWidget);
+    expect(find.text('by Vivek'), findsOneWidget);
     expect(find.text('YOUR BALANCE'), findsOneWidget);
-    expect(find.text('you owe Rahul'), findsOneWidget); // Dinner at Thalassa
-    expect(find.text('Settle'), findsNWidgets(2)); // Kabir and Rahul
+    expect(find.text('you owe Rahul'), findsNothing); // Dinner at Thalassa: you pay nobody in Goa Trip
+    expect(find.text('Settle'), findsNothing); // only beside friends you pay
     expect(find.text('+₹1,150'), findsOneWidget); // Goa Trip in the groups card
   });
 
@@ -119,7 +120,10 @@ void main() {
 
     await tester.tap(find.text('Unsettled only'));
     await tester.pumpAndSettle();
-    expect(find.text('Electricity bill'), findsNothing); // you're square with the payer
+    // Both groups' fewest payments have you paying nobody: others' bills are settled, and
+    // what you paid for others is still open.
+    expect(find.text('Electricity bill'), findsNothing);
+    expect(find.text('Dinner at Thalassa'), findsNothing);
     expect(find.text('Groceries'), findsOneWidget);
 
     await tester.tap(find.text('Any category'));
@@ -127,8 +131,10 @@ void main() {
     await tester.tap(find.text('Food').last);
     await tester.pumpAndSettle();
     expect(find.text('Groceries'), findsNothing);
-    expect(find.text('Dinner at Thalassa'), findsOneWidget);
     expect(find.text('Late-night pizza'), findsOneWidget);
+    await tester.tap(find.text('Unsettled only'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dinner at Thalassa'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'thal');
     await tester.pump(const Duration(milliseconds: 350));
@@ -169,7 +175,7 @@ void main() {
     expect(find.text('Groups'), findsWidgets); // sidebar and breadcrumb
     expect(find.text(' / Goa Trip'), findsOneWidget);
     expect(find.text('Add expense'), findsOneWidget);
-    expect(find.text('Settlements'), findsOneWidget);
+    expect(find.text('Balances'), findsOneWidget);
     expect(find.text('YOU'), findsOneWidget);
     expect(find.text('In Goa Trip, you are owed'), findsOneWidget);
     expect(find.text('To settle up'), findsOneWidget);
@@ -179,5 +185,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Add member'), findsOneWidget);
     expect(find.text('To settle up'), findsOneWidget); // the side panel stays
+  });
+
+  testWidgets("desktop group: every tab keeps the group's header, tabs, side panel and width", (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, size: desktop, location: '/groups/${be.goa['id']}');
+    final left = tester.getTopLeft(find.text('Expenses')).dx;
+    final right = tester.getTopRight(find.text('Add expense')).dx;
+    for (final (tab, shows) in [
+      ('Analytics', 'Peak ₹19,160 on 12 Sep'),
+      ('Balances', 'ONE-TO-ONE BALANCES'),
+      ('Members', 'Add member'),
+      ('Expenses', 'Dinner at Thalassa'),
+    ]) {
+      await tester.tap(find.text(tab));
+      await tester.pumpAndSettle();
+      expect(find.text(shows), findsWidgets, reason: tab);
+      expect(find.byType(WebSidebar), findsOneWidget, reason: tab);
+      expect(find.text(' / Goa Trip'), findsOneWidget, reason: tab);
+      expect(tester.getTopLeft(find.text('Expenses')).dx, left, reason: '$tab: the tabs stay put');
+      expect(tester.getTopRight(find.text('Add expense')).dx, right, reason: '$tab: the full width');
+      for (final t in ['Expenses', 'Balances', 'Analytics', 'Members']) {
+        expect(find.text(t), findsOneWidget, reason: '$tab shows the $t tab');
+      }
+      expect(find.text('To settle up'), findsOneWidget, reason: tab);
+    }
+    final router = GoRouter.of(tester.element(find.text('Expenses')));
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/groups/${be.goa['id']}');
   });
 }

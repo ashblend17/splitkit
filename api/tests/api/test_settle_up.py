@@ -7,25 +7,31 @@ def plan(client, headers, friend):
     return client.get(f"{API}/friends/{uid(friend)}/settle-up", headers=headers).json()
 
 
-def group_people(client, headers, group):
-    b = client.get(f"{API}/groups/{gid(group)}/balances", headers=headers).json()
-    return {p["user"]["name"]: p["net_minor"] for p in b["people"]}
+def between(client, headers, group, a, b):
+    """What the group's fewest payments have a paying b."""
+    s = client.get(f"{API}/groups/{gid(group)}/balances", headers=headers).json()["suggested"]
+    return sum(
+        p["amount_minor"]
+        for p in s
+        if (p["from_user"]["id"], p["to_user"]["id"]) == (uid(a), uid(b))
+    )
 
 
 def test_plan_lists_each_shared_group(client, seeded):
-    p = plan(client, login(client, "john"), "aman")
-    assert (p["friend"]["name"], p["currency"], p["net_minor"]) == ("Aman Verma", "INR", 117000)
-    # oldest group first: Flatmates (June) before Goa Trip (September)
+    p = plan(client, login(client, "john"), "vivek")
+    assert (p["friend"]["name"], p["currency"], p["net_minor"]) == ("Vivek Iyer", "INR", 147000)
+    # What each group's fewest payments have Vivek paying John, oldest group first:
+    # Flatmates (June) before Goa Trip (September).
     assert [(g["name"], g["net_minor"]) for g in p["groups"]] == [
         ("Flatmates", 32000),
-        ("Goa Trip", 85000),
+        ("Goa Trip", 115000),
     ]
 
 
 def test_full_settle_up_zeroes_every_group(client, seeded):
     headers = login(client, "john")
     r = client.post(
-        f"{API}/friends/{uid('aman')}/settle-up",
+        f"{API}/friends/{uid('vivek')}/settle-up",
         headers=headers,
         json={"date": "2026-09-24", "method": "upi"},
     )
@@ -33,77 +39,81 @@ def test_full_settle_up_zeroes_every_group(client, seeded):
     body = r.json()
     assert body["remaining_net_minor"] == 0
     assert sorted((s["from_user"]["name"], s["amount_minor"]) for s in body["settlements"]) == [
-        ("Aman Verma", 32000),
-        ("Aman Verma", 85000),
+        ("Vivek Iyer", 32000),
+        ("Vivek Iyer", 115000),
     ]
-    assert group_people(client, headers, "goa")["Aman Verma"] == 0
-    assert group_people(client, headers, "flat")["Aman Verma"] == 0
+    for group in ("goa", "flat"):
+        assert between(client, headers, group, "vivek", "john") == 0
+        b = client.get(f"{API}/groups/{gid(group)}/balances", headers=headers).json()
+        assert b["net_minor"] == 0
     friends = {
         f["user"]["name"]: f["net_minor"]
         for f in client.get(f"{API}/balances", headers=headers).json()["friends"]
     }
-    assert friends["Aman Verma"] == 0
+    assert set(friends.values()) == {0}
 
 
 def test_part_payment_pays_oldest_group_first(client, seeded):
     headers = login(client, "john")
     r = client.post(
-        f"{API}/friends/{uid('aman')}/settle-up",
+        f"{API}/friends/{uid('vivek')}/settle-up",
         headers=headers,
         json={"amount_minor": 50000, "date": "2026-09-24"},
     )
     assert r.status_code == 201, r.text
-    assert r.json()["remaining_net_minor"] == 67000
-    assert group_people(client, headers, "flat")["Aman Verma"] == 0
-    assert group_people(client, headers, "goa")["Aman Verma"] == 85000 - 18000
+    assert r.json()["remaining_net_minor"] == 97000
+    assert between(client, headers, "flat", "vivek", "john") == 0
+    assert between(client, headers, "goa", "vivek", "john") == 115000 - 18000
 
 
 def test_settling_when_you_owe(client, seeded):
-    headers = login(client, "john")
+    headers = login(client, "vivek")
     r = client.post(
         f"{API}/friends/{uid('rahul')}/settle-up", headers=headers, json={"date": "2026-09-24"}
     )
     s = r.json()["settlements"]
     assert [(x["from_user"]["name"], x["to_user"]["name"], x["amount_minor"]) for x in s] == [
-        ("John Doe", "Rahul Sharma", 50000)
+        ("Vivek Iyer", "Rahul Sharma", 111000)
     ]
 
 
 def test_mixed_directions_are_cleared_in_each_group(client, seeded):
     headers = login(client, "john")
-    # Make John owe Aman ₹500 in Flatmates while Aman still owes ₹850 in Goa.
+    # Vivek overpays in Flatmates, so there the plan has John paying Vivek ₹440, while in Goa
+    # Vivek still pays John ₹1,150.
     client.post(
         f"{API}/groups/{gid('flat')}/settlements",
         headers=headers,
         json={
-            "from_user": uid("aman"),
+            "from_user": uid("vivek"),
             "to_user": uid("john"),
             "amount_minor": 82000,
             "date": "2026-09-24",
         },
     )
-    assert plan(client, headers, "aman")["groups"] == [
-        {"group_id": gid("flat"), "name": "Flatmates", "net_minor": -50000},
-        {"group_id": gid("goa"), "name": "Goa Trip", "net_minor": 85000},
+    assert plan(client, headers, "vivek")["groups"] == [
+        {"group_id": gid("flat"), "name": "Flatmates", "net_minor": -44000},
+        {"group_id": gid("goa"), "name": "Goa Trip", "net_minor": 115000},
     ]
     r = client.post(
-        f"{API}/friends/{uid('aman')}/settle-up", headers=headers, json={"date": "2026-09-24"}
+        f"{API}/friends/{uid('vivek')}/settle-up", headers=headers, json={"date": "2026-09-24"}
     )
     assert r.json()["remaining_net_minor"] == 0
     directions = sorted(
         (x["from_user"]["name"], x["amount_minor"]) for x in r.json()["settlements"]
     )
-    assert directions == [("Aman Verma", 85000), ("John Doe", 50000)]
+    assert directions == [("John Doe", 44000), ("Vivek Iyer", 115000)]
 
 
 def test_errors_are_explained(client, seeded):
     headers = login(client, "john")
+    # One-to-one Aman owes John, but neither group's plan has a payment between them.
     r = client.post(
-        f"{API}/friends/{uid('vivek')}/settle-up", headers=headers, json={"date": "2026-09-24"}
+        f"{API}/friends/{uid('aman')}/settle-up", headers=headers, json={"date": "2026-09-24"}
     )
     assert r.status_code == 422 and r.json()["error"]["message"] == "You're already all square"
     r = client.post(
-        f"{API}/friends/{uid('aman')}/settle-up",
+        f"{API}/friends/{uid('vivek')}/settle-up",
         headers=headers,
         json={"amount_minor": 999999, "date": "2026-09-24"},
     )
@@ -131,7 +141,7 @@ def test_settle_up_is_audited_per_settlement(client, seeded):
     from app.models import AuditLog
 
     client.post(
-        f"{API}/friends/{uid('aman')}/settle-up",
+        f"{API}/friends/{uid('vivek')}/settle-up",
         headers=login(client, "john"),
         json={"date": "2026-09-24"},
     )

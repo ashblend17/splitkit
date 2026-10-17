@@ -75,6 +75,14 @@ List<Flow> simplify(Map<String, int> nets) {
   return payments;
 }
 
+/// What the group's fewest payments ([simplify] of the positions) have between [me] and each
+/// other person: the balances Home and settling with a friend use. Positive: they pay [me].
+/// Negative: [me] pays them. Adds up to [me]'s position.
+Map<String, int> planned(String me, Iterable<Flow> flows) {
+  final pos = positions(flows);
+  return pairwise(me, simplify({for (final e in pos.entries) if (e.value != 0) e.key: e.value}));
+}
+
 class _Party {
   _Party(this.id, this.amount);
   final String id;

@@ -96,6 +96,38 @@ Reseed before each run (`uv run python -m app.seed --reset` with the same `DATAB
 the captured fixtures from the same instance with
 `API=http://localhost:8001 python3 tool/capture_api_fixtures.py`.
 
+### Speed
+
+`flutter test test/perf` times the device-side code on a heavy synthetic dataset (about five
+years of use: 20k personal entries, 5k group expenses) in the VM, prints a table, and fails when
+something gets about 4× slower than when its ceiling was set. It runs in the normal suite too.
+
+On-device timing runs the app on a phone over the same dataset, in a real store on the phone's
+disk, with a fake API and a fake SMS inbox, and traces three actions: a cold start to Overview's
+numbers, flinging Transactions from top to bottom, and a first read of 2,000 bank SMS. It isn't
+part of `flutter test`. Plug in an Android phone with USB debugging on, then:
+
+```sh
+cd app
+flutter devices                      # the phone's id
+flutter drive --profile -d <device-id> \
+  --driver=test_driver/perf_driver.dart --target=integration_test/perf_test.dart
+```
+
+It prints a table per action: frames, frame build times (UI thread: average, 90th and 99th
+percentile, worst) and raster times, and how many missed the 16 ms budget. The figures go to
+`build/perf_summary.json`, each action's summary to `build/<action>.timeline_summary.json`, and
+the full timelines to `build/<action>.timeline.json` (open them in Perfetto). The plan's targets:
+Overview within 1.5 s of a cold start (`wall_clock_ms.cold_start_to_overview`), and no missed
+frames, with builds under 8 ms, while scrolling.
+
+It installs a profile build of the app on the phone. Its data goes in the app's temporary folder
+and leaves your own alone, but if the installed app was signed with another key, Flutter
+uninstalls it first and its device data (unsent changes, bank SMS settings) is lost: sync first,
+or use a phone without your data. `-d linux` works from a copy of `app/` with
+`flutter create --platforms=linux .` run in it (the repo has no `linux/` folder), as a quick check
+that the test runs; the web has no `dart:io`, so it can't run there.
+
 ## When something is wrong: on a device
 
 The app keeps a full copy of your groups and personal data on the device and works offline.

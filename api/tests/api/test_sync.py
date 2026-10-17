@@ -165,10 +165,10 @@ def test_concurrent_writes_get_gap_free_seqs(client, seeded):
 
 def test_settle_up_across_groups_bumps_both_streams_at_once(client, seeded):
     h = login(client, "john")
-    plan = client.get(f"{API}/friends/{uid('aman')}/settle-up", headers=h).json()
+    plan = client.get(f"{API}/friends/{uid('vivek')}/settle-up", headers=h).json()
     assert len(plan["groups"]) == 2
     r = client.post(
-        f"{API}/friends/{uid('aman')}/settle-up",
+        f"{API}/friends/{uid('vivek')}/settle-up",
         headers=h,
         json={"date": "2026-09-24", "method": "cash"},
     )

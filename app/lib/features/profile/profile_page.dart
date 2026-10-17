@@ -30,9 +30,9 @@ class ProfilePage extends ConsumerWidget {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+          padding: tabPagePadding(context),
           children: [
-            ContentWidth(
+            TabPageWidth(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -64,65 +64,72 @@ class ProfilePage extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  SkCard(
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        _link(
-                          'wallet',
-                          'Default currency',
-                          '${me.currency} ${currencySymbol(me.currency)}',
-                          () => showEditProfileSheet(context),
+                  // Settings, and this device beside them on a desktop.
+                  CardColumns(
+                    minWidth: 400,
+                    maxColumns: 2,
+                    gap: 16,
+                    children: [
+                      SkCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _link(
+                              'wallet',
+                              'Default currency',
+                              '${me.currency} ${currencySymbol(me.currency)}',
+                              () => showEditProfileSheet(context),
+                            ),
+                            _link(
+                              'moon',
+                              'Appearance',
+                              _themeLabels[ref.watch(themeModeProvider)]!,
+                              () => _pickTheme(context, ref),
+                            ),
+                            _link(
+                              'grid',
+                              'Categories',
+                              categories.hasValue ? '${categories.value!.length}' : '',
+                              () => context.go('/profile/categories'),
+                            ),
+                            if (ref.watch(smsSourceProvider).available && ref.watch(featuresProvider).smsImport)
+                              _link(
+                                'file',
+                                'Bank SMS',
+                                switch (ref.watch(smsSetupProvider).value?.settings) {
+                                  null => 'Off',
+                                  _ => 'On',
+                                },
+                                () => context.go('/profile/sms'),
+                              ),
+                            _link('upload', 'Import from Tricount', '', () => context.go('/profile/import')),
+                            _link(
+                              'logout',
+                              'Log out',
+                              '',
+                              () async {
+                                final unsynced = ref.read(outboxProvider).length;
+                                final ok = await showConfirmDialog(
+                                  context,
+                                  title: 'Log out?',
+                                  body: unsynced == 0
+                                      ? 'You can log back in with your email and password.'
+                                      : '$unsynced change(s) on this device haven\'t reached the server and will be '
+                                            'deleted. Copy them from "This device" first if you need them.',
+                                  confirmLabel: 'Log out',
+                                  destructive: unsynced > 0,
+                                );
+                                if (ok) await ref.read(sessionProvider.notifier).logout();
+                              },
+                              color: SkColors.owe,
+                              last: true,
+                            ),
+                          ],
                         ),
-                        _link(
-                          'moon',
-                          'Appearance',
-                          _themeLabels[ref.watch(themeModeProvider)]!,
-                          () => _pickTheme(context, ref),
-                        ),
-                        _link(
-                          'grid',
-                          'Categories',
-                          categories.hasValue ? '${categories.value!.length}' : '',
-                          () => context.go('/profile/categories'),
-                        ),
-                        if (ref.watch(smsSourceProvider).available && ref.watch(featuresProvider).smsImport)
-                          _link(
-                            'file',
-                            'Bank SMS',
-                            switch (ref.watch(smsSetupProvider).value?.settings) {
-                              null => 'Off',
-                              _ => 'On',
-                            },
-                            () => context.go('/profile/sms'),
-                          ),
-                        _link('upload', 'Import from Tricount', '', () => context.go('/profile/import')),
-                        _link(
-                          'logout',
-                          'Log out',
-                          '',
-                          () async {
-                            final unsynced = ref.read(outboxProvider).length;
-                            final ok = await showConfirmDialog(
-                              context,
-                              title: 'Log out?',
-                              body: unsynced == 0
-                                  ? 'You can log back in with your email and password.'
-                                  : '$unsynced change(s) on this device haven\'t reached the server and will be '
-                                        'deleted. Copy them from "This device" first if you need them.',
-                              confirmLabel: 'Log out',
-                              destructive: unsynced > 0,
-                            );
-                            if (ok) await ref.read(sessionProvider.notifier).logout();
-                          },
-                          color: SkColors.owe,
-                          last: true,
-                        ),
-                      ],
-                    ),
+                      ),
+                      const DeviceCard(),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  const DeviceCard(),
                 ],
               ),
             ),

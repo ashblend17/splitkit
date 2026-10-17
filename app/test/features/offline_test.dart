@@ -8,7 +8,7 @@ import '../fake_backend.dart';
 void main() {
   testWidgets('offline: screens keep the device copy and say so', (tester) async {
     final be = await pumpApp(tester);
-    expect(find.text('₹1,470'), findsOneWidget);
+    expect(find.text('₹1,470'), findsWidgets);
     expect(find.textContaining("You're offline"), findsNothing);
 
     be.offline = true;
@@ -17,7 +17,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("You're offline. Showing what's on this device."), findsOneWidget);
-    expect(find.text('₹1,470'), findsOneWidget);
+    expect(find.text('₹1,470'), findsWidgets);
     expect(find.text('Dinner at Thalassa'), findsOneWidget);
 
     // Opening a group still works from the device.
@@ -56,18 +56,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Dinner at Thalassa'));
     await tester.pumpAndSettle();
-    expect(find.text('You owe Rahul'), findsOneWidget, reason: 'the expense page is open');
+    expect(find.text('Your share is settled'), findsOneWidget, reason: 'the expense page is open');
     expect(find.text("You're offline. Showing what's on this device."), findsOneWidget);
   });
 
   testWidgets('restarting offline opens the saved sign-in from the device', (tester) async {
     final tokens = MemoryTokenStore('test-token');
     await pumpApp(tester, tokens: tokens, database: 'restart-offline');
-    expect(find.text('₹1,470'), findsOneWidget);
+    expect(find.text('₹1,470'), findsWidgets);
 
     await pumpApp(tester, tokens: tokens, database: 'restart-offline', backend: FakeBackend()..offline = true);
     expect(find.text('Hi, John'), findsOneWidget);
-    expect(find.text('₹1,470'), findsOneWidget);
+    expect(find.text('₹1,470'), findsWidgets);
     expect(find.text("You're offline. Showing what's on this device."), findsOneWidget);
   });
 
@@ -75,6 +75,6 @@ void main() {
     final tokens = MemoryTokenStore('old-token');
     await pumpApp(tester, tokens: tokens, backend: FakeBackend()..refreshTo = 'fresh-token');
     expect(tokens.token, 'fresh-token');
-    expect(find.text('₹1,470'), findsOneWidget);
+    expect(find.text('₹1,470'), findsWidgets);
   });
 }

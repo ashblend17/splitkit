@@ -77,20 +77,25 @@ class SyncEngine {
   Future<void> _loop() async {
     _set(_current.copyWith(syncing: true, error: _current.error));
     try {
-      Object? pushError;
-      do {
-        _again = false;
-        try {
-          await _push();
-        } on ApiException catch (e) {
-          // No connection or no sign-in stops everything. A server error on one write only
-          // stops sending; incoming changes still arrive.
-          if (isOfflineError(e) || e.code == 401) rethrow;
-          pushError = e;
-        }
-        await _catchUp();
-        await _settle();
-      } while (_again);
+      // The screens hear of everything a pull changes at once, when it's done (writes made on
+      // them meanwhile still show straight away).
+      final pushError = await store.batch(() async {
+        Object? pushError;
+        do {
+          _again = false;
+          try {
+            await _push();
+          } on ApiException catch (e) {
+            // No connection or no sign-in stops everything. A server error on one write only
+            // stops sending; incoming changes still arrive.
+            if (isOfflineError(e) || e.code == 401) rethrow;
+            pushError = e;
+          }
+          await _catchUp();
+          await _settle();
+        } while (_again);
+        return pushError;
+      });
       if (pushError != null) throw pushError;
       _set(SyncStatus(lastSyncedAt: appClock.now()));
     } catch (e) {

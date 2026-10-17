@@ -45,7 +45,8 @@ class FriendGroupBalance(Schema):
     group_id: uuid.UUID
     name: str
     net_minor: int
-    """Positive: they owe you in this group. Negative: you owe them."""
+    """What this group's fewest payments have between you. Positive: they pay you. Negative: you
+    pay them."""
 
 
 class SettleUpPlanOut(Schema):

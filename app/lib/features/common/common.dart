@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
+import '../../core/layout/layout.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 
-/// Screens are designed at 390px. Pages without a tablet or desktop mockup stay
-/// phone-width and centred beside the rail or sidebar.
+/// Screens are designed at 390px. Pages you open from a tab (a form, Deleted items, Categories)
+/// stay phone-width and centred beside the rail or sidebar.
 class ContentWidth extends StatelessWidget {
   const ContentWidth({super.key, required this.child, this.maxWidth = 640});
   final Widget child;
@@ -19,6 +20,78 @@ class ContentWidth extends StatelessWidget {
       constraints: BoxConstraints(maxWidth: maxWidth),
       child: child,
     ),
+  );
+}
+
+// Every tab page (Home, Groups, a group's tabs, Overview, Transactions, Insights, Profile) is
+// framed the same way, so moving between them doesn't jump: under 1280px the 390px designs in
+// a centred 640px column; from 1280px the frame of HomeDesktop and GroupDesktop, 32px gutters
+// and the full width beside the sidebar.
+
+/// From 1280px: the sidebar, and tab pages use the full width.
+bool isWideLayout(BuildContext context) => SkLayout.of(context) == SkLayout.expanded;
+
+/// Padding of a tab page. [bottom] is room under the content on phones and tablets (120 clears
+/// the phone's floating add button).
+EdgeInsets tabPagePadding(BuildContext context, {double bottom = 32}) =>
+    isWideLayout(context) ? const EdgeInsets.fromLTRB(32, 28, 32, 40) : EdgeInsets.fromLTRB(16, 24, 16, bottom);
+
+/// [slivers] laid out as one block inside [padding]: its sides around each, its top above the
+/// first and its bottom below the last. (A page that scrolls with slivers, so only what's on
+/// screen of a long list is built.)
+List<Widget> paddedSlivers(EdgeInsets padding, List<Widget> slivers) => [
+  for (final (i, sliver) in slivers.indexed)
+    SliverPadding(
+      padding: EdgeInsets.fromLTRB(
+        padding.left,
+        i == 0 ? padding.top : 0,
+        padding.right,
+        i == slivers.length - 1 ? padding.bottom : 0,
+      ),
+      sliver: sliver,
+    ),
+];
+
+/// A tab page's content: the 640px column, or the full width from 1280px.
+class TabPageWidth extends StatelessWidget {
+  const TabPageWidth({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      ContentWidth(maxWidth: isWideLayout(context) ? double.infinity : 640, child: child);
+}
+
+/// Cards in as many columns as fit [minWidth] each (at most [maxColumns]), dealt left to right
+/// so cards of different heights pack without gaps. One column on phones.
+class CardColumns extends StatelessWidget {
+  const CardColumns({super.key, required this.children, this.minWidth = 360, this.maxColumns = 3, this.gap = 14});
+  final List<Widget> children;
+  final double minWidth;
+  final int maxColumns;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final n = ((box.maxWidth + gap) / (minWidth + gap)).floor().clamp(1, maxColumns);
+      Widget column(Iterable<Widget> cards) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (i, c) in cards.indexed) ...[if (i > 0) SizedBox(height: gap), c],
+        ],
+      );
+      if (n == 1) return column(children);
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var col = 0; col < n; col++) ...[
+            if (col > 0) SizedBox(width: gap),
+            Expanded(child: column([for (var i = col; i < children.length; i += n) children[i]])),
+          ],
+        ],
+      );
+    },
   );
 }
 
@@ -36,6 +109,14 @@ class AsyncBody<T> extends StatelessWidget {
   final VoidCallback onRetry;
   final Widget Function(T data) builder;
   final int skeletonRows;
+
+  /// What [builder] gets for [value], or null when the skeleton or an error shows instead: for
+  /// pages that lay the data out themselves (as slivers) and leave the rest to an AsyncBody.
+  static T? dataOf<T>(AsyncValue<T> value) => switch (value) {
+    AsyncData(:final value) => value,
+    AsyncError() when !value.isLoading => null,
+    _ => value.hasValue ? value.requireValue : null,
+  };
 
   @override
   Widget build(BuildContext context) {

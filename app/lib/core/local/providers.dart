@@ -82,6 +82,23 @@ final ledgerProvider = StreamProvider<Ledger>((ref) async* {
   yield* store.watch();
 });
 
+/// Keeps this device's data (its store, the sync and the ledger) going while someone is signed
+/// in, from the moment the session has a user rather than from when the first screen that reads
+/// it is built. Screens are built on frames, and a browser tab that isn't showing gets none: a
+/// reload in a background tab used to leave the store unopened until the tab was shown (ISS-038).
+/// The router calls it, as it lives as long as the app and already follows the session.
+void runLocalDataWhileSignedIn(Ref ref) {
+  ProviderSubscription<AsyncValue<Ledger>>? running;
+  ref.listen(sessionProvider.select((s) => s.value != null), (_, signedIn) {
+    if (!signedIn) {
+      running?.close();
+      running = null;
+    } else {
+      running ??= ref.listen(ledgerProvider, (_, _) {});
+    }
+  }, fireImmediately: true);
+}
+
 final syncStatusProvider = StreamProvider<SyncStatus>((ref) async* {
   final engine = await ref.watch(syncEngineProvider.future);
   yield engine.status;
@@ -94,8 +111,18 @@ Future<void> deleteLocalData(Ref ref, String userId) async {
   await LocalStore.delete(ref.read(localDatabaseFactoryProvider), path);
 }
 
+/// The outbox now and after every change to it. Its own stream: sending a write and settling it
+/// change only the outbox, and don't make the screens' data change.
+final _outboxChangesProvider = StreamProvider<List<OutboxOp>>((ref) async* {
+  final store = await ref.watch(localStoreProvider.future);
+  yield* store.watchOutbox();
+});
+
 /// Writes made on this device that the server hasn't confirmed or has refused, oldest first.
 final outboxProvider = Provider<List<OutboxOp>>((ref) {
-  ref.watch(ledgerProvider);
+  // Whatever shows the outbox (the sync line, on every screen) keeps the device's data loaded
+  // and syncing, as before, without being rebuilt by each change to the data.
+  ref.listen(ledgerProvider, (_, _) {});
+  ref.watch(_outboxChangesProvider);
   return ref.watch(localStoreProvider).value?.outbox ?? const [];
 });

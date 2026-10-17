@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.modules.auth.deps import Actor
 from app.modules.balances import repository as ledger
-from app.modules.balances.engine import pairwise, positions, simplify
+from app.modules.balances.engine import pairwise, planned, positions, simplify
 from app.modules.balances.schemas import (
     CurrencyTotals,
     FriendBalance,
@@ -69,6 +69,8 @@ def group_balances(session: Session, actor: Actor, group_id: uuid.UUID) -> Group
 
 
 def overall_balances(session: Session, actor: Actor) -> OverallBalancesOut:
+    """Home: each group's fewest payments that involve you, added up per friend, so Home says
+    what the groups' own Settle up says."""
     me = actor.user_id
     all_groups = groups.groups_for_user(session, me, include_left=True)
     current = {g.id for g in groups.groups_for_user(session, me)}
@@ -77,7 +79,7 @@ def overall_balances(session: Session, actor: Actor) -> OverallBalancesOut:
     friend_nets: dict[tuple[uuid.UUID, str], int] = defaultdict(int)
     group_nets = []
     for g in all_groups:
-        for person, net in pairwise(me, flows.get(g.id, [])).items():
+        for person, net in planned(me, flows.get(g.id, [])).items():
             friend_nets[(person, g.currency)] += net
         if g.id in current:
             for m, _ in groups.active_members(session, g.id):

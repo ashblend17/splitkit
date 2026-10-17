@@ -29,8 +29,8 @@ class SplitOut(Schema):
     share_minor: int
     input_value: DecimalStr | None
     status: Literal["paid", "owes", "settled"]
-    """paid: the payer. owes: still owes the payer in this group. settled: square with the
-    payer in this group (by payments or other expenses)."""
+    """paid: the payer. owes: the group's fewest payments still have them paying someone.
+    settled: they pay nobody in this group now (by payments or other expenses)."""
 
 
 class ExpenseOut(Schema):

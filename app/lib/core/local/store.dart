@@ -11,6 +11,12 @@ import 'outbox.dart';
 /// Every batch is applied together with its cursor in one transaction, so a crash half-way
 /// leaves the cursor at the last fully applied change and the next sync fetches the rest.
 /// Applying a change twice is harmless: each one replaces the entity with its full state.
+///
+/// What the screens show ([ledger]) is current the moment a change is made; [watch] hears of it
+/// when the write is done, once for writes made at the same time, and once for a whole sync
+/// ([batch]) however much it brings. Each change counts against the parts of the
+/// data it touches ([LedgerRevisions]), so a screen can skip changes to parts it doesn't read.
+/// Sending and confirming writes changes only the outbox ([watchOutbox]), not the screens.
 class LocalStore {
   LocalStore._(this._db);
 
@@ -27,8 +33,27 @@ class LocalStore {
   final _cache = <String, LocalEntity>{};
   final _ops = <OutboxOp>[];
   final _cursorCache = <String, int>{};
-  final _changed = StreamController<Ledger>.broadcast();
+  final _ledgerChanges = StreamController<Ledger>.broadcast();
+  final _outboxChanges = StreamController<List<OutboxOp>>.broadcast();
   Ledger? _ledger;
+
+  static var _stores = 0;
+
+  /// Which store this is (see [LedgerRevisions.store]).
+  final int _id = ++_stores;
+
+  /// Changes per domain (LedgerDomain.index).
+  final _revisions = List<int>.filled(LedgerDomain.values.length, 0);
+  int _builds = 0;
+
+  /// Changes [watch] or [watchOutbox] haven't heard of yet.
+  bool _ledgerDue = false, _outboxDue = false;
+
+  /// Some of them were made outside a [batch], so they're not held back by it.
+  bool _dueNow = false;
+
+  /// Writes to the store in progress, and [batch]es running.
+  int _busy = 0, _batches = 0;
 
   /// Open stores by path, so [delete] can close one before removing its file.
   static final _open = <String, LocalStore>{};
@@ -72,7 +97,8 @@ class LocalStore {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
-    await _changed.close();
+    await _ledgerChanges.close();
+    await _outboxChanges.close();
     await _db.close();
   }
 
@@ -85,10 +111,18 @@ class LocalStore {
   Iterable<LocalEntity> get entities => _cache.values;
 
   /// What the screens show: the server's state with writes not confirmed yet laid over it.
+  /// Built when first read after a change, so it already shows a write the moment it's queued.
   Ledger get ledger => _ledger ??= _build();
 
+  /// How many times [ledger] has been built, for tests and benchmarks.
+  int get ledgerBuilds => _builds;
+
+  /// The changes so far, per part of the data.
+  LedgerRevisions get revisions => LedgerRevisions(_id, _revisions);
+
   Ledger _build() {
-    if (_ops.isEmpty) return Ledger(_cache.values);
+    _builds++;
+    if (_ops.isEmpty) return Ledger(_cache.values, revisions: revisions);
     final view = Map.of(_cache);
     for (final op in _ops) {
       if (op.status == OutboxStatus.rejected) continue;
@@ -96,44 +130,117 @@ class LocalStore {
         view[e.key] = e;
       }
     }
-    return Ledger(view.values);
+    return Ledger(view.values, revisions: revisions);
   }
 
   /// The server's own copy of an entity (without this device's unconfirmed writes).
   LocalEntity? serverEntity(String key) => _cache[key];
 
-  /// The ledger now and after every change.
+  /// The ledger now and after every change (one per write, or per writes made together).
   Stream<Ledger> watch() async* {
     yield ledger;
-    yield* _changed.stream;
+    yield* _ledgerChanges.stream;
   }
 
-  void _notify() {
-    _ledger = _build();
-    if (!_changed.isClosed) _changed.add(_ledger!);
+  /// The outbox now and after every change to it: a write queued, sent, refused or settled.
+  Stream<List<OutboxOp>> watchOutbox() async* {
+    yield outbox;
+    yield* _outboxChanges.stream;
+  }
+
+  /// Runs [body], holding back what [watch] and [watchOutbox] hear of the changes it makes until
+  /// it's done, so a sync (several streams, the outbox sent and settled) is one change. Changes
+  /// made meanwhile from outside [body] (a write on a screen) are heard as usual.
+  Future<T> batch<T>(Future<T> Function() body) async {
+    if (identical(Zone.current[_batchZone], this)) return body();
+    _batches++;
+    try {
+      return await runZoned(body, zoneValues: {_batchZone: this});
+    } finally {
+      _batches--;
+      _flushIfIdle();
+    }
+  }
+
+  static final _batchZone = Object();
+
+  /// Runs one write to the store: changes made while any is in progress are heard together.
+  Future<T> _writing<T>(Future<T> Function() body) async {
+    _busy++;
+    try {
+      return await body();
+    } finally {
+      _busy--;
+      _flushIfIdle();
+    }
+  }
+
+  /// A change to these entities (their names): counts it against their domains and drops the
+  /// built ledger.
+  void _touched(Iterable<String> entities) => _touchedDomains({for (final e in entities) ...domainsOf(e)});
+
+  void _touchedDomains(Set<LedgerDomain> domains) {
+    if (domains.isEmpty) return;
+    for (final d in domains) {
+      _revisions[d.index]++;
+    }
+    _ledger = null;
+    _ledgerDue = true;
+    _due();
+  }
+
+  void _outboxTouched() {
+    _outboxDue = true;
+    _due();
+  }
+
+  void _due() {
+    if (!identical(Zone.current[_batchZone], this)) _dueNow = true;
+    _flushIfIdle();
+  }
+
+  /// Tells [watch] and [watchOutbox] what changed, once no write is in progress and, unless a
+  /// change was made outside one, no [batch] is running.
+  void _flushIfIdle() {
+    if (_closed || _busy > 0 || !(_ledgerDue || _outboxDue) || (_batches > 0 && !_dueNow)) return;
+    _dueNow = false;
+    if (_ledgerDue) {
+      _ledgerDue = false;
+      _ledgerChanges.add(ledger);
+    }
+    if (_outboxDue) {
+      _outboxDue = false;
+      _outboxChanges.add(outbox);
+    }
   }
 
   /// Replaces everything this device has for [stream] with a snapshot.
-  Future<void> replaceStream(String stream, int headSeq, List<LocalEntity> entities) async {
-    final stale = [for (final e in _cache.values) if (e.stream == stream) e.key];
+  Future<void> replaceStream(String stream, int headSeq, List<LocalEntity> entities) => _writing(() async {
+    final stale = [for (final e in _cache.values) if (e.stream == stream) e];
     await _db.transaction((txn) async {
-      await _entities.records(stale).delete(txn);
+      await _entities.records([for (final e in stale) e.key]).delete(txn);
       for (final e in entities) {
         await _entities.record(e.key).put(txn, e.toJson());
       }
       await _cursors.record(stream).put(txn, headSeq);
     });
-    stale.forEach(_cache.remove);
+    for (final e in stale) {
+      _cache.remove(e.key);
+    }
     for (final e in entities) {
       _cache[e.key] = e;
     }
     _cursorCache[stream] = headSeq;
-    _notify();
-  }
+    _touched({for (final e in stale) e.entity, for (final e in entities) e.entity});
+  });
 
   /// Applies `changes` (from POST /sync, in seq order) and moves the cursor to the last one.
   Future<void> applyChanges(String stream, List<Map<String, dynamic>> changes) async {
     if (changes.isEmpty) return;
+    await _writing(() => _apply(stream, changes));
+  }
+
+  Future<void> _apply(String stream, List<Map<String, dynamic>> changes) async {
     final puts = <String, LocalEntity>{};
     final deletes = <String>{};
     for (final c in changes) {
@@ -158,7 +265,7 @@ class LocalStore {
     deletes.forEach(_cache.remove);
     _cache.addAll(puts);
     _cursorCache[stream] = last;
-    _notify();
+    _touched({for (final c in changes) c['entity'] as String, for (final e in puts.values) e.entity});
   }
 
   /// A group's "last activity" is the time of its latest write. The snapshot carries it; later
@@ -180,16 +287,18 @@ class LocalStore {
   }
 
   /// Forgets a stream you no longer have access to.
-  Future<void> dropStream(String stream) async {
-    final keys = [for (final e in _cache.values) if (e.stream == stream) e.key];
+  Future<void> dropStream(String stream) => _writing(() async {
+    final gone = [for (final e in _cache.values) if (e.stream == stream) e];
     await _db.transaction((txn) async {
-      await _entities.records(keys).delete(txn);
+      await _entities.records([for (final e in gone) e.key]).delete(txn);
       await _cursors.record(stream).delete(txn);
     });
-    keys.forEach(_cache.remove);
+    for (final e in gone) {
+      _cache.remove(e.key);
+    }
     _cursorCache.remove(stream);
-    _notify();
-  }
+    _touched({for (final e in gone) e.entity});
+  });
 
   // ---- outbox (writes made on this device) ----
 
@@ -201,41 +310,54 @@ class LocalStore {
   /// Queues [ops] in order, in one transaction and with one rebuild: writes that belong
   /// together (a split and the personal entry linked to it) show at once or not at all, and a
   /// big import doesn't rebuild the ledger once per entry.
-  Future<List<OutboxOp>> enqueueAll(List<OutboxOp> ops) async {
+  Future<List<OutboxOp>> enqueueAll(List<OutboxOp> ops) => _writing(() async {
     final saved = await _db.transaction((txn) async => [
       for (final op in ops) op.copyWith(id: await _outbox.add(txn, op.toJson())),
     ]);
     _ops.addAll(saved);
-    _notify();
+    _outboxTouched();
+    _touched({for (final op in saved) for (final e in op.entities) e.entity});
     return saved;
-  }
+  });
 
-  Future<void> updateOp(OutboxOp op) async {
+  /// A write's new status. Being sent or waiting for its confirmation changes only the outbox;
+  /// being refused (or sent again after a refusal) changes what's laid over the server's copy.
+  Future<void> updateOp(OutboxOp op) => _writing(() async {
     await _outbox.record(op.id!).put(_db, op.toJson());
     final i = _ops.indexWhere((o) => o.id == op.id);
+    final before = i >= 0 ? _ops[i] : null;
     if (i >= 0) _ops[i] = op;
-    _notify();
-  }
+    _outboxTouched();
+    final (was, now) = (before == null ? const <LocalEntity>[] : _overlaid(before), _overlaid(op));
+    if (!identical(was, now)) _touched({for (final e in [...was, ...now]) e.entity});
+  });
+
+  /// What [op] lays over the server's copy.
+  static List<LocalEntity> _overlaid(OutboxOp op) => op.status == OutboxStatus.rejected ? const [] : op.entities;
 
   Future<void> removeOps(Iterable<int> ids) async {
     final drop = ids.toSet();
     if (drop.isEmpty) return;
-    await _outbox.records(drop.toList()).delete(_db);
-    _ops.removeWhere((o) => drop.contains(o.id));
-    _notify();
+    await _writing(() async {
+      await _outbox.records(drop.toList()).delete(_db);
+      final gone = [for (final o in _ops) if (drop.contains(o.id)) o];
+      _ops.removeWhere((o) => drop.contains(o.id));
+      _outboxTouched();
+      _touched({for (final o in gone) for (final e in _overlaid(o)) e.entity});
+    });
   }
 
   /// Forgets everything that came from the server (keeping this device's unsynced writes), so
   /// the next sync reloads every stream from a snapshot. The in-app "Reload from server".
-  Future<void> resetServerCopy() async {
+  Future<void> resetServerCopy() => _writing(() async {
     await _db.transaction((txn) async {
       await _entities.delete(txn);
       await _cursors.delete(txn);
     });
     _cache.clear();
     _cursorCache.clear();
-    _notify();
-  }
+    _touchedDomains(LedgerDomain.values.toSet());
+  });
 
   // ---- this device's own values ----
 
@@ -255,7 +377,7 @@ class LocalStore {
   });
 
   /// Wipes the device copy (logout). The next sign-in rebuilds it from snapshots.
-  Future<void> clear() async {
+  Future<void> clear() => _writing(() async {
     await _db.transaction((txn) async {
       await _entities.delete(txn);
       await _cursors.delete(txn);
@@ -263,6 +385,6 @@ class LocalStore {
     });
     _cache.clear();
     _cursorCache.clear();
-    _notify();
-  }
+    _touchedDomains(LedgerDomain.values.toSet());
+  });
 }

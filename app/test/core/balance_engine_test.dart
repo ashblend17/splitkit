@@ -20,6 +20,7 @@ void main() {
         ];
         final pos = positions(flows);
         expect(sorted(pairwise(c['me'], flows)), Map<String, int>.from(c['pairwise']));
+        expect(sorted(planned(c['me'], flows)), Map<String, int>.from(c['planned']));
         expect(sorted(pos), Map<String, int>.from(c['positions']));
         expect(
           [for (final f in simplify({for (final e in pos.entries) if (e.value != 0) e.key: e.value})) [f.debtor, f.creditor, f.amount]],

@@ -8,7 +8,7 @@ from app.core.events import record
 from app.core.versioning import check_version, client_id, replayed_create
 from app.modules.auth.deps import Actor
 from app.modules.balances import repository as ledger
-from app.modules.balances.engine import pairwise
+from app.modules.balances.engine import positions
 from app.modules.categories import repository as categories
 from app.modules.categories import rules
 from app.modules.categories.schemas import CategoryOut
@@ -28,14 +28,14 @@ def to_out(session: Session, e: Expense, me: uuid.UUID) -> ExpenseOut:
         categories.get_visible(session, e.category_id, me, "group") if e.category_id else None
     )
     my_share = next((s.share_minor for s in e.splits if s.user_id == me), 0)
-    owed_to_payer = pairwise(
-        e.payer_id, ledger.flows_by_group(session, [e.group_id]).get(e.group_id, [])
-    )
+    pos = positions(ledger.flows_by_group(session, [e.group_id]).get(e.group_id, []))
 
     def status(user_id: uuid.UUID) -> str:
+        # As the group's fewest payments see it: a share is settled once its person pays
+        # nobody in the group, whoever the plan has them paying.
         if user_id == e.payer_id:
             return "paid"
-        return "owes" if owed_to_payer.get(user_id, 0) > 0 else "settled"
+        return "owes" if pos.get(user_id, 0) < 0 else "settled"
 
     return ExpenseOut(
         id=e.id,

@@ -5,14 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../features/admin/admin_dashboard_page.dart';
 import '../../features/admin/admin_users_page.dart';
 import '../../features/admin/audit_log_page.dart';
-import '../../features/analytics/group_analytics_page.dart';
 import '../../features/analytics/personal_analytics_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/register_page.dart';
 import '../../features/expenses/add_expense_page.dart';
 import '../../features/expenses/expense_detail_page.dart';
 import '../../features/gallery/components_gallery_page.dart';
-import '../../features/groups/group_balances_page.dart';
 import '../../features/groups/group_detail_page.dart';
 import '../../features/groups/group_list_page.dart';
 import '../../features/groups/group_trash_page.dart';
@@ -30,9 +28,20 @@ import '../../features/sms/sms_setup_page.dart';
 import '../../features/shell/app_shell.dart';
 import '../../features/shell/not_found_page.dart';
 import '../../features/shell/splash_page.dart';
+import '../local/providers.dart';
 import '../session/session.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
+
+/// Every tab of a group is the same page (one key per group): moving between tabs updates it
+/// in place, with no page transition, rather than stacking a page per tab.
+Page<void> _groupPage(GoRouterState s, GroupTab tab) {
+  final groupId = s.pathParameters['gid']!;
+  return MaterialPage(
+    key: ValueKey('group:$groupId'),
+    child: GroupDetailPage(groupId: groupId, tab: tab),
+  );
+}
 
 /// Re-runs redirects whenever the session changes (login, logout, 401).
 class _SessionListenable extends ChangeNotifier {
@@ -44,6 +53,7 @@ class _SessionListenable extends ChangeNotifier {
 final routerProvider = Provider<GoRouter>((ref) {
   final listenable = _SessionListenable(ref);
   ref.onDispose(listenable.dispose);
+  runLocalDataWhileSignedIn(ref);
   return GoRouter(
     navigatorKey: _rootKey,
     initialLocation: homeOf(ref.read(savedAppModeProvider)),
@@ -98,19 +108,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: ':gid',
-                    builder: (_, s) => GroupDetailPage(groupId: s.pathParameters['gid']!),
+                    pageBuilder: (_, s) => _groupPage(s, GroupTab.expenses),
                     routes: [
-                      GoRoute(
-                        path: 'balances',
-                        builder: (_, s) => GroupBalancesPage(groupId: s.pathParameters['gid']!),
-                      ),
                       GoRoute(
                         path: 'deleted',
                         builder: (_, s) => GroupTrashPage(groupId: s.pathParameters['gid']!),
-                      ),
-                      GoRoute(
-                        path: 'analytics',
-                        builder: (_, s) => GroupAnalyticsPage(groupId: s.pathParameters['gid']!),
                       ),
                       // Tricount sync (deletable module: features/tricount_sync).
                       GoRoute(
@@ -119,6 +121,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                       ),
                     ],
                   ),
+                  for (final tab in [GroupTab.balances, GroupTab.analytics, GroupTab.members])
+                    GoRoute(path: ':gid/${tab.name}', pageBuilder: (_, s) => _groupPage(s, tab)),
                 ],
               ),
             ],

@@ -378,11 +378,22 @@ class LocalWrites {
   /// Entries read from bank SMS, each with the id the message gives it: POST
   /// /personal/transactions/batch in chunks of [chunk], queued together (one rebuild however
   /// many).
-  Future<void> importPersonal(List<(String, PersonalTxnIn)> entries, {int chunk = 50}) async {
-    if (entries.isEmpty) return;
+  Future<void> importPersonal(List<(String, PersonalTxnIn)> entries, {int chunk = 50}) =>
+      importSms(entries, const [], chunk: chunk);
+
+  /// What a read of the bank SMS found, queued together (one rebuild): new [entries], as
+  /// [importPersonal] queues them, then entries you'd made by hand that a message was about,
+  /// edited to [attached] (id and new body), as [updatePersonal] would.
+  Future<void> importSms(
+    List<(String, PersonalTxnIn)> entries,
+    List<(String, PersonalTxnIn)> attached, {
+    int chunk = 50,
+  }) async {
+    if (entries.isEmpty && attached.isEmpty) return;
     final l = await _ledger();
     await _queueAll([
       for (var i = 0; i < entries.length; i += chunk) _batchOp(l, entries.sublist(i, min(i + chunk, entries.length))),
+      for (final (id, body) in attached) _updatePersonalOp(l, id, body),
     ]);
   }
 
@@ -559,13 +570,17 @@ class LocalWrites {
   }
 }
 
+final _calendarDay = DateFormat('yyyy-MM-dd');
+
 /// A generated model's toJson, as plain JSON (dates as the API's calendar days).
 Map<String, dynamic> _json(Map<String, dynamic> model) => {
   for (final e in model.entries) e.key: _plain(e.value),
 };
 
 Object? _plain(Object? v) => switch (v) {
-  DateTime d => DateFormat('yyyy-MM-dd').format(d),
+  // Plain values first: asking one for toJson throws (and catching it is slow).
+  null || String() || num() || bool() => v,
+  DateTime d => _calendarDay.format(d),
   Map m => {for (final e in m.entries) '${e.key}': _plain(e.value)},
   List l => [for (final x in l) _plain(x)],
   Object o when _hasToJson(o) => _plain((o as dynamic).toJson()),

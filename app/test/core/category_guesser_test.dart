@@ -6,9 +6,14 @@ import 'package:splitkit/core/categorise/category_guesser.dart';
 import 'package:splitkit/core/categorise/category_rules.dart';
 import 'package:splitkit/core/local/ledger.dart';
 
-/// John's synced data (the seed), plus [extra] personal entries and learned [rules]
-/// ((pattern, category key, income, updated_at)).
-Ledger _ledger([List<Map<String, dynamic>> extra = const [], List<(String, String, bool, String)> rules = const []]) {
+/// John's synced data (the seed), plus [extra] personal entries, learned [rules]
+/// ((pattern, category key, income, updated_at)) and [splits] (group expenses you created in the
+/// seed's first group, unless they say otherwise).
+Ledger _ledger([
+  List<Map<String, dynamic>> extra = const [],
+  List<(String, String, bool, String)> rules = const [],
+  List<Map<String, dynamic>> splits = const [],
+]) {
   final fixture = jsonDecode(File('test/fixtures/sync/john.json').readAsStringSync()) as Map<String, dynamic>;
   final entities = [
     for (final s in (fixture['snapshots'] as Map).entries)
@@ -16,8 +21,25 @@ Ledger _ledger([List<Map<String, dynamic>> extra = const [], List<(String, Strin
         LocalEntity(s.key, e['entity'], e['entity_id'], e['version'], (e['data'] as Map).cast()),
   ];
   final me = entities.firstWhere((e) => e.entity == 'profile').entityId;
+  final group = entities.firstWhere((e) => e.entity == 'group').entityId;
   return Ledger([
     ...entities,
+    for (final (i, x) in splits.indexed)
+      LocalEntity('group:$group', 'expense', 'split-$i', 1, {
+        'id': 'split-$i',
+        'group_id': group,
+        'amount_minor': 1000,
+        'currency': 'INR',
+        'payer_id': me,
+        'date': '2026-09-24',
+        'created_by': me,
+        'created_at': '2026-09-24T10:00:00Z',
+        'deleted_at': null,
+        'splits': [
+          {'user_id': me, 'share_minor': 1000, 'input_value': null},
+        ],
+        ...x,
+      }),
     for (final (i, t) in extra.indexed)
       LocalEntity('user:$me', 'personal_transaction', 'extra-$i', 1, {
         'id': 'extra-$i',
@@ -145,6 +167,50 @@ void main() {
       expect(categoryFor(l, 'Flight to Goa', scope: 'personal'), _id(l, 'transport')); // no Travel there
       expect(categoryFor(l, 'Pharmacy', scope: 'personal'), _id(l, 'health'));
       expect(categoryFor(l, 'Pharmacy', scope: 'group'), isNull); // Health is personal only
+    });
+
+    test('in a group, the newest split you made with those words is learned from (ISS-065)', () {
+      final seed = _ledger();
+      final someoneElse = seed.rawMembers(seed.groups().first['id']).firstWhere((m) => m['user_id'] != seed.me)['user_id'];
+      final l = _ledger(const [], const [], [
+        {'description': 'Pottery class', 'category_id': _id(seed, 'shopping'), 'created_at': '2026-09-20T10:00:00Z'},
+        {'description': 'Pottery class', 'category_id': _id(seed, 'entertainment')},
+        {'description': 'Board games', 'category_id': _id(seed, 'entertainment'), 'created_by': someoneElse},
+        {'description': 'Kayaking', 'category_id': _id(seed, 'entertainment'), 'deleted_at': '2026-09-24T11:00:00Z'},
+      ]);
+      expect(categoryFor(l, 'Pottery class', scope: 'group'), _id(l, 'entertainment'));
+      expect(categoryFor(l, 'Pottery class', scope: 'group', learn: false), isNull); // no keyword
+      expect(categoryFor(l, 'Board games', scope: 'group'), isNull); // someone else's choice
+      expect(categoryFor(l, 'Kayaking', scope: 'group'), isNull); // deleted
+    });
+
+    test('in Personal, only your own entries are learned from, never splits (ISS-065)', () {
+      final seed = _ledger();
+      final l = _ledger(
+        [
+          {'description': 'Kiln time', 'category_id': _id(seed, 'shopping'), 'source': 'manual'},
+        ],
+        const [],
+        [
+          {'description': 'Pottery class', 'category_id': _id(seed, 'entertainment')},
+          {'description': 'Kiln time', 'category_id': _id(seed, 'entertainment')},
+        ],
+      );
+      expect(categoryFor(l, 'Pottery class', scope: 'personal'), isNull);
+      expect(categoryFor(l, 'Kiln time', scope: 'personal'), _id(l, 'shopping'));
+      expect(categoryFor(l, 'Kiln time', scope: 'group'), _id(l, 'entertainment'));
+    });
+
+    test('in a group, a learned rule comes before a newer split', () {
+      final seed = _ledger();
+      final l = _ledger(
+        const [],
+        [('pottery class', 'shopping', false, '2026-09-01T10:00:00Z')],
+        [
+          {'description': 'Pottery class', 'category_id': _id(seed, 'entertainment')},
+        ],
+      );
+      expect(categoryFor(l, 'Pottery class', scope: 'group'), _id(l, 'shopping'));
     });
 
     test('income gets an income category, spending never does', () {

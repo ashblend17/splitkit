@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -105,6 +106,66 @@ void main() {
     expect(label.width, greaterThan(30), reason: 'laid out whole, not squeezed into the bar and painted past it');
     expect(label.right, lessThanOrEqualTo(chart.right));
     expect(label.left, greaterThanOrEqualTo(chart.left));
+  });
+
+  testWidgets('tapping a bar shows its amount above it; tapping again puts the chart back', (tester) async {
+    setViewport(tester, const Size(360, 400));
+    await tester.pumpWidget(
+      wrap(
+        TrendBars(
+          bars: [
+            for (var i = 0; i < 12; i++) (label: '${i + 1} Sep', value: i == 3 ? 1916000 : 50000 + i, highlight: i == 3),
+          ],
+          formatTop: (v) => 'top $v',
+          formatTip: (b) => '${b.label}: ₹${b.value ~/ 100}',
+        ),
+      ),
+    );
+    expect(find.text('top 1916000'), findsOneWidget); // the highlighted bar, as designed
+    final chart = tester.getRect(find.byType(TrendBars));
+    // A short bar, tapped near the top of the plot: its whole column counts.
+    final short = tester.getRect(find.bySemanticsLabel('8 Sep: ₹500'));
+    await tester.tapAt(Offset(short.center.dx, short.top + 4));
+    await tester.pump();
+    expect(find.text('8 Sep: ₹500'), findsOneWidget);
+    expect(find.text('top 1916000'), findsNothing, reason: 'one figure at a time');
+    await tester.tapAt(Offset(short.center.dx, short.top + 4));
+    await tester.pump();
+    expect(find.text('8 Sep: ₹500'), findsNothing);
+    expect(find.text('top 1916000'), findsOneWidget);
+
+    // At either end the readout stays inside the chart.
+    for (final label in ['1 Sep: ₹500', '12 Sep: ₹500']) {
+      await tester.tap(find.bySemanticsLabel(label));
+      await tester.pump();
+      final pill = tester.getRect(find.text(label));
+      expect((pill.left >= chart.left, pill.right <= chart.right), (true, true), reason: label);
+      await tester.tap(find.bySemanticsLabel(label));
+      await tester.pump();
+    }
+  });
+
+  testWidgets('pointing at a bar with a mouse shows its amount', (tester) async {
+    setViewport(tester, const Size(360, 400));
+    await tester.pumpWidget(
+      wrap(
+        TrendBars(
+          bars: [for (var i = 0; i < 5; i++) (label: 'M$i', value: 1000 * (i + 1), highlight: i == 4)],
+          formatTop: (v) => 'top $v',
+          formatTip: (b) => '${b.label} is ${b.value}',
+        ),
+      ),
+    );
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(find.bySemanticsLabel('M1 is 2000')));
+    await tester.pump();
+    expect(find.text('M1 is 2000'), findsOneWidget);
+    await mouse.moveTo(Offset.zero);
+    await tester.pump();
+    expect(find.text('M1 is 2000'), findsNothing);
+    expect(find.text('top 5000'), findsOneWidget);
   });
 
   testWidgets('22 month bars on a phone: whole labels every few bars, none clipped', (tester) async {

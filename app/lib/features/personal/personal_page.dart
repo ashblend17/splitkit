@@ -43,9 +43,9 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
           },
           child: ListView(
             // Room at the bottom for the floating "Add entry".
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 120),
+            padding: tabPagePadding(context, bottom: 120),
             children: [
-              ContentWidth(
+              TabPageWidth(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -73,46 +73,20 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    AsyncBody(
-                      value: summary,
-                      onRetry: () => ref.invalidate(personalSummaryProvider(_month)),
-                      skeletonRows: 2,
-                      builder: (s) => _summaryCard(s, groupShare: groupShare),
-                    ),
-                    const SizedBox(height: 20),
-                    const SmsPromptCard(),
-                    const JustIn(),
-                    const AccountsCard(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Semantics(header: true, child: Text('Recent', style: SkText.section)),
-                        ),
-                        InkWell(
-                          onTap: () => context.go('/personal/transactions'),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text('See all', style: SkText.body(14, 700, color: SkColors.brandInk)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    AsyncBody(
-                      value: recent,
-                      onRetry: () => ref.invalidate(personalListProvider),
-                      builder: (list) => list.items.isEmpty
-                          ? const EmptyState(
-                              glyph: 'wallet',
-                              title: 'Nothing here yet',
-                              body: 'Add what you spend and earn. Only you can see it.',
-                            )
-                          : Column(
-                              children: [
-                                for (final t in list.items) ...[_card(t), const SizedBox(height: 8)],
-                              ],
-                            ),
-                    ),
+                    // Desktop: this month and its cards on the left, the latest entries beside them.
+                    if (isWideLayout(context))
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _thisMonth(summary, groupShare)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _recent(recent)),
+                        ],
+                      )
+                    else ...[
+                      _thisMonth(summary, groupShare),
+                      _recent(recent),
+                    ],
                   ],
                 ),
               ),
@@ -122,6 +96,59 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
       ),
     );
   }
+
+  /// This month's summary, then the SMS prompt, entries just in and accounts when there are any.
+  Widget _thisMonth(AsyncValue<PersonalSummaryOut> summary, bool groupShare) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      AsyncBody(
+        value: summary,
+        onRetry: () => ref.invalidate(personalSummaryProvider(_month)),
+        skeletonRows: 2,
+        builder: (s) => _summaryCard(s, groupShare: groupShare),
+      ),
+      const SizedBox(height: 20),
+      const SmsPromptCard(),
+      const JustIn(),
+      const AccountsCard(),
+    ],
+  );
+
+  Widget _recent(AsyncValue<PersonalListOut> recent) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Row(
+        children: [
+          Expanded(
+            child: Semantics(header: true, child: Text('Recent', style: SkText.section)),
+          ),
+          InkWell(
+            onTap: () => context.go('/personal/transactions'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text('See all', style: SkText.body(14, 700, color: SkColors.brandInk)),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      AsyncBody(
+        value: recent,
+        onRetry: () => ref.invalidate(personalListProvider),
+        builder: (list) => list.items.isEmpty
+            ? const EmptyState(
+                glyph: 'wallet',
+                title: 'Nothing here yet',
+                body: 'Add what you spend and earn. Only you can see it.',
+              )
+            : Column(
+                children: [
+                  for (final t in list.items) ...[_card(t), const SizedBox(height: 8)],
+                ],
+              ),
+      ),
+    ],
+  );
 
   Widget _card(PersonalTxnOut t) {
     final v = personalView(t);

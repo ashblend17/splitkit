@@ -148,7 +148,9 @@ void main() {
     final be = FakeBackend();
     be.postResponses['/api/v1/analytics/layout/personal'] = (200, fixture('analytics_layout'));
     await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}/analytics');
-    expect(find.text('Goa Trip analytics'), findsOneWidget);
+    // The Analytics tab of the group's page, under its header and the other tabs.
+    expect(find.text('Goa Trip'), findsOneWidget);
+    expect(find.text('Members'), findsOneWidget);
     expect(find.text('12 – 23 Sep · 6 members'), findsOneWidget);
     expect(find.text('Peak ₹19,160 on 12 Sep'), findsOneWidget);
     expect(find.text('₹8,043 per person · your share ₹10,830'), findsOneWidget);

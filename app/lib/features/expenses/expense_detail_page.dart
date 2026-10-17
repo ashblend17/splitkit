@@ -12,6 +12,7 @@ import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import '../groups/settle_plan.dart';
 import '../personal/personal_txn_sheet.dart';
 import '../settlements/settlement_sheet.dart';
 
@@ -255,7 +256,7 @@ class _Body extends ConsumerWidget {
     ),
   );
 
-  /// "You owe Rahul ₹450 · Settle up", "You are owed ₹1,350", "You're square with Rahul".
+  /// "You owe Rahul ₹450 · Settle up", "You are owed ₹1,350", "Your share is settled".
   Widget _yourPart(BuildContext context, WidgetRef ref, UserOut me, SplitOut? mine, bool iPaid) {
     final e = expense;
     final c = e.currency;
@@ -290,9 +291,10 @@ class _Body extends ConsumerWidget {
         figureColor: SkColors.ink2,
         settle: false,
       );
-    } else if (mine.status == SplitOutStatusEnum.settled) {
+    } else if (mine.status == SplitOutStatusEnum.settled && !deleted) {
+      // The group's fewest payments have you paying nobody, so your share is covered.
       part = (
-        label: "You're square with $payerName",
+        label: 'Your share is settled',
         figure: money(mine.shareMinor, c),
         bg: SkColors.settledSoft,
         labelColor: SkColors.ink2,
@@ -344,23 +346,16 @@ class _Body extends ConsumerWidget {
     );
   }
 
+  /// Settles up as the group's own Settle up does: your payment to the payer in the group's
+  /// fewest payments if there is one, else your largest.
   Future<void> _settle(BuildContext context, WidgetRef ref, UserOut me) async {
     final e = expense;
     final group = await ref.read(groupProvider(e.groupId).future);
-    final balances = await ref.read(groupBalancesProvider(e.groupId).future);
-    final withPayer = balances.people.where((p) => p.user.id == e.payer.id).firstOrNull?.netMinor ?? 0;
+    final plan = SettlePlan(await ref.read(groupBalancesProvider(e.groupId).future), me.id);
     if (!context.mounted) return;
-    showGroupPaymentSheet(
-      context,
-      GroupPaymentTarget(
-        group: group,
-        members: balances.people,
-        from: UserBrief(id: me.id, name: me.name, avatarUrl: me.avatarUrl),
-        to: e.payer,
-        // What you owe the payer across the whole group, not just this expense.
-        balanceMinor: withPayer < 0 ? -withPayer : 0,
-      ),
-    );
+    if (plan.mine.isEmpty) return showMessage(context, "You're all square in ${group.name}");
+    final toPayer = plan.mine.where((p) => p.fromUser.id == me.id && p.toUser.id == e.payer.id).firstOrNull;
+    showGroupPaymentSheet(context, plan.target(group, toPayer ?? plan.mine.first));
   }
 
   Widget _splitCard(UserOut me) {

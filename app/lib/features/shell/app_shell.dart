@@ -43,7 +43,9 @@ class AppShell extends ConsumerWidget {
   /// Tab roots: where a phone shows the mode switch above the page.
   static const _roots = {'/home', '/groups', '/personal', '/personal/transactions', '/personal/insights', '/profile', '/admin'};
   static final _inGroup = RegExp(r'^/groups/([^/]+)');
-  static final _groupPage = RegExp(r'^/groups/([^/]+)$');
+
+  /// A group's tabs, where the phone floats "Add split" for that group.
+  static final _groupPage = RegExp(r'^/groups/([^/]+)(/(balances|analytics|members))?$');
 
   void _select(String key) {
     final index = _keys.indexOf(key);

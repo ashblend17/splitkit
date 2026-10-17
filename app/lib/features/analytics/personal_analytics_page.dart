@@ -33,9 +33,9 @@ class _PersonalAnalyticsPageState extends ConsumerState<PersonalAnalyticsPage> {
             await ref.read(personalDashboardProvider(_period).future);
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+            padding: tabPagePadding(context),
             children: [
-              ContentWidth(
+              TabPageWidth(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -46,10 +46,17 @@ class _PersonalAnalyticsPageState extends ConsumerState<PersonalAnalyticsPage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    PeriodTabs(
-                      value: _period,
-                      onChanged: (p) => setState(() => _period = p),
-                      selectedColor: SkColors.personalInk,
+                    // A phone's width at most, so the three tabs don't stretch across a desktop.
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 390),
+                        child: PeriodTabs(
+                          value: _period,
+                          onChanged: (p) => setState(() => _period = p),
+                          selectedColor: SkColors.personalInk,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 14),
                     AsyncBody(

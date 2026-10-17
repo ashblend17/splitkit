@@ -23,7 +23,7 @@ void main() {
 
   test('overall and group balances', () {
     final overall = OverallBalancesOut.fromJson(fixture('balances'))!;
-    expect(overall.totals.single.youOweMinor, 125000);
+    expect((overall.totals.single.youOweMinor, overall.totals.single.youAreOwedMinor), (0, 147000));
     final goa = GroupBalancesOut.fromJson(fixture('group_balances'))!;
     expect(goa.people.map((p) => (p.user.name, p.netMinor)).first, ('Kabir Mehta', -75000));
     expect(goa.suggested, isNotEmpty);

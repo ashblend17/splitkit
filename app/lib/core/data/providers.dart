@@ -47,28 +47,70 @@ Future<T> local<T>(Ref ref, T? Function(Ledger ledger) view) async {
 /// [local] for an answer that can be nothing.
 Future<T?> localOrNull<T>(Ref ref, T? Function(Ledger ledger) view) async => (await local(ref, (l) => (view(l),))).$1;
 
+/// [local] for a view that reads only some parts of the data ([reads]): asked again when one of
+/// them changes, not on every change (a personal entry doesn't redo Home). It waits for the
+/// first data and fails like [local], 404 included.
+Future<T> localOn<T>(Ref ref, Set<LedgerDomain> reads, T? Function(Ledger ledger) view) async {
+  // Before the first data, wait for it without being asked again when it arrives (that would
+  // work the view out twice), but keep it coming. If it fails, the lines below report that.
+  final first = ref.read(ledgerProvider);
+  if (!first.hasValue && !first.hasError) {
+    ref.listen(ledgerProvider, (_, _) {});
+    await ref.read(ledgerProvider.future).then((_) {}, onError: (_) {});
+  }
+  // Then asked again when the data fails, or when a part this view reads changes; not when
+  // only other parts change, or when it's reloaded to the same data.
+  ref.watch(ledgerProvider.select((v) => v.hasError ? v.error : v.value?.revisions.of(reads)));
+  final watched = await ref.read(ledgerProvider.future);
+  // As in [local]: the store's own ledger already shows a write made a moment ago.
+  final ledger = ref.read(localStoreProvider).value?.ledger ?? watched;
+  try {
+    final result = view(ledger);
+    if (result == null) throw ApiException(500, 'Could not read this from the device');
+    return result;
+  } on LocalNotFound catch (e) {
+    throw ApiException(404, jsonEncode({'error': {'code': 'not_found', 'message': '$e'}}));
+  }
+}
+
+/// [localOn] for an answer that can be nothing.
+Future<T?> localOnOrNull<T>(Ref ref, Set<LedgerDomain> reads, T? Function(Ledger ledger) view) async =>
+    (await localOn(ref, reads, (l) => (view(l),))).$1;
+
+/// What the views read ([localOn]). Groups views name people from the groups' members and you
+/// from your profile. Personal views also read groups: an entry linked to a split isn't counted,
+/// and the summary adds your share of group spending. An expense carries its own category.
+const groupViews = {LedgerDomain.groups, LedgerDomain.profile};
+const categoryViews = {LedgerDomain.categories, LedgerDomain.profile};
+const personalViews = {LedgerDomain.personal, LedgerDomain.categories, LedgerDomain.groups, LedgerDomain.profile};
+
+/// Personal views that show splits or payments but no categories.
+const personalLinkViews = {LedgerDomain.personal, LedgerDomain.groups, LedgerDomain.profile};
+
 /// For answers that come from the server rather than the device: ask again once a sync has
 /// sent this device's queued writes, or they'd still show the server's state from before them.
 void _afterEachSync(Ref ref) => ref.watch(syncStatusProvider.select((s) => s.value?.lastSyncedAt));
 
 String? _day(DateTime? d) => d == null ? null : DateFormat('yyyy-MM-dd').format(d);
 
-final groupsProvider = FutureProvider<List<GroupOut>>((ref) => local(ref, (l) => GroupOut.listFromJson(l.groups())));
+final groupsProvider = FutureProvider<List<GroupOut>>(
+  (ref) => localOn(ref, groupViews, (l) => GroupOut.listFromJson(l.groups())),
+);
 
 final archivedGroupsProvider = FutureProvider<List<GroupOut>>(
-  (ref) => local(ref, (l) => GroupOut.listFromJson(l.groups(archived: true))),
+  (ref) => localOn(ref, groupViews, (l) => GroupOut.listFromJson(l.groups(archived: true))),
 );
 
 final groupProvider = FutureProvider.family<GroupOut, String>(
-  (ref, id) => local(ref, (l) => GroupOut.fromJson(l.group(id))),
+  (ref, id) => localOn(ref, groupViews, (l) => GroupOut.fromJson(l.group(id))),
 );
 
 final overallBalancesProvider = FutureProvider<OverallBalancesOut>(
-  (ref) => local(ref, (l) => OverallBalancesOut.fromJson(l.overallBalances())),
+  (ref) => localOn(ref, groupViews, (l) => OverallBalancesOut.fromJson(l.overallBalances())),
 );
 
 final groupBalancesProvider = FutureProvider.family<GroupBalancesOut, String>(
-  (ref, id) => local(ref, (l) => GroupBalancesOut.fromJson(l.groupBalances(id))),
+  (ref, id) => localOn(ref, groupViews, (l) => GroupBalancesOut.fromJson(l.groupBalances(id))),
 );
 
 /// Rows a feed list shows at first; "Show older" adds as many again.
@@ -91,7 +133,11 @@ class FeedLimit extends Notifier<int> {
 typedef FeedQuery = ({String? groupId, bool deleted, int limit});
 
 final feedProvider = FutureProvider.family<List<FeedItem>, FeedQuery>(
-  (ref, q) => local(ref, (l) => FeedItem.listFromJson(l.feed(groupId: q.groupId, deleted: q.deleted, limit: q.limit))),
+  (ref, q) => localOn(
+    ref,
+    groupViews,
+    (l) => FeedItem.listFromJson(l.feed(groupId: q.groupId, deleted: q.deleted, limit: q.limit)),
+  ),
 );
 
 /// The desktop activity table: [FeedQuery] plus the toolbar filters. `search` is trimmed;
@@ -107,8 +153,9 @@ typedef ActivityQuery = ({
 });
 
 final activityProvider = FutureProvider.family<List<FeedItem>, ActivityQuery>(
-  (ref, q) => local(
+  (ref, q) => localOn(
     ref,
+    groupViews,
     (l) => FeedItem.listFromJson(
       l.feed(
         groupId: q.groupId,
@@ -126,7 +173,7 @@ final activityProvider = FutureProvider.family<List<FeedItem>, ActivityQuery>(
 );
 
 final expenseProvider = FutureProvider.family<ExpenseOut, String>(
-  (ref, id) => local(ref, (l) => ExpenseOut.fromJson(l.expense(id))),
+  (ref, id) => localOn(ref, groupViews, (l) => ExpenseOut.fromJson(l.expense(id))),
 );
 
 /// Who changed what, from the audit log. Online only; the detail page shows none offline.
@@ -136,12 +183,16 @@ final expenseHistoryProvider = FutureProvider.family<List<HistoryEntry>, String>
 });
 
 final groupCategoriesProvider = FutureProvider<List<CategoryOut>>(
-  (ref) => local(ref, (l) => CategoryOut.listFromJson(l.categories(scope: 'group'))),
+  (ref) => localOn(ref, categoryViews, (l) => CategoryOut.listFromJson(l.categories(scope: 'group'))),
 );
 
 /// Settling with a friend in one currency: the groups you share in it.
 final settleUpPlanProvider = FutureProvider.family<SettleUpPlanOut, ({String friendId, String currency})>(
-  (ref, key) => local(ref, (l) => SettleUpPlanOut.fromJson(l.settleUpPlan(key.friendId, currency: key.currency))),
+  (ref, key) => localOn(
+    ref,
+    groupViews,
+    (l) => SettleUpPlanOut.fromJson(l.settleUpPlan(key.friendId, currency: key.currency)),
+  ),
 );
 
 // ---- personal finance & analytics (step 6) ----
@@ -150,7 +201,7 @@ final settleUpPlanProvider = FutureProvider.family<SettleUpPlanOut, ({String fri
 DateTime monthOf(DateTime d) => DateTime(d.year, d.month);
 
 final personalSummaryProvider = FutureProvider.family<PersonalSummaryOut, DateTime>(
-  (ref, month) => local(ref, (l) => PersonalSummaryOut.fromJson(l.personalSummary(month))),
+  (ref, month) => localOn(ref, personalViews, (l) => PersonalSummaryOut.fromJson(l.personalSummary(month))),
 );
 
 /// Personal list filters, compared by value (they key the provider).
@@ -189,8 +240,9 @@ class PersonalQuery {
 }
 
 final personalListProvider = FutureProvider.family<PersonalListOut, PersonalQuery>(
-  (ref, q) => local(
+  (ref, q) => localOn(
     ref,
+    personalViews,
     (l) => PersonalListOut.fromJson(
       l.personalList(
         start: _day(q.start),
@@ -208,30 +260,31 @@ final personalListProvider = FutureProvider.family<PersonalListOut, PersonalQuer
 );
 
 final personalTxnProvider = FutureProvider.family<PersonalTxnOut, String>(
-  (ref, id) => local(ref, (l) => PersonalTxnOut.fromJson(l.personalTransaction(id))),
+  (ref, id) => localOn(ref, personalViews, (l) => PersonalTxnOut.fromJson(l.personalTransaction(id))),
 );
 
 /// Splits you paid that could be the same spend as an entry ("Already split").
 final linkCandidatesProvider = FutureProvider.family<List<ExpenseOut>, String>(
-  (ref, txnId) => local(
+  (ref, txnId) => localOn(
     ref,
+    personalLinkViews,
     (l) => ExpenseOut.listFromJson(l.linkCandidates(txnId, windowDays: ref.watch(integrationsProvider).linkWindowDays)),
   ),
 );
 
 /// Your entry linked to an expense, if any: shown on the expense to you only.
 final personalLinkedToProvider = FutureProvider.family<PersonalTxnOut?, String>(
-  (ref, expenseId) => localOrNull(ref, (l) => PersonalTxnOut.fromJson(l.personalLinkedTo(expenseId))),
+  (ref, expenseId) => localOnOrNull(ref, personalViews, (l) => PersonalTxnOut.fromJson(l.personalLinkedTo(expenseId))),
 );
 
 /// Who you paid (or were paid by) the last time an entry from this merchant was a payment.
 final friendPaidBeforeProvider = FutureProvider.family<String?, String>(
-  (ref, merchant) => localOrNull(ref, (l) => l.friendPaidBefore(merchant)),
+  (ref, merchant) => localOnOrNull(ref, personalLinkViews, (l) => l.friendPaidBefore(merchant)),
 );
 
 /// What an entry became in Split, if anything.
 final personalLinkProvider = FutureProvider.family<PersonalLink?, String>(
-  (ref, txnId) => localOrNull(ref, (l) => l.personalLink(txnId)),
+  (ref, txnId) => localOnOrNull(ref, personalLinkViews, (l) => l.personalLink(txnId)),
 );
 
 /// A category for what's being typed into a personal entry ([scope] "personal") or a split
@@ -246,15 +299,15 @@ String? suggestCategory(WidgetRef ref, String text, {required String scope, bool
 
 /// The accounts and cards your entries went through, with their latest balance.
 final personalAccountsProvider = FutureProvider<List<AccountOut>>(
-  (ref) => local(ref, (l) => AccountOut.listFromJson(l.personalAccounts())),
+  (ref) => localOn(ref, {LedgerDomain.personal}, (l) => AccountOut.listFromJson(l.personalAccounts())),
 );
 
 final personalCategoriesProvider = FutureProvider<List<CategoryOut>>(
-  (ref) => local(ref, (l) => CategoryOut.listFromJson(l.categories(scope: 'personal'))),
+  (ref) => localOn(ref, categoryViews, (l) => CategoryOut.listFromJson(l.categories(scope: 'personal'))),
 );
 
 final allCategoriesProvider = FutureProvider<List<CategoryOut>>(
-  (ref) => local(ref, (l) => CategoryOut.listFromJson(l.categories())),
+  (ref) => localOn(ref, categoryViews, (l) => CategoryOut.listFromJson(l.categories())),
 );
 
 /// Personal dashboard for "week", "month" or "year", as of today on this device. Analytics is

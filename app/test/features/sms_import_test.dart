@@ -101,6 +101,26 @@ void main() {
     expect(appContainer(tester).read(outboxProvider).length, ops.length);
   });
 
+  testWidgets("a notification's message finds its entry: by id, by reference, or the one you'd made", (tester) async {
+    await _setUp(tester, FakeSmsSource(available: true, inbox: _inbox()));
+    await _tap(tester, find.text('Allow and read my bank SMS'));
+    final container = appContainer(tester);
+    final importer = container.read(smsImporterProvider);
+    final items = ((await container.read(localStoreProvider.future)).ledger.personalList(limit: 500)['items'] as List)
+        .cast<Map<String, dynamic>>();
+    String idOf(bool Function(Map<String, dynamic>) test) => items.firstWhere(test)['id'] as String;
+    final inbox = _inbox();
+    // Read just now: its own id.
+    final zomato = smsEntryId(me, inbox[0], (parseSms(inbox[0]) as SmsParsed).txn);
+    expect(await runWrite(tester, importer.importOne(inbox[0])), zomato);
+    // The seed's Swiggy order: the same reference.
+    expect(await runWrite(tester, importer.importOne(inbox[2])), idOf((t) => t['reference'] == '426613374520'));
+    // Weekend groceries, entered by hand: the message gave it its account and merchant.
+    expect(await runWrite(tester, importer.importOne(inbox[3])), idOf((t) => t['description'] == 'Weekend groceries'));
+    // A code is no payment.
+    expect(await runWrite(tester, importer.importOne(inbox[4])), isNull);
+  });
+
   testWidgets('what was skipped is listed (never OTPs), with the message, on this phone', (tester) async {
     await _setUp(tester, FakeSmsSource(available: true, inbox: _inbox()));
     await _tap(tester, find.text('Allow and read my bank SMS'));

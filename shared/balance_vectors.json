@@ -1,5 +1,5 @@
 {
- "about": "Language-neutral test vectors for the balance engine (api/app/modules/balances/engine.py) and the settle-up planner (api/app/modules/settlements/planner.py). Expected values come from the Python code; the Dart port (app/lib/core/local/balance_engine.dart) must match. Amounts are minor units. 'shares' are [person, share_minor]; a settlement 'from' paid 'to'. pairwise: positive means they owe 'me'. simplified: [debtor, creditor, amount]. Settle-up balances are [group, net] in paying-down order (positive: the friend owes you); plan entries are [group, friend_pays, amount]. Expected values are written by the Python code: add a case's inputs, then run `uv run python -m tests.test_balance_vectors --regenerate` in api/.",
+ "about": "Language-neutral test vectors for the balance engine (api/app/modules/balances/engine.py) and the settle-up planner (api/app/modules/settlements/planner.py). Expected values come from the Python code; the Dart port (app/lib/core/local/balance_engine.dart) must match. Amounts are minor units. 'shares' are [person, share_minor]; a settlement 'from' paid 'to'. pairwise: positive means they owe 'me'. planned: what the simplified payments have between 'me' and each person, positive meaning they pay 'me'. simplified: [debtor, creditor, amount]. Settle-up balances are [group, net] in paying-down order (positive: the friend owes you); plan entries are [group, friend_pays, amount]. Expected values are written by the Python code: add a case's inputs, then run `uv run python -m tests.test_balance_vectors --regenerate` in api/.",
  "cases": [
   {
    "name": "mockup: Rahul paid dinner, you settle part",
@@ -49,7 +49,10 @@
      "rahul",
      250
     ]
-   ]
+   ],
+   "planned": {
+    "rahul": -250
+   }
   },
   {
    "name": "settlements cancel expenses",
@@ -109,7 +112,10 @@
      "rahul",
      300
     ]
-   ]
+   ],
+   "planned": {
+    "rahul": -300
+   }
   },
   {
    "name": "chain collapses to one payment",
@@ -149,7 +155,10 @@
      "c",
      100
     ]
-   ]
+   ],
+   "planned": {
+    "c": -100
+   }
   },
   {
    "name": "ties broken by name",
@@ -195,7 +204,10 @@
      "d",
      50
     ]
-   ]
+   ],
+   "planned": {
+    "c": -50
+   }
   },
   {
    "name": "payer's own share and zero shares make no flow",
@@ -231,7 +243,8 @@
      "a",
      250
     ]
-   ]
+   ],
+   "planned": {}
   },
   {
    "name": "everyone square",
@@ -261,7 +274,8 @@
     "a": 0,
     "b": 0
    },
-   "simplified": []
+   "simplified": [],
+   "planned": {}
   },
   {
    "name": "overpaid settlement flips direction",
@@ -297,7 +311,10 @@
      "b",
      50
     ]
-   ]
+   ],
+   "planned": {
+    "a": 50
+   }
   },
   {
    "name": "random 0",
@@ -461,7 +478,10 @@
      "b",
      3184
     ]
-   ]
+   ],
+   "planned": {
+    "b": -44799
+   }
   },
   {
    "name": "random 1",
@@ -586,7 +606,10 @@
      "b",
      1208
     ]
-   ]
+   ],
+   "planned": {
+    "f": 68099
+   }
   },
   {
    "name": "random 2",
@@ -680,7 +703,11 @@
      "f",
      1478
     ]
-   ]
+   ],
+   "planned": {
+    "b": 17660,
+    "e": 34369
+   }
   },
   {
    "name": "random 3",
@@ -791,7 +818,12 @@
      "d",
      2210
     ]
-   ]
+   ],
+   "planned": {
+    "a": -17319,
+    "c": -5403,
+    "d": -2210
+   }
   },
   {
    "name": "random 4",
@@ -893,7 +925,11 @@
      "d",
      38
     ]
-   ]
+   ],
+   "planned": {
+    "d": -38,
+    "e": -66578
+   }
   },
   {
    "name": "random 5",
@@ -1080,7 +1116,12 @@
      "f",
      7034
     ]
-   ]
+   ],
+   "planned": {
+    "a": 141283,
+    "d": 110539,
+    "e": 7770
+   }
   },
   {
    "name": "random 6",
@@ -1234,7 +1275,11 @@
      "d",
      5401
     ]
-   ]
+   ],
+   "planned": {
+    "c": 49718,
+    "e": 119853
+   }
   },
   {
    "name": "random 7",
@@ -1313,7 +1358,10 @@
      "c",
      952
     ]
-   ]
+   ],
+   "planned": {
+    "a": 29685
+   }
   },
   {
    "name": "random 8",
@@ -1387,7 +1435,8 @@
      "c",
      1834
     ]
-   ]
+   ],
+   "planned": {}
   },
   {
    "name": "random 9",
@@ -1554,7 +1603,12 @@
      "b",
      23751
     ]
-   ]
+   ],
+   "planned": {
+    "a": 124641,
+    "c": 53584,
+    "f": 29195
+   }
   },
   {
    "name": "random 10",
@@ -1635,7 +1689,11 @@
      "a",
      2649
     ]
-   ]
+   ],
+   "planned": {
+    "c": 2649,
+    "f": 9370
+   }
   },
   {
    "name": "random 11",
@@ -1807,7 +1865,10 @@
      "a",
      5862
     ]
-   ]
+   ],
+   "planned": {
+    "b": 139601
+   }
   }
  ],
  "settle_up": [

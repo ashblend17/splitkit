@@ -61,9 +61,12 @@ file, and confirm with `uv run alembic check`.
   in `fields`.
 - Text fields are trimmed, and blank ones are refused. Amounts go up to ₹9,99,99,999.99
   (`MAX_AMOUNT_MINOR`), dates from 2000 to a year ahead, the same limits as the app's inputs.
-- Balances are pairwise and per group ("You owe Rahul ₹500"). `GET /groups/{id}/balances` also
-  returns `suggested`, the fewest payments that would settle the whole group. Home adds the
-  groups up per friend.
+- Balances are per group. `GET /groups/{id}/balances` returns `suggested`, the fewest payments
+  that would settle the whole group, and `people`, the one-to-one balances ("You owe Rahul
+  ₹500"). Home adds up, per friend, the payments between you in each group's `suggested`
+  (`planned()` in `balances/engine.py`), so it says what the groups' own Settle up says. An
+  expense's shares follow the plan too: a share is `settled` (feed) and its split `status` is
+  `settled` once its person pays nobody in that group's `suggested`.
 - Placeholder members (people with no account, e.g. from a Tricount import) are linked with
   `POST /groups/{id}/members/{user_id}/link {email}` (`groups/linking.py`). If that email has an
   account, the placeholder's membership, expenses, shares and payments in all its groups move to
@@ -72,11 +75,13 @@ file, and confirm with `uv run alembic check`.
   signing up with it turns the placeholder into the new account. Balances never move. The
   placeholder is kept with its memberships ended; the account's membership says `placeholder_name`.
 - Settling with a friend across groups (`POST /friends/{id}/settle-up`) records one settlement
-  per group, so every group's own balance stays right. With no amount every shared group ends
-  at zero; a part payment pays down the oldest group first.
+  per group, each the payment that group's `suggested` has between you, so every group's own
+  balance stays right. With no amount every shared group's payment between you is made; a part
+  payment pays down the oldest group first.
 - `GET /feed` lists expenses and payments newest first, from the viewer's point of view
   (`my_net_minor`); `?deleted=true` lists deleted items for restoring. The desktop filters map to
-  `group_id`, `category` (key), `start`/`end`, `unsettled` (expenses you aren't square on yet) and
+  `group_id`, `category` (key), `start`/`end`, `unsettled` (by the group's fewest payments: you
+  still pay someone there and have a share, or someone still pays you and you paid) and
   `q` (description or a person's name). `category` and `unsettled` leave payments out.
 - Personal finance (`/personal/...`) is private to its owner: transactions with filters and
   totals, plus a monthly summary that includes your share of group spending.
@@ -150,12 +155,25 @@ The app keeps every stream it can see in a local database (`app/lib/core/local/`
 file on Android/iOS, IndexedDB on web; one database per user) and reads every screen from it.
 
 - `SyncEngine` runs on sign-in, every 45 s while the app is open, on resume and after every write
-  (`refreshLedger`). A batch and its cursor are stored in one transaction.
+  (`refreshLedger`). A batch and its cursor are stored in one transaction. The router opens the
+  store and starts the sync the moment the session has a user (`runLocalDataWhileSignedIn`), not
+  when a screen first asks, which in a browser tab that isn't showing waits for a frame.
 - `Ledger` rebuilds each API answer (groups, balances, feed, expense detail, settle-up plan,
   personal list and summary, categories) from the entities, following the server code line by
   line; `balance_engine.dart` ports the balance engine and settle-up planner (both pass
   `shared/balance_vectors.json`, like the split engine). Analytics, layouts and expense history
-  still come from the network.
+  still come from the network. A `Ledger` never changes (the store builds a new one on every
+  change), so what its views share is worked out once, when first asked for: personal entries
+  indexed and sorted (`personal_index.dart`), each group's flows, the feed's order and the
+  category-suggestion lookups. `test/perf/` times the views on a heavy synthetic dataset, and
+  `integration_test/perf_test.dart` times a cold start, scrolling and an SMS read on a phone
+  ([validation.md](validation.md#speed)).
+- The store hands out a new `Ledger` once per write (once for writes made together) and once per
+  sync, however many streams it brings; sending and confirming writes only changes the outbox,
+  which has its own stream. Each change counts against the parts of the data it touches
+  (`core/local/revisions.dart`: personal, groups, categories, profile, layouts), and providers
+  built with `localOn` (`core/data/providers.dart`) are worked out again only when a part they
+  read changes, so a bank SMS import doesn't redo Home.
 - Offline, screens keep showing the device copy with a "You're offline" line, and the app opens
   with the saved sign-in. A 401 signs you out but keeps the data; logging out deletes it.
 - Writes work offline (`core/local/writes.dart`): expenses, payments (including settle-up with a
@@ -201,9 +219,17 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   `/profile/analytics` redirect to Personal's tabs.
 - A group is settled by its fewest payments (`suggested`, read through
   `features/groups/settle_plan.dart`): Settle up, the group summary (You pay, You get, Net), the
-  desktop side panel and the top of the balances page follow it. The one-to-one balances
-  (`people`) are a small table below; tapping a row records a payment for just that pair. Home
-  and settling with a friend across groups stay one-to-one.
+  desktop side panel and the Balances tab follow it, and so do Home's friend totals and
+  settling with a friend across groups. The one-to-one balances (`people`) are a small table at
+  the bottom of the Balances tab; tapping a row records a payment for just that pair.
+- A group's tabs (Expenses, Balances, Analytics, Members) each have an address
+  (`/groups/<id>`, `/groups/<id>/balances`, `/analytics`, `/members`) but are one page
+  (`GroupDetailPage`, one page key per group in the router), so the header, tabs and width stay
+  put and only the content under the tabs changes.
+- Tab pages share one frame (`tabPagePadding`, `TabPageWidth` and `CardColumns` in
+  `features/common/common.dart`): the 390px designs in a centred 640px column under 1280px, and
+  from 1280px HomeDesktop's 32px gutters and the full width, with cards in columns. Pages opened
+  from a tab (forms, Deleted items, Categories, SMS, import) stay a centred column.
 - Every link between the two modes is a flag in `app/lib/core/integrations.dart`
   (`integrationsProvider`, overridden in tests), so a link can be tuned or cut in one place.
   The server never reads them. `Features` there tunes each mode on its own.
@@ -293,6 +319,10 @@ messages.
   - `SmsImporter` parses each message (`core/sms/`), gives it its fixed id, and adds it with a
     category (`core/categorise`). A payment already here is skipped: the same id, a reference
     already seen, or an entry you made by hand, which gets the account and merchant instead.
+    These decisions are a pure function (`core/sms/sms_scan.dart`) over an input taken from the
+    device's data once; more than a few dozen messages are read on another isolate
+    (`Isolate.run`), so a first read of months of SMS doesn't freeze the screen. Everything a
+    read finds is queued in one `enqueueAll` (`LocalWrites.importSms`).
   - Backfilled entries arrive looked at, except those from the last
     `Features.justInBackfillDays`.
   - Entries go up through `POST /personal/transactions/batch` in chunks.

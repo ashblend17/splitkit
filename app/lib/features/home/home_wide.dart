@@ -209,37 +209,41 @@ class HomeTabletBody extends ConsumerWidget {
         );
       },
     );
-    final activityColumn = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Semantics(
-                header: true,
-                child: Text('Recent activity', style: SkText.display(20, 700)),
-              ),
-            ),
-            SkPillButton(
-              groupFilterLabel(groupId, groups.value),
-              leading: 'filter',
-              onPressed: () => pickActivityGroup(context, ref, groups.value ?? const []),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        AsyncBody(
-          value: feed,
-          onRetry: () => ref.invalidate(feedProvider),
-          builder: (items) => items.isEmpty
-              ? homeEmpty(context, groups.value ?? const [])
-              : Column(
-                  children: [
-                    FeedList(items: items, onHome: true),
-                    ShowOlder(list: 'home', shown: items.length),
-                  ],
+    final items = AsyncBody.dataOf(feed);
+    // The activity as slivers, so only the cards on screen are built.
+    final activity = SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text('Recent activity', style: SkText.display(20, 700)),
+                  ),
                 ),
+                SkPillButton(
+                  groupFilterLabel(groupId, groups.value),
+                  leading: 'filter',
+                  onPressed: () => pickActivityGroup(context, ref, groups.value ?? const []),
+                ),
+              ],
+            ),
+          ),
         ),
+        if (items != null && items.isNotEmpty) ...[
+          SliverFeedList(items: items, onHome: true),
+          SliverToBoxAdapter(child: ShowOlder(list: 'home', shown: items.length)),
+        ] else
+          SliverToBoxAdapter(
+            child: AsyncBody(
+              value: feed,
+              onRetry: () => ref.invalidate(feedProvider),
+              builder: (_) => homeEmpty(context, groups.value ?? const []),
+            ),
+          ),
       ],
     );
     return SafeArea(
@@ -248,29 +252,37 @@ class HomeTabletBody extends ConsumerWidget {
       child: RefreshIndicator(
         color: SkColors.brand,
         onRefresh: onRefresh,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
-          children: [
-            HomeGreeting(name: me.name),
-            const SizedBox(height: 20),
+        child: CustomScrollView(
+          slivers: paddedSlivers(const EdgeInsets.fromLTRB(24, 28, 24, 40), [
+            SliverToBoxAdapter(
+              child: Padding(padding: const EdgeInsets.only(bottom: 20), child: HomeGreeting(name: me.name)),
+            ),
             // HomeTablet is an iPad (834px). In a narrower window the activity column would
             // be too thin to read, so the columns stack.
-            LayoutBuilder(
-              builder: (context, c) => c.maxWidth >= 280 + 20 + 340
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 280, child: balancesColumn),
-                        const SizedBox(width: 20),
-                        Expanded(child: activityColumn),
+            SliverLayoutBuilder(
+              builder: (context, c) => c.crossAxisExtent >= 280 + 20 + 340
+                  ? SliverCrossAxisGroup(
+                      slivers: [
+                        SliverConstrainedCrossAxis(
+                          maxExtent: 280 + 20,
+                          sliver: SliverPadding(
+                            padding: const EdgeInsets.only(right: 20),
+                            sliver: SliverToBoxAdapter(child: balancesColumn),
+                          ),
+                        ),
+                        activity,
                       ],
                     )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [balancesColumn, const SizedBox(height: 24), activityColumn],
+                  : SliverMainAxisGroup(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(padding: const EdgeInsets.only(bottom: 24), child: balancesColumn),
+                        ),
+                        activity,
+                      ],
                     ),
             ),
-          ],
+          ]),
         ),
       ),
     );

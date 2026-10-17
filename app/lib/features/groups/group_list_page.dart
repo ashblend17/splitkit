@@ -50,6 +50,38 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
     final archived = ref.watch(archivedGroupsProvider).value ?? const <GroupOut>[];
     final q = _search.text.trim().toLowerCase();
     bool matches(GroupOut g) => g.name.toLowerCase().contains(q);
+    final wide = isWideLayout(context);
+    final search = Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: SkColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: SkColors.line),
+      ),
+      child: Row(
+        children: [
+          SkIcon('search', size: 18, color: SkColors.ink2),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _search,
+              style: SkText.body(15, 400),
+              decoration: InputDecoration(
+                isCollapsed: true,
+                contentPadding: EdgeInsets.zero,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                hintText: 'Search groups',
+                hintStyle: SkText.body(15, 400, color: SkColors.ink2),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -60,9 +92,9 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
             await ref.read(groupsProvider.future);
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+            padding: tabPagePadding(context),
             children: [
-              ContentWidth(
+              TabPageWidth(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -71,6 +103,8 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
                         Expanded(
                           child: Semantics(header: true, child: Text('Groups', style: SkText.title)),
                         ),
+                        // Desktop: search beside the title, as on Home.
+                        if (wide) ...[SizedBox(width: 320, child: search), const SizedBox(width: 12)],
                         SkButton(
                           'New group',
                           icon: 'plus',
@@ -80,38 +114,7 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: SkColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: SkColors.line),
-                      ),
-                      child: Row(
-                        children: [
-                          SkIcon('search', size: 18, color: SkColors.ink2),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _search,
-                              style: SkText.body(15, 400),
-                              decoration: InputDecoration(
-                                isCollapsed: true,
-                                contentPadding: EdgeInsets.zero,
-                                filled: false,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                hintText: 'Search groups',
-                                hintStyle: SkText.body(15, 400, color: SkColors.ink2),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    if (!wide) ...[const SizedBox(height: 16), search],
                     const SizedBox(height: 16),
                     AsyncBody(
                       value: groups,
@@ -138,7 +141,8 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
                                   style: SkText.body(15, 500, color: SkColors.ink2),
                                 ),
                               ),
-                            for (final g in shown) ...[_card(g), const SizedBox(height: 10)],
+                            if (shown.isNotEmpty)
+                              CardColumns(minWidth: 340, gap: 10, children: [for (final g in shown) _card(g)]),
                             if (shownArchived.isNotEmpty) ..._archived(shownArchived, searching: q.isNotEmpty),
                           ],
                         );
@@ -158,7 +162,7 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
   List<Widget> _archived(List<GroupOut> groups, {required bool searching}) {
     final open = _showArchived || searching;
     return [
-      const SizedBox(height: 6),
+      const SizedBox(height: 16),
       Semantics(
         button: true,
         expanded: open,
@@ -177,7 +181,7 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
         ),
       ),
       if (open)
-        for (final g in groups) ...[Opacity(opacity: 0.7, child: _card(g)), const SizedBox(height: 10)],
+        CardColumns(minWidth: 340, gap: 10, children: [for (final g in groups) Opacity(opacity: 0.7, child: _card(g))]),
     ];
   }
 

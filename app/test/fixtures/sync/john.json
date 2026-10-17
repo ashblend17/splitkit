@@ -3883,40 +3883,20 @@
     {
      "currency": "INR",
      "net_minor": 147000,
-     "you_owe_minor": 125000,
-     "you_are_owed_minor": 272000
+     "you_owe_minor": 0,
+     "you_are_owed_minor": 147000
     }
    ],
    "friends": [
     {
      "user": {
-      "id": "470aad14-41da-5c6e-863d-947a249fb114",
-      "name": "Kabir Mehta",
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
       "avatar_url": null,
       "is_placeholder": false
      },
      "currency": "INR",
-     "net_minor": -75000
-    },
-    {
-     "user": {
-      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
-      "name": "Rahul Sharma",
-      "avatar_url": null,
-      "is_placeholder": false
-     },
-     "currency": "INR",
-     "net_minor": -50000
-    },
-    {
-     "user": {
-      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
-      "name": "Priya Nair",
-      "avatar_url": null,
-      "is_placeholder": false
-     },
-     "currency": "INR",
-     "net_minor": 155000
+     "net_minor": 147000
     },
     {
      "user": {
@@ -3926,12 +3906,32 @@
       "is_placeholder": false
      },
      "currency": "INR",
-     "net_minor": 117000
+     "net_minor": 0
     },
     {
      "user": {
-      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
-      "name": "Vivek Iyer",
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "currency": "INR",
+     "net_minor": 0
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "currency": "INR",
+     "net_minor": 0
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
       "avatar_url": null,
       "is_placeholder": false
      },
@@ -3984,7 +3984,7 @@
     "participant_count": 4,
     "my_share_minor": 45000,
     "my_net_minor": -45000,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
    },
@@ -4444,7 +4444,7 @@
     "participant_count": 6,
     "my_share_minor": 20000,
     "my_net_minor": -20000,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
    },
@@ -4477,7 +4477,7 @@
     "participant_count": 4,
     "my_share_minor": 87500,
     "my_net_minor": -87500,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
    },
@@ -4576,7 +4576,7 @@
     "participant_count": 5,
     "my_share_minor": 224000,
     "my_net_minor": -224000,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
    },
@@ -5421,7 +5421,7 @@
     "participant_count": 4,
     "my_share_minor": 45000,
     "my_net_minor": -45000,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
    },
@@ -5782,7 +5782,7 @@
     "participant_count": 6,
     "my_share_minor": 20000,
     "my_net_minor": -20000,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
    },
@@ -5815,7 +5815,7 @@
     "participant_count": 4,
     "my_share_minor": 87500,
     "my_net_minor": -87500,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
    },
@@ -5914,7 +5914,7 @@
     "participant_count": 5,
     "my_share_minor": 224000,
     "my_net_minor": -224000,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
    }
@@ -5952,7 +5952,7 @@
      },
      "share_minor": 45000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     },
     {
      "user": {
@@ -6142,7 +6142,7 @@
      },
      "share_minor": 47200,
      "input_value": "47200",
-     "status": "settled"
+     "status": "owes"
     }
    ],
    "my_share_minor": 302500,
@@ -6215,7 +6215,7 @@
      },
      "share_minor": 40000,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     },
     {
      "user": {
@@ -6354,7 +6354,7 @@
      },
      "share_minor": 36000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     }
    ],
    "my_share_minor": 36000,
@@ -6449,7 +6449,7 @@
      },
      "share_minor": 20300,
      "input_value": "20300",
-     "status": "settled"
+     "status": "owes"
     },
     {
      "user": {
@@ -6533,7 +6533,7 @@
      },
      "share_minor": 27500,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     },
     {
      "user": {
@@ -6544,7 +6544,7 @@
      },
      "share_minor": 27500,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     },
     {
      "user": {
@@ -6566,7 +6566,7 @@
      },
      "share_minor": 27500,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     }
    ],
    "my_share_minor": 27500,
@@ -6672,7 +6672,7 @@
      },
      "share_minor": 1000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     }
    ],
    "my_share_minor": 1000,
@@ -6745,7 +6745,7 @@
      },
      "share_minor": 49000,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     },
     {
      "user": {
@@ -6840,7 +6840,7 @@
      },
      "share_minor": 40000,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     },
     {
      "user": {
@@ -6851,7 +6851,7 @@
      },
      "share_minor": 40000,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     },
     {
      "user": {
@@ -6873,7 +6873,7 @@
      },
      "share_minor": 40000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     }
    ],
    "my_share_minor": 40000,
@@ -6924,7 +6924,7 @@
      },
      "share_minor": 20000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     },
     {
      "user": {
@@ -7030,7 +7030,7 @@
      },
      "share_minor": 87500,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     },
     {
      "user": {
@@ -7041,7 +7041,7 @@
      },
      "share_minor": 87500,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     },
     {
      "user": {
@@ -7136,7 +7136,7 @@
      },
      "share_minor": 25600,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     },
     {
      "user": {
@@ -7304,7 +7304,7 @@
      },
      "share_minor": 224000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     },
     {
      "user": {
@@ -7913,7 +7913,7 @@
      },
      "share_minor": 78000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     },
     {
      "user": {
@@ -7924,7 +7924,7 @@
      },
      "share_minor": 78000,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     }
    ],
    "my_share_minor": 78000,
@@ -8121,7 +8121,7 @@
      },
      "share_minor": 80000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     },
     {
      "user": {
@@ -8132,7 +8132,7 @@
      },
      "share_minor": 80000,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     }
    ],
    "my_share_minor": 80000,
@@ -8340,7 +8340,7 @@
      },
      "share_minor": 34000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     }
    ],
    "my_share_minor": 34000,
@@ -8621,7 +8621,7 @@
      },
      "share_minor": 500000,
      "input_value": null,
-     "status": "owes"
+     "status": "settled"
     },
     {
      "user": {
@@ -8632,7 +8632,7 @@
      },
      "share_minor": 500000,
      "input_value": null,
-     "status": "settled"
+     "status": "owes"
     }
    ],
    "my_share_minor": 500000,
@@ -8650,54 +8650,25 @@
    "deleted_at": null,
    "version": 1
   },
-  "settle_up:470aad14-41da-5c6e-863d-947a249fb114:INR": {
+  "settle_up:be046739-5c23-5236-8ec1-7de3cb402d82:INR": {
    "friend": {
-    "id": "470aad14-41da-5c6e-863d-947a249fb114",
-    "name": "Kabir Mehta",
+    "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+    "name": "Vivek Iyer",
     "avatar_url": null,
     "is_placeholder": false
    },
    "currency": "INR",
-   "net_minor": -75000,
+   "net_minor": 147000,
    "groups": [
+    {
+     "group_id": "6b800aee-e138-5ea0-aacc-becd1e307d7a",
+     "name": "Flatmates",
+     "net_minor": 32000
+    },
     {
      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
      "name": "Goa Trip",
-     "net_minor": -75000
-    }
-   ]
-  },
-  "settle_up:0029a2cc-64dc-5e7b-9779-4245e0d9e4dd:INR": {
-   "friend": {
-    "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
-    "name": "Rahul Sharma",
-    "avatar_url": null,
-    "is_placeholder": false
-   },
-   "currency": "INR",
-   "net_minor": -50000,
-   "groups": [
-    {
-     "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
-     "name": "Goa Trip",
-     "net_minor": -50000
-    }
-   ]
-  },
-  "settle_up:d357f895-5db4-581e-a545-3b97bf5556b3:INR": {
-   "friend": {
-    "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
-    "name": "Priya Nair",
-    "avatar_url": null,
-    "is_placeholder": false
-   },
-   "currency": "INR",
-   "net_minor": 155000,
-   "groups": [
-    {
-     "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
-     "name": "Goa Trip",
-     "net_minor": 155000
+     "net_minor": 115000
     }
    ]
   },
@@ -8709,24 +8680,35 @@
     "is_placeholder": false
    },
    "currency": "INR",
-   "net_minor": 117000,
-   "groups": [
-    {
-     "group_id": "6b800aee-e138-5ea0-aacc-becd1e307d7a",
-     "name": "Flatmates",
-     "net_minor": 32000
-    },
-    {
-     "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
-     "name": "Goa Trip",
-     "net_minor": 85000
-    }
-   ]
+   "net_minor": 0,
+   "groups": []
   },
-  "settle_up:be046739-5c23-5236-8ec1-7de3cb402d82:INR": {
+  "settle_up:470aad14-41da-5c6e-863d-947a249fb114:INR": {
    "friend": {
-    "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
-    "name": "Vivek Iyer",
+    "id": "470aad14-41da-5c6e-863d-947a249fb114",
+    "name": "Kabir Mehta",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "currency": "INR",
+   "net_minor": 0,
+   "groups": []
+  },
+  "settle_up:d357f895-5db4-581e-a545-3b97bf5556b3:INR": {
+   "friend": {
+    "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+    "name": "Priya Nair",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "currency": "INR",
+   "net_minor": 0,
+   "groups": []
+  },
+  "settle_up:0029a2cc-64dc-5e7b-9779-4245e0d9e4dd:INR": {
+   "friend": {
+    "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+    "name": "Rahul Sharma",
     "avatar_url": null,
     "is_placeholder": false
    },

@@ -30,11 +30,12 @@ Future<String> _entry(
   required DateTime day,
   String? merchant,
   bool reviewed = true,
+  PersonalTxnInTypeEnum type = PersonalTxnInTypeEnum.expense,
 }) => runWrite(
   tester,
   appContainer(tester).read(writesProvider).createPersonal(
     PersonalTxnIn(
-      type: PersonalTxnInTypeEnum.expense,
+      type: type,
       amountMinor: amount,
       description: merchant ?? 'Card spend',
       merchant: merchant,
@@ -123,24 +124,31 @@ void main() {
     expect([for (final e in store.ledger.linkCandidates(close)) e['id']], [pizza]);
   });
 
-  testWidgets('Paid a friend: a UPI payment becomes a settle-up, linked to the entry', (tester) async {
+  testWidgets('From a friend: a UPI payment in becomes a settle-up, linked to the entry', (tester) async {
     final be = await pumpApp(tester, location: '/personal');
     be.offline = true;
-    final id = await _entry(tester, amount: 75000, day: DateTime.utc(2026, 9, 24), merchant: 'KABIR MEHTA', reviewed: false);
-    final card = find.ancestor(of: find.text('KABIR MEHTA'), matching: find.byType(SkCard)).first;
-    await _tap(tester, find.descendant(of: card, matching: find.text('Paid a friend')));
-    // Only friends you owe, the one the bank named first.
+    final id = await _entry(
+      tester,
+      amount: 147000,
+      day: DateTime.utc(2026, 9, 24),
+      merchant: 'VIVEK IYER',
+      reviewed: false,
+      type: PersonalTxnInTypeEnum.income,
+    );
+    final card = find.ancestor(of: find.text('VIVEK IYER'), matching: find.byType(SkCard)).first;
+    await _tap(tester, find.descendant(of: card, matching: find.text('From a friend')));
+    // Only friends who owe you (by the groups' fewest payments), the one the bank named first.
     final options = tester.widgetList<SheetPersonOption>(find.byType(SheetPersonOption)).toList();
-    expect([for (final o in options) o.label], ['Kabir Mehta · you owe ₹750', 'Rahul Sharma · you owe ₹500']);
+    expect([for (final o in options) o.label], ['Vivek Iyer · owes you ₹1,470']);
     await _tap(tester, find.byType(SheetPersonOption).first);
-    expect(find.text('Settle up with Kabir'), findsOneWidget);
-    await _tap(tester, find.text('Record ₹750 payment'));
+    expect(find.text('Settle up with Vivek'), findsOneWidget);
+    await _tap(tester, find.text('Record ₹1,470 payment'));
     final ops = _queued(tester);
     final payment = ops.firstWhere((o) => o.$2.endsWith('/settlements'));
     final link = ops.last;
     expect((link.$1, link.$2, link.$3!['settlement_id']), ('PUT', '/api/v1/personal/transactions/$id', payment.$3!['id']));
     // Looked at, so it has left "Just in".
-    expect(find.descendant(of: find.byType(JustIn), matching: find.text('KABIR MEHTA')), findsNothing);
+    expect(find.descendant(of: find.byType(JustIn), matching: find.text('VIVEK IYER')), findsNothing);
   });
 
   testWidgets('a linked entry says what it became, and Unlink undoes it', (tester) async {

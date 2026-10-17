@@ -30,7 +30,7 @@ class FakeBackend {
     final expense = fixture('expense') as Map<String, dynamic>;
     dinnerId = expense['id'] as String;
     final plan = fixture('settle_up_plan') as Map<String, dynamic>;
-    amanId = (plan['friend'] as Map)['id'] as String;
+    friendId = (plan['friend'] as Map)['id'] as String;
     get = {
       '/api/v1/me': (fixture('login') as Map)['user'],
       '/api/v1/groups': groups,
@@ -42,7 +42,7 @@ class FakeBackend {
       '/api/v1/expenses/$dinnerId/history': <dynamic>[],
       '/api/v1/categories': fixture('categories'),
       '/api/v1/splits/methods': fixture('split_methods'),
-      '/api/v1/friends/$amanId/settle-up': plan,
+      '/api/v1/friends/$friendId/settle-up': plan,
       '/api/v1/categories?scope=personal': fixture('personal_categories'),
       '/api/v1/categories?': [...fixture('categories') as List, ...fixture('personal_categories') as List],
       '/api/v1/personal/summary': fixture('personal_summary'),
@@ -55,7 +55,8 @@ class FakeBackend {
 
   late final Map<String, dynamic> goa;
   late final String dinnerId;
-  late final String amanId;
+  /// Vivek, whose settle-up plan is the fixture.
+  late final String friendId;
   late final Map<String, dynamic> get;
   final writes = <(String method, String path, Map<String, dynamic> body)>[];
   final gets = <Uri>[];
@@ -183,7 +184,7 @@ class MemoryModeStore implements AppModeStore {
 
 /// Pumps the whole app (router, shell, theme) at a phone size unless [size] says otherwise,
 /// signed in unless [token] is null. [mode] is the mode saved from last time; [modes] sees
-/// what the app saves.
+/// what the app saves. Without [settle], it stops after the first frame.
 Future<FakeBackend> pumpApp(
   WidgetTester tester, {
   String? location,
@@ -200,6 +201,7 @@ Future<FakeBackend> pumpApp(
   ThemeMode theme = ThemeMode.system,
   MemoryThemeStore? themes,
   SmsSource? sms,
+  bool settle = true,
 }) async {
   final be = backend ?? FakeBackend();
   tester.view.physicalSize = size;
@@ -228,6 +230,7 @@ Future<FakeBackend> pumpApp(
     container: container,
     child: SkThemedApp(routerConfig: router, builder: appChrome),
   ));
+  if (!settle) return be;
   await tester.pumpAndSettle();
   if (location != null) {
     router.go(location);

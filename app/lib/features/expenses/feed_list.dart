@@ -37,21 +37,63 @@ class ShowOlder extends ConsumerWidget {
   }
 }
 
-/// Transaction cards for feed items. [byDay] groups them under "TODAY" / "YESTERDAY" headers
-/// (Home); otherwise one flat list with the day in each card (group detail).
-class FeedList extends ConsumerWidget {
-  const FeedList({super.key, required this.items, required this.onHome, this.byDay = true});
+/// Transaction cards for feed items, as a sliver: only the rows on screen are built. [byDay]
+/// groups them under "TODAY" / "YESTERDAY" headers (Home); otherwise one flat list with the day
+/// in each card (group detail). [frame] wraps each row (the page's column width).
+class SliverFeedList extends ConsumerWidget {
+  const SliverFeedList({super.key, required this.items, required this.onHome, this.byDay = true, this.frame});
 
   final List<FeedItem> items;
   final bool onHome;
   final bool byDay;
+  final Widget Function(Widget row)? frame;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final me = ref.watch(meProvider);
-    Widget card(FeedItem i) {
-      final v = feedView(i, me.id, onHome: onHome);
-      return TransactionCard(
+    final lines = _feedLines(items, byDay);
+    final row = _feedRow(context, ref, onHome: onHome, byDay: byDay);
+    return SliverList.builder(
+      itemCount: lines.length,
+      itemBuilder: (context, i) => frame?.call(row(lines[i])) ?? row(lines[i]),
+    );
+  }
+}
+
+/// A feed list's rows in order: a day's header (Home), a card, or the space after a day.
+typedef _FeedLine = ({String? day, FeedItem? item});
+
+List<_FeedLine> _feedLines(List<FeedItem> items, bool byDay) {
+  if (!byDay) return [for (final i in items) (day: null, item: i)];
+  final days = <String, List<FeedItem>>{};
+  for (final i in items) {
+    days.putIfAbsent(dayLabel(i.date), () => []).add(i);
+  }
+  return [
+    for (final MapEntry(key: day, value: dayItems) in days.entries) ...[
+      (day: day, item: null),
+      for (final i in dayItems) (day: null, item: i),
+      (day: null, item: null),
+    ],
+  ];
+}
+
+Widget Function(_FeedLine line) _feedRow(
+  BuildContext context,
+  WidgetRef ref, {
+  required bool onHome,
+  required bool byDay,
+}) {
+  final me = ref.watch(meProvider);
+  return (line) {
+    if (line.day case final day?) {
+      return Padding(padding: const EdgeInsets.only(bottom: 8), child: Overline(day));
+    }
+    final i = line.item;
+    if (i == null) return const SizedBox(height: 4);
+    final v = feedView(i, me.id, onHome: onHome);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: TransactionCard(
         key: ValueKey(i.id),
         title: v.title,
         subtitle: v.subtitle,
@@ -65,32 +107,9 @@ class FeedList extends ConsumerWidget {
         onTap: () => i.kind == FeedItemKindEnum.expense
             ? context.push('/expenses/${i.id}')
             : showSettlementDetails(context, ref, i),
-      );
-    }
-
-    if (!byDay) {
-      return Column(
-        children: [
-          for (final i in items) ...[card(i), const SizedBox(height: 8)],
-        ],
-      );
-    }
-    final days = <String, List<FeedItem>>{};
-    for (final i in items) {
-      days.putIfAbsent(dayLabel(i.date), () => []).add(i);
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final MapEntry(key: day, value: dayItems) in days.entries) ...[
-          Overline(day),
-          const SizedBox(height: 8),
-          for (final i in dayItems) ...[card(i), const SizedBox(height: 8)],
-          const SizedBox(height: 4),
-        ],
-      ],
+      ),
     );
-  }
+  };
 }
 
 /// Payment details with a way to delete it (payments are soft-deleted and restorable).
