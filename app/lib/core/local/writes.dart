@@ -14,6 +14,7 @@ import '../finance/finance.dart'
         FinGoal,
         GoalMode,
         GoalStatus,
+        HoldingType,
         MoneyFlow,
         impliedFlow,
         pairedLegId,
@@ -32,6 +33,7 @@ import 'providers.dart';
 
 part 'writes_finance.dart';
 part 'writes_goals.dart';
+part 'writes_holdings.dart';
 
 /// Writes that work offline: each one is queued in the outbox with the full state it leaves
 /// behind, shows on every screen straight away, and is sent by the next sync (which starts

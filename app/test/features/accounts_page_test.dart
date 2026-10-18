@@ -57,8 +57,8 @@ void main() {
     testWidgets('on $name: net worth, accounts by group, and what the bank said', (tester) async {
       await pumpApp(tester, location: '/personal/accounts', size: size);
       expect(find.text('Net worth'), findsOneWidget);
-      expect(find.text('₹2,19,765'), findsOneWidget);
-      expect(find.text('₹2,18,635'), findsOneWidget); // assets
+      expect(find.text('₹3,05,515'), findsOneWidget); // Zerodha at its holdings' ₹85,750
+      expect(find.text('₹3,04,385'), findsOneWidget); // assets
       expect(find.text('Owed on cards and loans'), findsOneWidget);
       expect(find.text('With friends (Split)'), findsOneWidget);
       expect(find.text('+₹1,470'), findsOneWidget);
@@ -102,7 +102,7 @@ void main() {
     expect(find.text('Recorded a ₹56,199 correction to HDFC ··4821'), findsOneWidget);
     expect(find.textContaining('Bank said'), findsNothing);
     expect(find.text('₹39,936'), findsOneWidget); // what the bank said, now the balance
-    expect(find.text('₹1,63,566'), findsOneWidget); // net worth, ₹56,199 less
+    expect(find.text('₹2,49,316'), findsOneWidget); // net worth, ₹56,199 less
 
     await _tap(tester, find.text('Undo'));
     expect(_queued(tester).last.$1, 'DELETE');
@@ -233,7 +233,7 @@ void main() {
     );
     expect(account['status'], 'closed');
     expect(find.text('Closed Cash'), findsOneWidget);
-    expect(find.text('₹2,17,265'), findsOneWidget); // net worth, ₹2,500 less
+    expect(find.text('₹3,03,015'), findsOneWidget); // net worth, ₹2,500 less
 
     // Folded away under Closed until asked for.
     expect(find.byKey(const ValueKey('account:$cash')), findsNothing);

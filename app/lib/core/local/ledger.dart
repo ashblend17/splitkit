@@ -17,7 +17,7 @@ import 'package:intl/intl.dart';
 import '../categorise/category_rules.dart';
 import '../clock.dart';
 import '../finance/finance.dart'
-    show DayRange, DayRangeContains, FinAccount, FinContribution, FinGoal, FinanceEngine, monthRange;
+    show DayRange, DayRangeContains, FinAccount, FinContribution, FinGoal, FinHolding, FinanceEngine, monthRange;
 import 'balance_engine.dart';
 import 'personal_index.dart';
 import 'revisions.dart';
@@ -121,6 +121,8 @@ class Ledger {
           _layouts[e.entityId] = d;
         case 'category_rule':
           _rules.add(d);
+        case 'personal_holding':
+          _holdings[e.entityId] = d;
       }
     }
     profile = me;
@@ -157,6 +159,7 @@ class Ledger {
   final _categories = <String, Json>{};
   final _layouts = <String, Json>{};
   final _rules = <Json>[];
+  final _holdings = <String, Json>{};
 
   String get me => profile?['id'] as String? ?? (throw const LocalNotFound('Profile'));
 
@@ -789,6 +792,10 @@ class Ledger {
           if (FinGoal.read(g) case final goal?) goal,
       ],
       contributions: [for (final c in _contributions.values) FinContribution.read(c)],
+      holdings: [
+        for (final h in _holdings.values)
+          if (FinHolding.read(h) case final holding?) holding,
+      ],
     ),
   );
 
@@ -1282,6 +1289,8 @@ class Ledger {
     }
     return (entry: entry, goal: goal);
   }();
+
+  Json? rawHolding(String id) => _holdings[id];
   List<Json> rawMembers(String groupId) => _members[groupId] ?? const [];
   Json brief(String userId) => _brief(userId);
 }

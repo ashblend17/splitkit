@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'core/config.dart';
+import 'core/finance/today.dart';
 import 'core/router/router.dart';
 import 'core/session/session.dart';
 import 'core/theme/theme_mode.dart';
@@ -42,6 +43,8 @@ class SplitkitApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return SkThemedApp(title: 'Splitkit', routerConfig: ref.watch(routerProvider), builder: appChrome);
+    return TodayTicker(
+      child: SkThemedApp(title: 'Splitkit', routerConfig: ref.watch(routerProvider), builder: appChrome),
+    );
   }
 }

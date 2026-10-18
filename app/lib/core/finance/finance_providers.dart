@@ -11,6 +11,7 @@ import '../integrations.dart';
 import '../local/ledger.dart';
 import '../local/providers.dart';
 import 'finance.dart';
+import 'today.dart';
 
 /// The finance engine over your accounts and entries: a new one only when they or your profile
 /// change (Ledger.finance is handed on otherwise).
@@ -51,15 +52,25 @@ final cashFlowProvider = FutureProvider.family<CashFlow, DateTime>((ref, month) 
 });
 
 /// Your net worth in your currency, with what friends owe you in Split, net, counted while
-/// splitInNetWorth is on (and given either way).
+/// splitInNetWorth is on (and given either way). An investment account with holdings counts at
+/// its value by them while the holdings feature is on.
 final netWorthProvider = FutureProvider<NetWorth>((ref) {
   final countSplit = ref.watch(integrationsProvider).splitInNetWorth;
+  final features = ref.watch(featuresProvider);
+  final today = ref.watch(todayProvider);
   return localOn(
     ref,
     personalLinkViews,
-    (l) => l.finance.netWorth(splitNetMinor: l.splitNet(l.finance.currency), countSplit: countSplit),
+    (l) => l.finance.netWorth(
+      splitNetMinor: l.splitNet(l.finance.currency),
+      countSplit: countSplit,
+      today: today,
+      holdings: features.holdings,
+      staleDays: features.staleValuationDays,
+    ),
   );
 });
+
 
 /// Spends and incomes read from bank SMS that look like one transfer between two of your
 /// accounts, newest first, without the pairs you said aren't one ([notTransferProvider]). None

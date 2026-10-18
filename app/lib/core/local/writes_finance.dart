@@ -13,7 +13,16 @@ part of 'writes.dart';
 /// what it means to. The version an update or a delete sends is filled in from what the device
 /// has when it's queued.
 final class BatchItem {
-  const BatchItem._(this.kind, this.op, this.id, {this.account, this.transaction, this.goal, this.goalContribution});
+  const BatchItem._(
+    this.kind,
+    this.op,
+    this.id, {
+    this.account,
+    this.transaction,
+    this.goal,
+    this.goalContribution,
+    this.holding,
+  });
 
   const BatchItem.createAccount(String id, PersonalAccountIn account)
     : this._(PersonalBatchItemKindEnum.account, PersonalBatchItemOpEnum.create, id, account: account);
@@ -59,6 +68,17 @@ final class BatchItem {
   const BatchItem.deleteContribution(String id)
     : this._(PersonalBatchItemKindEnum.goalContribution, PersonalBatchItemOpEnum.delete, id);
 
+  /// A holding, in an open investment account of yours (writes_holdings.dart).
+  const BatchItem.createHolding(String id, PersonalHoldingIn holding)
+    : this._(PersonalBatchItemKindEnum.holding, PersonalBatchItemOpEnum.create, id, holding: holding);
+
+  const BatchItem.updateHolding(String id, PersonalHoldingIn holding)
+    : this._(PersonalBatchItemKindEnum.holding, PersonalBatchItemOpEnum.update, id, holding: holding);
+
+  /// Refused while a live entry names it.
+  const BatchItem.deleteHolding(String id)
+    : this._(PersonalBatchItemKindEnum.holding, PersonalBatchItemOpEnum.delete, id);
+
   final PersonalBatchItemKindEnum kind;
   final PersonalBatchItemOpEnum op;
 
@@ -68,6 +88,7 @@ final class BatchItem {
   final PersonalTxnIn? transaction;
   final PersonalGoalIn? goal;
   final PersonalGoalContributionIn? goalContribution;
+  final PersonalHoldingIn? holding;
 
   bool get isAccountCreate => kind == PersonalBatchItemKindEnum.account && op == PersonalBatchItemOpEnum.create;
 
@@ -200,6 +221,7 @@ class _Draft {
         PersonalBatchItemKindEnum.account => (account(item.id), 'Account'),
         PersonalBatchItemKindEnum.goal => (goal(item.id), 'Goal'),
         PersonalBatchItemKindEnum.goalContribution => (contribution(item.id), 'Contribution'),
+        PersonalBatchItemKindEnum.holding => (holding(item.id), 'Holding'),
         _ => (entry(item.id), 'Transaction'),
       };
       version = (before ?? (throw LocalNotFound(what)))['version'] as int;
@@ -222,6 +244,12 @@ class _Draft {
         _updateContribution(item.id, item.goalContribution!);
       case ('goal_contribution', _):
         _setContributionDeleted(item.id, true);
+      case ('holding', 'create'):
+        _createHolding(item.id, item.holding!);
+      case ('holding', 'update'):
+        _updateHolding(item.id, item.holding!);
+      case ('holding', _):
+        _setHoldingDeleted(item.id, true);
       case (_, 'create'):
         _createEntry(item.id, item.transaction!);
       case (_, 'update'):
@@ -230,7 +258,9 @@ class _Draft {
         _setDeleted(item.id, true);
     }
     // personal/batch.py run: after each entry, goal or contribution that isn't a delete.
-    if (!delete && item.kind != PersonalBatchItemKindEnum.account) {
+    if (!delete &&
+        item.kind != PersonalBatchItemKindEnum.account &&
+        item.kind != PersonalBatchItemKindEnum.holding) {
       _checkCountedOnce(goalChanged: item.kind == PersonalBatchItemKindEnum.goal);
     }
     final json = _json(
@@ -243,10 +273,11 @@ class _Draft {
         transaction: item.transaction,
         goal: item.goal,
         goalContribution: item.goalContribution,
+        holding: item.holding,
       ).toJson(),
     );
     // The item carries the id and the version; the payload leaves them out.
-    for (final payload in [json['account'], json['transaction'], json['goal'], json['goal_contribution']]) {
+    for (final payload in [json['account'], json['transaction'], json['goal'], json['goal_contribution'], json['holding']]) {
       if (payload is Map) {
         payload['id'] = null;
         payload['version'] = null;
@@ -500,6 +531,9 @@ class _Draft {
     final before = account(id) ?? (throw const LocalNotFound('Account'));
     if (before['deleted_at'] != null) _refuse('deleted', 'Restore this account before editing it', status: 409);
     final data = _accountData(id, body, before);
+    if (before['type'] == 'investment' && data['type'] != 'investment' && _holds(id)) {
+      _refuse('account_in_use', 'This account has holdings, so it stays an investment account', status: 409);
+    }
     if (data['sms_label'] != before['sms_label']) _checkLabel(data['sms_label'] as String?, id);
     final changed = {
       for (final k in const ['name', 'type', 'opening_balance_minor', 'sms_label', 'status'])
@@ -760,7 +794,7 @@ extension FinanceWrites on LocalWrites {
   }
 
   /// Deletes account [id] (`DELETE /personal/accounts/{id}`). Refused while a live entry is in it
-  /// (close it instead), or while a goal follows it.
+  /// (close it instead), while it has a live holding, or while a goal follows it.
   Future<void> deleteAccount(String id) => _setAccountDeleted(id, true);
 
   /// Brings deleted account [id] back (its label stayed its own).
@@ -772,6 +806,9 @@ extension FinanceWrites on LocalWrites {
     if ((before['deleted_at'] != null) == deleted) return;
     if (deleted && (l.personalList(accountId: id, limit: 0)['count'] as int) > 0) {
       _refuse('account_in_use', "This account has entries, so it can't be deleted. Close it instead", status: 409);
+    }
+    if (deleted && l.finance.holdings.any((h) => h.accountId == id)) {
+      _refuse('account_in_use', "This account has holdings, so it can't be deleted", status: 409);
     }
     if (deleted && l.rawGoals.any((g) => g['deleted_at'] == null && g['linked_account_id'] == id)) {
       _refuse('account_in_use', "A goal follows this account's balance, so it can't be deleted", status: 409);

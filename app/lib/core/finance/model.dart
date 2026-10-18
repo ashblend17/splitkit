@@ -401,3 +401,99 @@ final class FinContribution {
   @override
   String toString() => 'FinContribution($amountMinor to $goalId${deleted ? ', deleted' : ''})';
 }
+
+// ---- holdings (finance revamp Phase 5) ----
+
+/// What a holding is (personal/schemas.py HoldingType).
+enum HoldingType {
+  mutualFund('mutual_fund'),
+  stock('stock'),
+  fd('fd'),
+  gold('gold'),
+  other('other');
+
+  const HoldingType(this.wire);
+
+  /// As the API writes it.
+  final String wire;
+}
+
+final _holdingTypes = {for (final t in HoldingType.values) t.wire: t};
+
+/// The [HoldingType] the API wrote as [s], or null for one this build doesn't know: such a
+/// holding is left out of every figure.
+HoldingType? holdingTypeFromWire(String? s) => _holdingTypes[s];
+
+/// What you keep in an investment account (personal_holdings): a fund, shares, a deposit, gold,
+/// with what it was worth when you last typed its value. Gains and whether a value is stale are
+/// worked out on the device (holdings.dart).
+final class FinHolding {
+  const FinHolding({
+    required this.id,
+    required this.accountId,
+    required this.name,
+    required this.type,
+    required this.marketValueMinor,
+    required this.valuationDay,
+    required this.currency,
+    this.quantity,
+    this.costBasisMinor,
+    this.createdMicros = 0,
+    this.deleted = false,
+    this.version = 1,
+  });
+
+  /// The holding as synced, or null if its type is one this build doesn't know. Read once per
+  /// synced map, as [PersonalRow] is, so a rebuilt Ledger reuses the holdings that didn't change.
+  static FinHolding? read(Map<String, dynamic> raw) {
+    if (_read[raw] case final hit?) return hit;
+    final type = holdingTypeFromWire(raw['asset_type'] as String?);
+    if (type == null) return null;
+    return _read[raw] = FinHolding(
+      id: raw['id'] as String,
+      accountId: raw['account_id'] as String,
+      name: raw['name'] as String,
+      type: type,
+      marketValueMinor: raw['market_value_minor'] as int,
+      valuationDay: dayKey(raw['valuation_at'] as String),
+      currency: raw['currency'] as String,
+      quantity: raw['quantity'] as String?,
+      costBasisMinor: raw['cost_basis_minor'] as int?,
+      createdMicros: isoMicros(raw['created_at']),
+      deleted: raw['deleted_at'] != null,
+      version: raw['version'] as int? ?? 1,
+    );
+  }
+
+  static final _read = Expando<FinHolding>('FinHolding');
+
+  final String id;
+
+  /// The investment account it's in.
+  final String accountId;
+  final String name;
+  final HoldingType type;
+
+  /// Units, shares or grams as the API writes them ("412.358"), so nothing is lost to floats.
+  final String? quantity;
+
+  /// What you paid for it in all, if you said: a gain is shown only with it.
+  final int? costBasisMinor;
+
+  /// What it was worth on [valuationDay].
+  final int marketValueMinor;
+
+  /// The day of its value, as a day key (20260815).
+  final int valuationDay;
+
+  /// Its account's currency.
+  final String currency;
+
+  /// created_at, in microseconds since the epoch: holdings are listed by it, then by id.
+  final int createdMicros;
+  final bool deleted;
+  final int version;
+
+  @override
+  String toString() => 'FinHolding($name, ${type.wire}, $marketValueMinor on $valuationDay${deleted ? ', deleted' : ''})';
+}

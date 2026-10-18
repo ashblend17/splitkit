@@ -655,6 +655,11 @@ void main() {
       "This account has entries, so it can't be deleted. Close it instead",
     );
     final zerodha = _account(l, 'Zerodha');
+    // Its holdings go first, the SIP that names one before them (holding_writes_test.dart).
+    await runWrite(tester, w.deletePersonal(_entry(l, 'Index fund SIP')['id'] as String));
+    for (final h in l.finance.holdings) {
+      await runWrite(tester, w.deleteHolding(h.id));
+    }
     await runWrite(tester, w.deleteAccount(zerodha));
     var op = _ops(tester).last;
     expect((op.method, op.path, op.query['version']), ('DELETE', '/api/v1/personal/accounts/$zerodha', '1'));

@@ -181,7 +181,7 @@ void main() {
         await pumpApp(tester, location: '/personal', size: size);
         final card = find.ancestor(of: find.text('Net worth'), matching: find.byType(SkCard));
         Finder inCard(String text) => find.descendant(of: card, matching: find.text(text));
-        expect(inCard('₹2,19,765'), findsOneWidget);
+        expect(inCard('₹3,05,515'), findsOneWidget);
         expect(inCard('1 to check'), findsOneWidget); // HDFC: the bank said ₹39,936
         expect(inCard('Emergency savings'), findsOneWidget);
         expect(inCard('₹1,20,000'), findsOneWidget);

@@ -79,4 +79,45 @@ void main() {
     expect(w.assetsMinor, -300);
     expect(w.totalMinor, -300);
   });
+
+  group('with account values (holdings.dart)', () {
+    final zerodha = account('zerodha', type: AccountType.investment);
+    final groww = account('groww', type: AccountType.investment);
+    final ppf = account('ppf', type: AccountType.investment, opening: 30000);
+    final abroad = account('abroad', type: AccountType.investment, currency: 'USD', opening: 900);
+    final balances = accountBalances([hdfc, zerodha, groww, ppf, abroad, card], const []);
+    AccountBalance of(String id) => balances.firstWhere((b) => b.account.id == id);
+    AccountValue byHoldings(String id, int value, {required int asOf, int stale = 0, int added = 0}) => AccountValue(
+      account: of(id).account,
+      ledgerMinor: of(id).balanceMinor,
+      valueMinor: value,
+      byHoldings: true,
+      holdingsMinor: value - added,
+      addedSinceMinor: added,
+      asOfDay: asOf,
+      latestValuationDay: asOf,
+      staleCount: stale,
+    );
+    final values = {
+      'zerodha': byHoldings('zerodha', 85750, asOf: 20260815, stale: 1, added: 5000),
+      'groww': byHoldings('groww', 12000, asOf: 20260901),
+      'abroad': byHoldings('abroad', 5000, asOf: 20260101, stale: 3),
+    };
+
+    test('an account with a value counts at it; investments add up with their valuations', () {
+      final w = netWorth(balances: balances, currency: 'INR', splitNetMinor: 0, countSplit: false, values: values);
+      expect(w.assetsMinor, 100000 + 85750 + 12000 + 30000);
+      expect(w.totalMinor, 100000 + 85750 + 12000 + 30000 - 5000);
+      // The PPF has no holdings: its balance. The USD account is set aside.
+      expect(w.investmentsMinor, 85750 + 12000 + 30000);
+      expect((w.addedSinceMinor, w.asOfDay, w.staleCount), (5000, 20260815, 1));
+      expect((w.valueOf(of('zerodha')), w.valueOf(of('ppf')), w.valueOf(of('hdfc'))), (85750, 30000, 100000));
+    });
+
+    test('without values, every account at its balance, as before', () {
+      final w = netWorth(balances: balances, currency: 'INR', splitNetMinor: 0, countSplit: false);
+      expect((w.assetsMinor, w.investmentsMinor), (130000, 30000));
+      expect((w.addedSinceMinor, w.asOfDay, w.staleCount, w.values.length), (0, null, 0, 0));
+    });
+  });
 }
