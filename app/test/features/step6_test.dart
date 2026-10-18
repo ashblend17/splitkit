@@ -141,8 +141,8 @@ void main() {
     expect(find.byType(TrendBars), findsOneWidget);
     expect(find.text('₹32.5k'), findsOneWidget); // top of the highlighted bar
     await tester.scrollUntilVisible(find.text('Average per day'), 300, scrollable: find.byType(Scrollable).first);
-    expect(find.byType(SplitBar), findsOneWidget);
-    expect(find.byType(StatBlock), findsOneWidget);
+    expect(find.byType(SplitBar), findsNWidgets(2)); // Personal vs group, Needs and wants
+    expect(find.byType(StatBlock), findsNWidgets(2)); // Average per day, Savings rate
     expect(find.text('August averaged ₹993 per day'), findsOneWidget);
     // From what entries say: the account, how it was paid, who was paid.
     await tester.scrollUntilVisible(find.text('Top merchants'), 300, scrollable: find.byType(Scrollable).first);
@@ -193,5 +193,61 @@ void main() {
     await pumpApp(tester, backend: be, location: '/personal/insights');
     expect(find.text('Savings goal'), findsOneWidget);
     expect(find.text('renderer for savings_goal'), findsOneWidget);
+  });
+
+  /// The Savings rate and Needs and wants cards, alone on Insights, as [change] leaves them.
+  Future<void> newCards(WidgetTester tester, [void Function(Map savings, Map needWant)? change]) async {
+    final be = FakeBackend();
+    final dash = Map<String, dynamic>.from(fixture('analytics_personal') as Map);
+    final cards = [
+      for (final c in dash['cards'] as List)
+        if (const {'savings_rate', 'need_vs_want'}.contains((c as Map)['type'])) Map<String, dynamic>.from(c),
+    ];
+    change?.call(cards[0], cards[1]);
+    dash['cards'] = cards;
+    be.get['/api/v1/analytics/personal'] = dash;
+    await pumpApp(tester, backend: be, location: '/personal/insights');
+    expect(find.byType(AnalyticsPlaceholder), findsNothing);
+  }
+
+  testWidgets('Savings rate: the rate, and what was saved of what came in', (tester) async {
+    await newCards(tester);
+    expect(find.text('Savings rate'), findsOneWidget);
+    expect(find.text('62%'), findsOneWidget);
+    expect(find.text('₹52,550 saved of ₹85,000 income'), findsOneWidget);
+
+    // Spent more than came in: a typographic minus, whichever the server sent.
+    await newCards(tester, (savings, _) => savings['headline'] = '-13%');
+    expect(find.text('−13%'), findsOneWidget);
+    await newCards(tester, (savings, _) {
+      savings['headline'] = '—';
+      savings['stat'] = {'value_minor': 0, 'note': 'No income in September'};
+    });
+    expect(find.text('—'), findsOneWidget);
+    expect(find.text('No income in September'), findsOneWidget);
+  });
+
+  testWidgets('Needs and wants: both always, never below zero, and what isn\'t sorted', (tester) async {
+    await newCards(tester);
+    expect(find.text('Needs and wants'), findsOneWidget);
+    expect(find.byType(SplitBar), findsOneWidget);
+    expect(find.text('Needs · 88%'), findsOneWidget);
+    expect(find.text('Wants · 12%'), findsOneWidget);
+    expect(find.text('₹28,491'), findsOneWidget);
+    expect(find.text('₹3,959'), findsOneWidget);
+    expect(find.textContaining('not sorted'), findsNothing);
+
+    await newCards(tester, (_, needWant) {
+      needWant['headline'] = 'ignored';
+      needWant['rows'] = [
+        {'label': 'Needs', 'value_minor': 2849100},
+        {'label': 'Wants', 'value_minor': -50000},
+        {'label': 'Not sorted', 'value_minor': 120000},
+      ];
+    });
+    expect(find.text('Wants · 0%'), findsOneWidget);
+    expect(find.text('₹0'), findsOneWidget);
+    expect(find.text('₹1,200 not sorted'), findsOneWidget);
+    expect(find.text('ignored'), findsNothing);
   });
 }

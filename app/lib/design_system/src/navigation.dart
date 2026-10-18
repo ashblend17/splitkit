@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme/theme.dart';
@@ -17,10 +19,12 @@ class NavDestination {
     ..._shared(admin),
   ];
 
-  /// Personal's tabs: Overview, Transactions, Insights, Profile, plus Admin for admins.
-  static List<NavDestination> personal({bool admin = false}) => [
+  /// Personal's tabs: Overview, Transactions, Goals (unless [goals] is off), Insights, Profile,
+  /// plus Admin for admins.
+  static List<NavDestination> personal({bool admin = false, bool goals = true}) => [
     const NavDestination(key: 'overview', label: 'Overview', glyph: 'wallet'),
     const NavDestination(key: 'transactions', label: 'Transactions', glyph: 'swap'),
+    if (goals) const NavDestination(key: 'goals', label: 'Goals', glyph: 'target'),
     const NavDestination(key: 'insights', label: 'Insights', glyph: 'chart'),
     ..._shared(admin),
   ];
@@ -108,27 +112,35 @@ class _Tab extends StatelessWidget {
         containedInkWell: true,
         highlightShape: BoxShape.rectangle,
         child: ExcludeSemantics(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                width: 56,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: on ? accent.soft : Colors.transparent,
-                  borderRadius: BorderRadius.circular(SkRadius.chip),
+          child: LayoutBuilder(
+            builder: (context, box) => Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  // 56 wide, narrower when six tabs share a small phone (an admin's Personal tabs).
+                  width: math.max(0, math.min(56, box.maxWidth - 4)),
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: on ? accent.soft : Colors.transparent,
+                    borderRadius: BorderRadius.circular(SkRadius.chip),
+                  ),
+                  alignment: Alignment.center,
+                  child: SkIcon(d.glyph, size: 22, color: accent.fg(on)),
                 ),
-                alignment: Alignment.center,
-                child: SkIcon(d.glyph, size: 22, color: accent.fg(on)),
-              ),
-              const SizedBox(height: 4),
-              // One line, shrunk rather than wrapped when five tabs share a narrow phone.
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(d.label, maxLines: 1, softWrap: false, style: SkText.body(11, on ? 700 : 500, color: accent.fg(on))),
-              ),
-            ],
+                const SizedBox(height: 4),
+                // One line, shrunk rather than wrapped when five tabs share a narrow phone.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    d.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: SkText.body(11, on ? 700 : 500, color: accent.fg(on)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

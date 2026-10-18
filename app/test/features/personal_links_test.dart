@@ -19,6 +19,7 @@ const uberSplit = '51b0947b-c74e-5296-b0b5-efcb40be6f8e'; // Uber to airport, li
 
 Future<void> _tap(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
+  await tester.pump(); // lays out the scroll, so the tap lands
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }

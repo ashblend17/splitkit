@@ -10,6 +10,8 @@ import '../../features/auth/login_page.dart';
 import '../../features/auth/register_page.dart';
 import '../../features/expenses/add_expense_page.dart';
 import '../../features/expenses/expense_detail_page.dart';
+import '../../features/goals/goal_detail_page.dart';
+import '../../features/goals/goals_page.dart';
 import '../../features/gallery/components_gallery_page.dart';
 import '../../features/groups/group_detail_page.dart';
 import '../../features/groups/group_list_page.dart';
@@ -29,6 +31,7 @@ import '../../features/sms/sms_setup_page.dart';
 import '../../features/shell/app_shell.dart';
 import '../../features/shell/not_found_page.dart';
 import '../../features/shell/splash_page.dart';
+import '../integrations.dart';
 import '../local/providers.dart';
 import '../session/session.dart';
 
@@ -128,7 +131,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Personal's tabs: Overview, Transactions, Insights. AppShell's keys follow this order.
+          // Personal's tabs: Overview, Transactions, Goals, Insights. AppShell's keys follow this order.
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -149,6 +152,21 @@ final routerProvider = Provider<GoRouter>((ref) {
                   accountId: s.uri.queryParameters['account_id'],
                   account: s.uri.queryParameters['account'],
                 ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/personal/goals',
+                // No Goals tab while Features.goals is off.
+                redirect: (_, _) => ref.read(featuresProvider).goals ? null : '/personal',
+                builder: (_, _) => const GoalsPage(),
+                // The allocation rules page (Phase 3) goes first here, as 'rules', so it isn't
+                // taken for a goal's id.
+                routes: [
+                  GoRoute(path: ':goalId', builder: (_, s) => GoalDetailPage(goalId: s.pathParameters['goalId']!)),
+                ],
               ),
             ],
           ),

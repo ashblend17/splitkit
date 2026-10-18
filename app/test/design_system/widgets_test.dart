@@ -341,6 +341,7 @@ void main() {
       'wallet',
       'swap',
       'chart',
+      'target',
       'user',
       'shield',
       'food',

@@ -88,6 +88,7 @@ String _idOf(RawSms sms) => smsEntryId(me, sms, (parseSms(sms) as SmsParsed).txn
 
 Future<void> _tap(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
+  await tester.pump(); // lays out the scroll, so the tap lands
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }

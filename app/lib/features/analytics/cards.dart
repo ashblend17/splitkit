@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
@@ -47,6 +48,40 @@ Widget _split(AnalyticsCardOut c, String currency, String scope) {
 Widget _stat(AnalyticsCardOut c, String currency, String scope) =>
     StatBlock(value: money(c.stat?.valueMinor ?? 0, currency), note: c.stat?.note);
 
+/// The share of income kept: the rate as the headline ("23%", "−13%" with a typographic minus,
+/// or "—" with no income) and what was saved of what came in.
+Widget _savingsRate(AnalyticsCardOut c, String currency, String scope) {
+  final headline = c.headline;
+  final rate = headline == null || headline.isEmpty
+      ? '—'
+      : headline.startsWith('-')
+      ? '$minus${headline.substring(1)}'
+      : headline;
+  return StatBlock(value: rate, note: c.stat?.note);
+}
+
+/// Needs against wants, from the categories' kind (never below zero), and what isn't sorted
+/// either way, when there's some. No headline.
+Widget _needWant(AnalyticsCardOut c, String currency, String scope) {
+  int row(String label) => c.rows.where((r) => r.label == label).fold(0, (a, r) => a + r.valueMinor);
+  final needs = row('Needs'), wants = row('Wants'), unsorted = row('Not sorted');
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      SplitBar(
+        a: (label: 'Needs', value: needs < 0 ? 0 : needs),
+        b: (label: 'Wants', value: wants < 0 ? 0 : wants),
+        format: _fmt(currency),
+      ),
+      if (unsorted > 0) ...[
+        const SizedBox(height: 10),
+        Text('${money(unsorted, currency)} not sorted', style: SkText.body(13, 400, color: SkColors.ink2)),
+      ],
+    ],
+  );
+}
+
 const cardRenderers = <String, CardRenderer>{
   'spending_trend': _trend,
   'spending_by_category': _breakdown,
@@ -57,6 +92,8 @@ const cardRenderers = <String, CardRenderer>{
   'personal_vs_group': _split,
   'average_daily': _stat,
   'total_spend': _stat,
+  'savings_rate': _savingsRate,
+  'need_vs_want': _needWant,
 };
 
 /// The dashboard: loops over the cards the API returns (from analytics_configuration).

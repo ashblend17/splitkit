@@ -3,10 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/data/providers.dart';
+import '../../core/finance/finance.dart';
+import '../../core/finance/goal_providers.dart';
+import '../../core/integrations.dart';
 import '../../core/layout/layout.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
+import '../goals/contribution_sheet.dart';
+import '../goals/goal_editor_sheet.dart';
 import '../home/activity_filters.dart';
 import '../personal/personal_txn_sheet.dart';
 import '../sms/sms_watcher.dart';
@@ -19,7 +24,7 @@ import 'app_mode.dart';
 /// The Split | Personal switch sits above every tab on a phone, and in the rail and sidebar.
 /// Profile and Admin belong to both modes. The rail and sidebar carry the add button; on
 /// phones it floats on Home and a group's page (Split) and on Overview and Transactions
-/// (Personal).
+/// (Personal); Goals floats "New goal" instead, and a goal that takes contributions "Add money".
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell, required this.location});
 
@@ -29,7 +34,7 @@ class AppShell extends ConsumerWidget {
   final String location;
 
   /// One per shell branch, in the router's order.
-  static const _keys = ['home', 'groups', 'overview', 'transactions', 'insights', 'profile', 'admin'];
+  static const _keys = ['home', 'groups', 'overview', 'transactions', 'goals', 'insights', 'profile', 'admin'];
 
   /// The tabs that belong to one mode. The others (Profile, Admin) keep whichever is on.
   static const _owner = {
@@ -37,15 +42,28 @@ class AppShell extends ConsumerWidget {
     'groups': AppMode.split,
     'overview': AppMode.personal,
     'transactions': AppMode.personal,
+    'goals': AppMode.personal,
     'insights': AppMode.personal,
   };
 
   /// Tab roots: where a phone shows the mode switch above the page.
-  static const _roots = {'/home', '/groups', '/personal', '/personal/transactions', '/personal/insights', '/profile', '/admin'};
+  static const _roots = {
+    '/home',
+    '/groups',
+    '/personal',
+    '/personal/transactions',
+    '/personal/goals',
+    '/personal/insights',
+    '/profile',
+    '/admin',
+  };
   static final _inGroup = RegExp(r'^/groups/([^/]+)');
 
   /// A group's tabs, where the phone floats "Add split" for that group.
   static final _groupPage = RegExp(r'^/groups/([^/]+)(/(balances|analytics|members))?$');
+
+  /// A goal's page (not the rules page beside them), where the phone floats "Add money".
+  static final _goalPage = RegExp(r'^/personal/goals/([^/]+)$');
 
   void _select(String key) {
     final index = _keys.indexOf(key);
@@ -73,6 +91,18 @@ class AppShell extends ConsumerWidget {
   Widget? _fab(BuildContext context, WidgetRef ref) {
     if (location == '/personal' || location == '/personal/transactions') {
       return AddSplitFab(label: 'Add entry', color: SkColors.personal, onPressed: () => showPersonalTxnSheet(context));
+    }
+    if (location == '/personal/goals') {
+      return AddSplitFab(label: 'New goal', color: SkColors.personal, onPressed: () => showGoalEditor(context));
+    }
+    if (_goalPage.firstMatch(location)?.group(1) case final goalId? when goalId != 'rules') {
+      final goal = ref.watch(goalProvider(goalId)).value;
+      // Only a goal that takes contributions; one that follows an account or is typed in has its
+      // own buttons on the page.
+      if (goal == null || goal.goal.mode != GoalMode.contribution || goal.goal.status == GoalStatus.archived) {
+        return null;
+      }
+      return AddSplitFab(label: 'Add money', color: SkColors.personal, onPressed: () => showAddMoney(context, goal));
     }
     if (location == '/home') {
       final groupId = ref.watch(activityFiltersProvider.select((f) => f.groupId));
@@ -109,7 +139,10 @@ class AppShell extends ConsumerWidget {
     }
     final personal = mode == AppMode.personal;
     final admin = ref.watch(meProvider).role == 'admin';
-    final destinations = personal ? NavDestination.personal(admin: admin) : NavDestination.split(admin: admin);
+    final goals = ref.watch(featuresProvider).goals;
+    final destinations = personal
+        ? NavDestination.personal(admin: admin, goals: goals)
+        : NavDestination.split(admin: admin);
     final accent = personal ? NavAccent.personal : NavAccent.brand;
     final addLabel = personal ? 'Add entry' : 'Add split';
     void onMode(bool toPersonal) => _switchTo(ref, toPersonal ? AppMode.personal : AppMode.split);

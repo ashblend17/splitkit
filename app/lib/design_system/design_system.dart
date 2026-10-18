@@ -16,6 +16,7 @@ export 'src/group_card.dart';
 export 'src/mode_switch.dart';
 export 'src/navigation.dart';
 export 'src/overlays.dart';
+export 'src/progress_bar.dart';
 export 'src/sk_icon.dart';
 export 'src/split_selector.dart';
 export 'src/states.dart';

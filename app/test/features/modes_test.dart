@@ -11,6 +11,12 @@ import '../helpers.dart';
 const tablet = Size(834, 1112);
 const desktop = Size(1440, 900);
 
+/// Insights' Personal vs group bar (Needs and wants has a SplitBar too).
+Finder _scopeBar() => find.descendant(
+  of: find.ancestor(of: find.text('Personal vs group'), matching: find.byType(AnalyticsCard)),
+  matching: find.byType(SplitBar),
+);
+
 List<String> _tabs(WidgetTester tester) => [
   for (final d in tester.widget<BottomNav>(find.byType(BottomNav)).destinations) d.key,
 ];
@@ -31,7 +37,7 @@ void main() {
     expect(tester.widget<AddSplitFab>(find.byType(AddSplitFab)).label, 'Add split');
 
     await _tap(tester, find.bySemanticsLabel('Personal mode'));
-    expect(_tabs(tester), ['overview', 'transactions', 'insights', 'profile', 'admin']);
+    expect(_tabs(tester), ['overview', 'transactions', 'goals', 'insights', 'profile', 'admin']);
     expect(tester.widget<BottomNav>(find.byType(BottomNav)).accent, NavAccent.personal);
     final fab = tester.widget<AddSplitFab>(find.byType(AddSplitFab));
     expect((fab.label, fab.color), ('Add entry', SkColors.personal));
@@ -127,7 +133,7 @@ void main() {
       expect(find.text('₹18,210'), findsOneWidget);
       await pumpApp(tester, location: '/personal/insights');
       await tester.scrollUntilVisible(find.text('Personal vs group'), 300, scrollable: find.byType(Scrollable).first);
-      expect(find.byType(SplitBar), findsOneWidget);
+      expect(_scopeBar(), findsOneWidget);
     });
 
     testWidgets('off: neither does', (tester) async {
@@ -137,7 +143,8 @@ void main() {
       await pumpApp(tester, location: '/personal/insights', overrides: off);
       await tester.scrollUntilVisible(find.text('Average per day'), 300, scrollable: find.byType(Scrollable).first);
       expect(find.text('Personal vs group'), findsNothing);
-      expect(find.byType(SplitBar), findsNothing);
+      expect(_scopeBar(), findsNothing);
+      expect(find.byType(SplitBar), findsOneWidget); // Needs and wants only
     });
   });
 }

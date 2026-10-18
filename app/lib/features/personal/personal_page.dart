@@ -15,13 +15,16 @@ import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import '../goals/top_goals_card.dart';
 import '../sms/sms_prompt.dart';
 import 'accounts_card.dart';
 import 'just_in.dart';
 import 'personal_txn_sheet.dart';
 
 /// Personal's Overview tab: your own income and spending, kept apart from groups (screen 11).
-/// Entries are added with the floating "Add entry" (or the rail and sidebar).
+/// In the design's order (finance revamp §2.4): net worth, this month's cash flow, your top
+/// goals, bank SMS, then Recent. Entries are added with the floating "Add entry" (or the rail
+/// and sidebar).
 class PersonalPage extends ConsumerStatefulWidget {
   const PersonalPage({super.key});
 
@@ -80,18 +83,32 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Desktop: this month and its cards on the left, the latest entries beside them.
+                    // Desktop: your money on the left (net worth, this month, bank SMS); your goals and
+                    // the latest entries beside it.
                     if (isWideLayout(context))
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: _thisMonth(flow, groupShare)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [_thisMonth(flow, groupShare), const SmsPromptCard(), const JustIn()],
+                            ),
+                          ),
                           const SizedBox(width: 16),
-                          Expanded(child: _recent(recent, finance)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [const TopGoalsCard(), _recent(recent, finance)],
+                            ),
+                          ),
                         ],
                       )
                     else ...[
                       _thisMonth(flow, groupShare),
+                      const TopGoalsCard(),
+                      const SmsPromptCard(),
+                      const JustIn(),
                       _recent(recent, finance),
                     ],
                   ],
@@ -104,10 +121,11 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
     );
   }
 
-  /// This month's cash flow, then the SMS prompt, entries just in and your accounts.
+  /// Your accounts and net worth, then this month's cash flow.
   Widget _thisMonth(AsyncValue<CashFlow> flow, bool groupShare) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
+      const AccountsCard(),
       AsyncBody(
         value: flow,
         onRetry: () => ref.invalidate(cashFlowProvider(_month)),
@@ -115,9 +133,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
         builder: (f) => _summaryCard(f, groupShare: groupShare),
       ),
       const SizedBox(height: 20),
-      const SmsPromptCard(),
-      const JustIn(),
-      const AccountsCard(),
+      // Planned against actual (allocation rules, Phase 3) goes here, under cash flow.
     ],
   );
 

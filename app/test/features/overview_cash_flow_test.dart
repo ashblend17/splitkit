@@ -24,6 +24,7 @@ const desktop = Size(1440, 1000);
 
 Future<void> _tap(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
+  await tester.pump(); // lays out the scroll, so the tap lands
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }

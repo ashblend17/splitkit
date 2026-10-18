@@ -110,4 +110,5 @@ final _paths = <String, String>{
   'grid': 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   'more': 'M12 5h.01M12 12h.01M12 19h.01',
   'swap': 'M7 16V4M3 8l4-4 4 4M17 8v12M21 16l-4 4-4-4',
+  'target': '${_c(12, 12, 10)}${_c(12, 12, 6)}${_c(12, 12, 2)}',
 };

@@ -106,7 +106,9 @@ void main() {
   testWidgets('editing an SMS entry in the sheet sends it back whole, as looked at', (tester) async {
     final be = await pumpApp(tester, location: '/personal');
     be.offline = true;
-    // Unchecked, so it's in "Just in" at the top.
+    // Unchecked, so it's in "Just in", under net worth, the month and goals.
+    await tester.ensureVisible(find.text('Swiggy order').first);
+    await tester.pump();
     await tester.tap(find.text('Swiggy order').first);
     await tester.pumpAndSettle();
     expect(find.text('From an SMS · HDFC ··4821 · balance after ₹42,276'), findsOneWidget);

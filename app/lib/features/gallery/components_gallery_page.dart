@@ -103,7 +103,7 @@ class _ComponentsGalleryPageState extends State<ComponentsGalleryPage> {
                   columns: 4,
                   gap: 24,
                   minColumnWidth: 280,
-                  children: [_analytics(), _empty(), _loading(), _error()],
+                  children: [_analytics(), _progress(), _empty(), _loading(), _error()],
                 ),
                 const SizedBox(height: 32),
                 _Grid(columns: 3, gap: 24, minColumnWidth: 400, children: [_dialog(), _sheet(), _admin()]),
@@ -520,6 +520,28 @@ class _ComponentsGalleryPageState extends State<ComponentsGalleryPage> {
           const AnalyticsPlaceholder(type: '{type}'),
           const SizedBox(height: 10),
           Text('type · title · period · source', style: _mono.copyWith(fontWeight: FontWeight.w400)),
+        ],
+      ),
+    ),
+  );
+
+  Widget _progress() => _Titled(
+    'ActualPlannedBar',
+    SkCard(
+      radius: 20,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Ladakh trip', style: SkText.body(15, 700)),
+          const SizedBox(height: 10),
+          const ActualPlannedBar(actual: 0.28, actualLabel: '₹17,000'),
+          const SizedBox(height: 6),
+          Text('₹17,000 of ₹60,000 · 28%', style: SkText.body(13, 400, color: SkColors.ink2)),
+          const SizedBox(height: 16),
+          const ActualPlannedBar(actual: 0.2, planned: 0.45, actualLabel: '₹2,000', plannedLabel: '₹6,500'),
+          const SizedBox(height: 6),
+          Text('Planned ₹6,500', style: SkText.body(13, 500, color: SkColors.ink2)),
         ],
       ),
     ),
