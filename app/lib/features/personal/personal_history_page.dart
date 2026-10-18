@@ -5,6 +5,8 @@ import '../../core/api/api.dart';
 import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/finance/finance.dart';
+import '../../core/finance/finance_providers.dart';
 import '../../core/integrations.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
@@ -12,13 +14,16 @@ import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import 'personal_txn_sheet.dart';
 
-/// Screen 12, Personal's Transactions tab: filter by dates, type and category; totals;
-/// entries grouped by day. Only the rows on screen are built, and more entries are asked for
-/// as you scroll towards the end.
+/// Screen 12, Personal's Transactions tab: filter by dates, type, category, account and how it
+/// was paid; totals; entries grouped by day. Only the rows on screen are built, and more entries
+/// are asked for as you scroll towards the end.
 class PersonalHistoryPage extends ConsumerStatefulWidget {
-  const PersonalHistoryPage({super.key, this.account});
+  const PersonalHistoryPage({super.key, this.accountId, this.account});
 
   /// Start filtered to this account.
+  final String? accountId;
+
+  /// Start filtered to the entries with this bank SMS label (links from before accounts).
   final String? account;
 
   @override
@@ -30,7 +35,10 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
   DateTime _end = appClock.now();
   String? _type = 'expense';
   Set<String> _categories = {};
-  late String? _account = widget.account;
+  late String? _accountId = widget.accountId;
+
+  /// A bank SMS label from an old link, until another account is picked.
+  late String? _label = widget.accountId == null ? widget.account : null;
   String? _channel;
 
   /// Entries asked for at first; scrolling near the end asks for as many more.
@@ -43,17 +51,31 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
   /// Day headers and rows of [_shown], worked out once per list.
   (PersonalListOut, List<_Line>)? _lines;
 
+  /// What names the account on a transfer's other side in the rows.
+  FinanceEngine? _finance;
+
   @override
   void didUpdateWidget(PersonalHistoryPage old) {
     super.didUpdateWidget(old);
     // The tab keeps its page, so a link to another account arrives here.
-    if (widget.account != old.account) {
-      _account = widget.account;
+    if (widget.accountId != old.accountId || widget.account != old.account) {
+      _accountId = widget.accountId;
+      _label = widget.accountId == null ? widget.account : null;
       _limit = _page;
     }
   }
 
-  static const _types = {'expense': 'Expenses only', 'income': 'Income only', null: 'Everything'};
+  /// What the type filter offers, by the API's type (null: every type).
+  Map<String?, String> get _types {
+    final features = ref.read(featuresProvider);
+    return {
+      'expense': 'Expenses only',
+      'income': 'Income only',
+      if (features.transfers || _type == 'transfer') 'transfer': 'Transfers only',
+      if (features.refunds || _type == 'refund') 'refund': 'Refunds only',
+      null: 'Everything',
+    };
+  }
 
   PersonalQuery _queryFor(int limit) {
     final keys = _categories.toList()..sort();
@@ -61,8 +83,9 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
       start: _start,
       end: _end,
       type: _type,
-      categories: keys.join(','),
-      account: _account,
+      categories: _type == 'transfer' ? '' : keys.join(','),
+      accountId: _accountId,
+      account: _label,
       channel: _channel,
       limit: limit,
     );
@@ -86,8 +109,10 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
       _shown = (query, list.requireValue);
     }
     final categories = ref.watch(personalCategoriesProvider);
-    final accounts = ref.watch(featuresProvider).breakdownFilters
-        ? ref.watch(personalAccountsProvider).value ?? const <AccountOut>[]
+    final features = ref.watch(featuresProvider);
+    _finance = ref.watch(financeEngineProvider).value;
+    final accounts = features.breakdownFilters
+        ? (features.accounts ? ref.watch(accountsProvider).value ?? const <FinAccount>[] : null)
         : null;
     final days =
         DateTime(_end.year, _end.month, _end.day).difference(DateTime(_start.year, _start.month, _start.day)).inDays +
@@ -148,8 +173,8 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
     );
   }
 
-  /// The title, the filters and the category chips.
-  Widget _filters(List<AccountOut>? accounts, AsyncValue<List<CategoryOut>> categories) => Column(
+  /// The title, the filters and the category chips. [accounts] null: no account filter.
+  Widget _filters(List<FinAccount>? accounts, AsyncValue<List<CategoryOut>> categories) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Semantics(header: true, child: Text('Transactions', style: SkText.title)),
@@ -166,22 +191,25 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
           _filterButton(label: _types[_type]!, trailing: 'down', onTap: _pickType),
         ],
       ),
-      if (accounts != null) ...[
+      if (ref.watch(featuresProvider).breakdownFilters) ...[
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            if (accounts.isNotEmpty || _account != null)
+            if (accounts != null && (accounts.isNotEmpty || _accountId != null || _label != null))
               _filterButton(
-                label: _account ?? 'All accounts',
+                label: _accountName(accounts) ?? _label ?? 'All accounts',
                 trailing: 'down',
-                strong: _account != null,
+                strong: _accountId != null || _label != null,
                 onTap: () => _pick(
                   'Account',
-                  {null: 'All accounts', for (final a in accounts) a.account: a.account},
-                  _account,
-                  (v) => _account = v,
+                  {null: 'All accounts', for (final a in accounts) a.id: a.closed ? '${a.name} (closed)' : a.name},
+                  _accountId,
+                  (v) {
+                    _accountId = v;
+                    _label = null;
+                  },
                 ),
               ),
             _filterButton(
@@ -194,32 +222,35 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
         ),
       ],
       const SizedBox(height: 14),
-      AsyncBody(
-        value: categories,
-        onRetry: () => ref.invalidate(personalCategoriesProvider),
-        skeletonRows: 1,
-        builder: (cats) => SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _chip('All', _categories.isEmpty, () => _filter(() => _categories = {})),
-              for (final c in cats.where(
-                (c) => _type == 'income' ? c.key == 'income' || c.ownerId != null : c.key != 'income',
-              ))
-                _chip(
-                  c.label,
-                  _categories.contains(c.key),
-                  () => _filter(
-                    () => _categories = _categories.contains(c.key)
-                        ? ({..._categories}..remove(c.key))
-                        : {..._categories, c.key},
+      // Transfers have no category.
+      if (_type != 'transfer') ...[
+        AsyncBody(
+          value: categories,
+          onRetry: () => ref.invalidate(personalCategoriesProvider),
+          skeletonRows: 1,
+          builder: (cats) => SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _chip('All', _categories.isEmpty, () => _filter(() => _categories = {})),
+                for (final c in cats.where(
+                  (c) => _type == 'income' ? c.key == 'income' || c.ownerId != null : c.key != 'income',
+                ))
+                  _chip(
+                    c.label,
+                    _categories.contains(c.key),
+                    () => _filter(
+                      () => _categories = _categories.contains(c.key)
+                          ? ({..._categories}..remove(c.key))
+                          : {..._categories, c.key},
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-      const SizedBox(height: 14),
+        const SizedBox(height: 14),
+      ],
     ],
   );
 
@@ -366,8 +397,20 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
     ),
   );
 
+  /// The name of the account the list is filtered to, if any.
+  String? _accountName(List<FinAccount> accounts) {
+    for (final a in accounts) {
+      if (a.id == _accountId) return a.name;
+    }
+    return null;
+  }
+
   Widget _totals(PersonalListOut l, String currency, int days) {
-    final total = _type == 'income' ? l.incomeMinor : l.spentMinor;
+    final (label, total) = switch (_type) {
+      'income' => ('Income', l.incomeMinor),
+      'refund' => ('Refunds', l.refundsMinor),
+      _ => ('Total', l.spentMinor),
+    };
     Widget figure(String label, String value, {int weight = 700}) => Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,11 +421,30 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
         ],
       ),
     );
+    // Moves between your own accounts aren't spending or income: nothing to add up.
+    if (_type == 'transfer') {
+      return SkCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            figure('Transactions', '${l.count}', weight: 800),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: Text(
+                "Money moved between your accounts isn't spending or income.",
+                style: SkText.body(12, 400, color: SkColors.ink2),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return SkCard(
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
-          figure(_type == 'income' ? 'Income' : 'Total', money(total, currency), weight: 800),
+          figure(label, money(total, currency), weight: 800),
           const SizedBox(width: 8),
           figure('Transactions', '${l.count}'),
           const SizedBox(width: 8),
@@ -392,19 +454,30 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
     );
   }
 
-  /// Like the totals: entries that became a split or a payment aren't counted.
+  /// Like the totals: entries that became a split or a payment aren't counted, refunds come off
+  /// spending, and a transfer (two halves) is money moved, once.
   String _dayTotal(List<PersonalTxnOut> list) {
     final counted = list.where((t) => t.counted);
     if (counted.isEmpty) return 'Not counted';
-    final spent = counted.where((t) => t.type == PersonalTxnOutTypeEnum.expense).fold(0, (a, t) => a + t.amountMinor);
-    final income = counted.where((t) => t.type == PersonalTxnOutTypeEnum.income).fold(0, (a, t) => a + t.amountMinor);
+    int sum(PersonalTxnOutTypeEnum type, [PersonalTxnOutDirectionEnum? direction]) => counted
+        .where((t) => t.type == type && (direction == null || t.direction == direction))
+        .fold(0, (a, t) => a + t.amountMinor);
+    final expenses = sum(PersonalTxnOutTypeEnum.expense), refunds = sum(PersonalTxnOutTypeEnum.refund);
+    final spent = expenses - refunds;
+    final income = sum(PersonalTxnOutTypeEnum.income);
     final c = list.first.currency;
+    if (expenses == 0 && income == 0) {
+      final moved = sum(PersonalTxnOutTypeEnum.transfer, PersonalTxnOutDirectionEnum.out_);
+      if (refunds > 0) return '${money(refunds, c)} back';
+      if (moved > 0) return '${money(moved, c)} moved';
+    }
     if (spent > 0 && income > 0) return '${money(spent, c)} out · ${money(income, c)} in';
     return income > 0 ? '+${money(income, c)}' : money(spent, c);
   }
 
   Widget _row(PersonalTxnOut t, {required bool last}) {
-    final income = t.type == PersonalTxnOutTypeEnum.income;
+    final v = personalView(t, finance: _finance, brief: true);
+    final (tileBg, tileFg) = personalTile(v);
     return InkWell(
       onTap: () => showPersonalTxnSheet(context, existing: t),
       child: Container(
@@ -415,37 +488,29 @@ class _PersonalHistoryPageState extends ConsumerState<PersonalHistoryPage> {
         ),
         child: Row(
           children: [
-            IconTile(
-              glyphOr(t.category?.icon, income ? 'income' : 'other'),
-              background: SkColors.personalSoft,
-              foreground: SkColors.personalInk,
-              size: 36,
-              radius: 10,
-              iconSize: 18,
-            ),
+            IconTile(v.glyph, background: tileBg, foreground: tileFg, size: 36, radius: 10, iconSize: 18),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t.description, style: SkText.body(15, 600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(
-                    [?categoryLabel(t), ?notCounted(t)].join(' · '),
-                    style: SkText.body(12, 400, color: SkColors.ink2),
-                  ),
+                  Text(v.title, style: SkText.body(15, 600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(v.subtitle, style: SkText.body(12, 400, color: SkColors.ink2)),
                 ],
               ),
             ),
             Text(
-              income ? '+${money(t.amountMinor, t.currency)}' : money(t.amountMinor, t.currency),
+              v.amount,
               style: SkText.display(
                 16,
                 700,
                 color: !t.counted
                     ? SkColors.ink3
-                    : income
-                    ? SkColors.owed
-                    : SkColors.ink,
+                    : switch (v.tone) {
+                        MoneyTone.income => SkColors.owed,
+                        MoneyTone.neutral => SkColors.ink2,
+                        _ => SkColors.ink,
+                      },
               ),
             ),
           ],

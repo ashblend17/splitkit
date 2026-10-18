@@ -343,7 +343,7 @@ void main() {
             final t = when(b.$1, a.$1);
             return t != 0 ? t : (a.$2['account'] as String).compareTo(b.$2['account']);
           });
-      expect(ledger.personalAccounts(), [for (final (_, a) in want) a]);
+      expect(ledger.personalReportedAccounts(), [for (final (_, a) in want) a]);
     });
 
     test('manualMatch: the newest manual entry without an account, a day either side', () {

@@ -18,6 +18,8 @@ class Integrations {
     this.personalNoteOnSplit = true,
     this.notificationSplitAction = true,
     this.linkWindowDays = 3,
+    this.groupShareInCashFlow = true,
+    this.splitInNetWorth = true,
   });
 
   /// Personal shows your share of group expenses next to your own spending: a line on
@@ -46,6 +48,15 @@ class Integrations {
   final bool notificationSplitAction;
 
   final int linkWindowDays;
+
+  /// Cash flow counts your share of group expenses as spending: it's what you used, so it comes
+  /// off what's left over and the savings rate. Only while [groupShareInPersonal] is on too; off,
+  /// the share can still show next to your spending, but isn't part of it.
+  final bool groupShareInCashFlow;
+
+  /// Net worth adds what friends owe you in Split, net (or takes away what you owe them), as a
+  /// line of its own next to your accounts.
+  final bool splitInNetWorth;
 }
 
 /// Each half on its own.
@@ -61,6 +72,15 @@ class Features {
     this.justInBackfillDays = 2,
     this.countAtmAsSpending = true,
     this.importChunk = 50,
+    this.accounts = true,
+    this.transfers = true,
+    this.refunds = true,
+    this.investmentTypes = true,
+    this.transferSuggestions = true,
+    this.transferSuggestionMinutes = 30,
+    this.atmToCash = true,
+    this.pairCardBills = true,
+    this.refundMatchDays = 60,
   });
 
   /// How many unchecked bank SMS entries Overview's "Just in" shows at once.
@@ -74,7 +94,8 @@ class Features {
   /// the built-in keywords.
   final bool learnCategories;
 
-  /// Overview lists your accounts with the latest balance their bank reported.
+  /// Accounts show the latest balance their bank reported next to the one worked out from your
+  /// entries, and offer Reconcile to set one to what the bank says.
   final bool accountBalances;
 
   /// Transactions filter by account and by payment mode, not just dates, type and category.
@@ -92,12 +113,47 @@ class Features {
   /// arrive already looked at.
   final int justInBackfillDays;
 
-  /// A cash withdrawal counts as spending (else it's left out, as a move between your own
-  /// money).
+  /// With no Cash account, a cash withdrawal counts as spending (else it's left out, as a move
+  /// between your own money). With one, [atmToCash] decides.
   final bool countAtmAsSpending;
 
-  /// Entries per request when sending what was read (POST /personal/transactions/batch).
+  /// Items per request when sending what a read of bank SMS found (POST /personal/batch, at most
+  /// 100): accounts, entries and transfer halves (a transfer's two halves always go together).
   final int importChunk;
+
+  /// Personal keeps your accounts (bank, cash, cards, loans, investments): each entry names the
+  /// one it went through, each account has a balance, and net worth adds them up.
+  final bool accounts;
+
+  /// An entry can be a transfer between two of your accounts: money moves between them, and it's
+  /// neither spending nor income.
+  final bool transfers;
+
+  /// An entry can be a refund of a spend: it comes off spending, in the spend's category.
+  final bool refunds;
+
+  /// The entry sheet offers Invested and Withdrew: money put into or taken out of investments,
+  /// which cash flow shows apart from spending.
+  final bool investmentTypes;
+
+  /// A spend and an income read from bank SMS, of the same amount on two of your accounts and at
+  /// most [transferSuggestionMinutes] apart, are offered as one transfer (until you say they
+  /// aren't, on this device).
+  final bool transferSuggestions;
+
+  final int transferSuggestionMinutes;
+
+  /// A cash withdrawal read from bank SMS becomes a transfer to your Cash account, when you have
+  /// one.
+  final bool atmToCash;
+
+  /// A card bill paid from your bank account, read from bank SMS, becomes a transfer from the
+  /// account to the card when both messages are found.
+  final bool pairCardBills;
+
+  /// A refund read from bank SMS is matched to a spend from the same merchant up to this many
+  /// days before it.
+  final int refundMatchDays;
 }
 
 final integrationsProvider = Provider<Integrations>((_) => const Integrations());

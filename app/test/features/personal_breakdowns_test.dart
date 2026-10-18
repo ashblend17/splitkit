@@ -16,11 +16,13 @@ Future<void> _tap(WidgetTester tester, Finder finder) async {
 void main() {
   setUpAll(loadFonts);
 
-  testWidgets("Overview's accounts show the latest balance, and open the account's entries", (tester) async {
+  testWidgets("Overview's accounts show the biggest balances, and open the account's entries", (tester) async {
     await pumpApp(tester, location: '/personal', size: tall);
     expect(find.text('Accounts'), findsOneWidget);
-    expect(find.text('₹39,936'), findsOneWidget); // HDFC after the groceries on 23 Sep
-    expect(find.text('ICICI Credit card ··9012'), findsNothing); // cards report a limit, not a balance
+    // From the opening and the entries in it, not what the bank last said (₹39,936).
+    expect(find.text('₹96,135'), findsOneWidget);
+    expect(find.text('₹39,936'), findsNothing);
+    expect(find.text('ICICI Credit card ··9012'), findsNothing); // ₹340 owed: not in the top three
     await _tap(tester, find.text('HDFC ··4821').first);
     expect(find.text('Transactions'), findsWidgets);
     expect(find.text('Swiggy order'), findsOneWidget);
@@ -41,7 +43,7 @@ void main() {
   });
 
   testWidgets('with the features off, neither shows', (tester) async {
-    final off = [featuresProvider.overrideWithValue(const Features(accountBalances: false, breakdownFilters: false))];
+    final off = [featuresProvider.overrideWithValue(const Features(accounts: false, breakdownFilters: false))];
     await pumpApp(tester, location: '/personal', size: tall, overrides: off);
     expect(find.text('Accounts'), findsNothing);
     await pumpApp(tester, location: '/personal/transactions', size: tall, overrides: off);

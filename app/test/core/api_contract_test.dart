@@ -52,6 +52,18 @@ void main() {
     expect(CategoryOut.listFromJson(fixture('categories')).first.label, 'Food');
   });
 
+  test('personal accounts, and the labels with what their bank reported', () {
+    final accounts = PersonalAccountOut.listFromJson(fixture('personal_accounts'));
+    final hdfc = accounts.firstWhere((a) => a.smsLabel == 'HDFC ··4821');
+    expect(
+      (hdfc.type, hdfc.openingBalanceMinor, hdfc.status),
+      (PersonalAccountOutTypeEnum.bank, 2748000, PersonalAccountOutStatusEnum.active),
+    );
+    expect(accounts.map((a) => a.type), contains(PersonalAccountOutTypeEnum.creditCard));
+    final reported = AccountOut.listFromJson(fixture('personal_accounts_reported'));
+    expect((reported.first.account, reported.first.balanceMinor), ('HDFC ··4821', 3993600));
+  });
+
   test('error bodies surface the human message', () {
     final error = ApiException(422, jsonEncode(fixture('error_split_invalid')));
     expect(apiErrorMessage(error), '₹100 still needs to be allocated');

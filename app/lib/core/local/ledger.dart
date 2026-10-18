@@ -7,13 +7,16 @@
 ///
 /// A Ledger never changes (the store builds a new one on every change), so what views share is
 /// worked out once, lazily: the personal entries indexed (personal_index.dart), each group's
-/// flows and totals, the feed's order and the category-suggestion lookups.
+/// flows and totals, the feed's order and the category-suggestion lookups. The finance engine
+/// (core/finance) and what it's asked with are handed on to the next Ledger while the parts of
+/// the data they come from haven't changed ([Ledger.finance]).
 library;
 
 import 'package:intl/intl.dart';
 
 import '../categorise/category_rules.dart';
 import '../clock.dart';
+import '../finance/finance.dart' show DayRange, DayRangeContains, FinAccount, FinanceEngine, monthRange;
 import 'balance_engine.dart';
 import 'personal_index.dart';
 import 'revisions.dart';
@@ -105,6 +108,8 @@ class Ledger {
           _settlements[e.entityId] = d;
         case 'personal_transaction':
           _personal.add(d);
+        case 'personal_account':
+          _accounts[e.entityId] = d;
         case 'category':
           _categories[e.entityId] = d;
         case 'layout':
@@ -141,6 +146,7 @@ class Ledger {
   final _expenses = <String, Json>{};
   final _settlements = <String, Json>{};
   final _personal = <Json>[];
+  final _accounts = <String, Json>{};
   final _categories = <String, Json>{};
   final _layouts = <String, Json>{};
   final _rules = <Json>[];
@@ -596,13 +602,20 @@ class Ledger {
     List<String>? categoryKeys,
     bool deleted = false,
     String? account,
+    String? accountId,
     String? channel,
     String? source,
     bool? reviewed,
   }) {
     final rows = PersonalIndex.dated(deleted ? _index.deleted : _index.live, start, end);
     final anyCategory = categoryKeys == null || categoryKeys.isEmpty;
-    if (type == null && anyCategory && account == null && channel == null && source == null && reviewed == null) {
+    if (type == null &&
+        anyCategory &&
+        account == null &&
+        accountId == null &&
+        channel == null &&
+        source == null &&
+        reviewed == null) {
       return rows;
     }
     return [
@@ -610,6 +623,7 @@ class Ledger {
         if ((type == null || t.type == type) &&
             (anyCategory || categoryKeys.contains(_categories[t.categoryId]?['key'])) &&
             (account == null || t.account == account) &&
+            (accountId == null || t.accountId == accountId) &&
             (channel == null || t.channel == channel) &&
             (source == null || t.source == source) &&
             (reviewed == null || t.reviewed == reviewed))
@@ -617,16 +631,32 @@ class Ledger {
     ];
   }
 
-  /// Entries linked to a live expense or payment in a group you're in
-  /// (personal/repository.py covered_ids): listed, but not counted.
-  late final Set<String> _covered = {
-    for (final t in _index.rows)
-      if (_linkedLive(_expenses[t.expenseId]) || _linkedLive(_settlements[t.settlementId])) t.id,
-  };
+  /// Your entries that are listed but not counted: those linked to a live expense or payment in
+  /// a group you're in, and refunds of those (personal/repository.py covered_ids). The same set
+  /// from one Ledger to the next while your entries, groups and profile haven't changed, or
+  /// while it comes out the same ([_carry]), so the engine's answers that take it
+  /// ([FinanceEngine.cashFlow]) are kept too. Shared: callers only read it.
+  late final Set<String> notCounted = _carry(
+    'notCounted',
+    const {LedgerDomain.personal, LedgerDomain.groups, LedgerDomain.profile},
+    () {
+      final linked = {
+        for (final t in _index.rows)
+          if (_linkedLive(_expenses[t.expenseId]) || _linkedLive(_settlements[t.settlementId])) t.id,
+      };
+      return Set<String>.unmodifiable({
+        ...linked,
+        if (linked.isNotEmpty)
+          for (final t in _index.rows)
+            if (linked.contains(t.refundOfId)) t.id,
+      });
+    },
+    same: (before, now) => before.length == now.length && before.containsAll(now),
+  );
 
   bool _linkedLive(Json? row) => row != null && row['deleted_at'] == null && _isMember(row['group_id'] as String, me);
 
-  bool _counted(PersonalRow t) => !_covered.contains(t.id);
+  bool _counted(PersonalRow t) => !notCounted.contains(t.id);
 
   Json _txnOut(PersonalRow row) {
     final t = row.raw;
@@ -634,6 +664,12 @@ class Ledger {
     return {
       'id': t['id'],
       'type': t['type'],
+      // Rows synced before migration 0013 have no direction: the one their type implies.
+      'direction': row.flow.wire,
+      'account_id': row.accountId,
+      'transfer_group_id': row.transferGroupId,
+      'refund_of_id': row.refundOfId,
+      'holding_id': row.holdingId,
       'amount_minor': t['amount_minor'],
       'currency': t['currency'],
       'description': t['description'],
@@ -666,6 +702,7 @@ class Ledger {
     List<String>? categoryKeys,
     bool deleted = false,
     String? account,
+    String? accountId,
     String? channel,
     String? source,
     bool? reviewed,
@@ -679,6 +716,7 @@ class Ledger {
       categoryKeys: categoryKeys,
       deleted: deleted,
       account: account,
+      accountId: accountId,
       channel: channel,
       source: source,
       reviewed: reviewed,
@@ -686,17 +724,33 @@ class Ledger {
     final page = rows.skip(offset).take(limit);
     // Entries in another currency (from before you changed yours) are listed but not counted,
     // nor are entries that became a group expense or payment.
+    final (spent, income, refunds) = _spending(rows);
+    return {
+      'items': [for (final t in page) _txnOut(t)],
+      'spent_minor': spent,
+      'income_minor': income,
+      'refunds_minor': refunds,
+      'count': rows.length,
+    };
+  }
+
+  /// (spent, income, refunds) of the counted [rows] in your currency (personal/service.py
+  /// _spending): spent is expenses minus refunds, and may be negative. Transfers, adjustments
+  /// and investments are neither.
+  (int, int, int) _spending(Iterable<PersonalRow> rows) {
     final currency = userOut()['currency'];
-    var spent = 0, income = 0;
+    var expenses = 0, income = 0, refunds = 0;
     for (final t in rows) {
       if (t.currency != currency || !_counted(t)) continue;
       if (t.type == 'expense') {
-        spent += t.amount;
+        expenses += t.amount;
       } else if (t.type == 'income') {
         income += t.amount;
+      } else if (t.type == 'refund') {
+        refunds += t.amount;
       }
     }
-    return {'items': [for (final t in page) _txnOut(t)], 'spent_minor': spent, 'income_minor': income, 'count': rows.length};
+    return (expenses - refunds, income, refunds);
   }
 
   /// GET /personal/transactions/{id}
@@ -706,69 +760,185 @@ class Ledger {
     return _txnOut(t);
   }
 
-  /// GET /personal/summary?month=
+  // ---- the finance engine (core/finance) ----
+
+  /// The finance maths over your accounts and personal entries, in your currency: balances, cash
+  /// flow, net worth, transfer suggestions. Handed on to the next Ledger while your entries,
+  /// accounts and profile haven't changed ([_carry]), so a change to groups or categories doesn't
+  /// sort the entries and work the balances out again.
+  late final FinanceEngine finance = _carry(
+    'finance',
+    const {LedgerDomain.personal, LedgerDomain.profile},
+    () => FinanceEngine(
+      accounts: [
+        for (final a in _accounts.values)
+          if (FinAccount.read(a) case final account?) account,
+      ],
+      // Every entry of a type this build knows; the engine skips deleted ones where they don't count.
+      entries: _index.rows,
+      currency: userOut()['currency'] as String,
+    ),
+  );
+
+  /// A category's label by id, or "Uncategorised" for none (or one this device doesn't have): how
+  /// cash flow names its categories. The same function from one Ledger to the next while
+  /// categories haven't changed, so the engine's answers that take it are kept too.
+  late final String Function(String? categoryId) categoryLabel = _carry(
+    'categoryLabel',
+    const {LedgerDomain.categories},
+    () => _labelsOf(_categories),
+  );
+
+  /// [categoryLabel] over [categories]. Static, so the function holds only the labels and not the
+  /// Ledger it outlives.
+  static String Function(String? categoryId) _labelsOf(Map<String, Json> categories) {
+    final labels = {
+      for (final MapEntry(:key, :value) in categories.entries)
+        if (value['label'] case final String label) key: label,
+    };
+    return (id) => labels[id] ?? 'Uncategorised';
+  }
+
+  /// What friends owe you in Split in [currency], net (less than zero when you owe them): the
+  /// `net_minor` of [overallBalances]' total in it, by the groups' fewest payments; 0 for none.
+  int splitNet(String currency) => _splitNets[currency] ?? 0;
+
+  late final Map<String, int> _splitNets = {
+    for (final t in (overallBalances()['totals'] as List).cast<Json>()) t['currency'] as String: t['net_minor'] as int,
+  };
+
+  /// What a Ledger hands on to the next, per [slot]: the store it came from, the revisions of the
+  /// parts of the data it was worked out from ([LedgerRevisions.of]), and the answer. One answer
+  /// per slot: the store builds one Ledger after another, and only the newest is read.
+  static final _carried = <String, (int, Object, Object)>{};
+
+  /// What [build] gives, or what an earlier Ledger of the same store worked out for [slot] if
+  /// none of [reads] has changed since, or if it's [same] as what [build] gives now. A Ledger
+  /// built outside a store (LedgerRevisions.none, as in tests) always builds its own.
+  T _carry<T extends Object>(
+    String slot,
+    Set<LedgerDomain> reads,
+    T Function() build, {
+    bool Function(T before, T now)? same,
+  }) {
+    if (revisions.store == 0) return build();
+    final key = revisions.of(reads);
+    final carried = _carried[slot];
+    if (carried case (_, final at, final T kept) when at == key) return kept;
+    var made = build();
+    // The same answer as before is handed on as the one before, so what was worked out for it holds.
+    if (carried case (final store, _, final T before)
+        when store == revisions.store && (same?.call(before, made) ?? false)) {
+      made = before;
+    }
+    _carried[slot] = (revisions.store, key, made);
+    return made;
+  }
+
+  /// Lets go of what Ledgers of store [store] handed on (the store is closing: signed out, or
+  /// out of view-as), so none of its data stays in memory.
+  static void forgetCarried(int store) => _carried.removeWhere((_, carried) => carried.$1 == store);
+
+  /// GET /personal/summary?month= (personal/service.py summary): the month's cash flow from the
+  /// engine ([finance]), as the API gives it. Spent is expenses minus refunds, without your group
+  /// share (that's on its own line), so it may be negative; by category the same, largest first.
   Json personalSummary(DateTime month) {
     final start = DateTime(month.year, month.month);
-    final last = DateTime(month.year, month.month + 1, 0);
-    final s = _day(start), e = _day(last);
-    final currency = userOut()['currency'];
-    var spent = 0, income = 0;
-    final byCat = <String?, int>{};
-    for (final t in _personalRows(start: s, end: e)) {
-      if (t.currency != currency || !_counted(t)) continue;
-      if (t.type == 'expense') {
-        spent += t.amount;
-        byCat[t.categoryId] = (byCat[t.categoryId] ?? 0) + t.amount;
-      } else if (t.type == 'income') {
-        income += t.amount;
-      }
-    }
-    final totals = [
-      for (final entry in byCat.entries)
-        () {
-          final c = _categories[entry.key];
-          return {'category': c == null ? null : _categoryOut(c), 'label': c?['label'] ?? 'Uncategorised', 'amount_minor': entry.value};
-        }(),
-    ]..sort((a, b) {
-        final byAmount = (b['amount_minor'] as int).compareTo(a['amount_minor'] as int);
-        return byAmount != 0 ? byAmount : (a['label'] as String).compareTo(b['label'] as String);
-      });
-    var groupShare = 0;
-    for (final (date, cur, share) in _myShares) {
-      if (cur != currency || date.compareTo(s) < 0 || date.compareTo(e) > 0) continue;
-      groupShare += share;
-    }
+    final period = monthRange(start.year, start.month);
+    final flow = finance.cashFlow(
+      period,
+      notCounted: notCounted,
+      groupShareMinor: groupShareFor(period),
+      countGroupShare: false,
+      label: categoryLabel,
+    );
     final monthName = DateFormat('MMMM', 'en_US').format(start);
     return {
       'month': DateFormat('yyyy-MM').format(start),
       'month_label': start.year == today.year ? monthName : '$monthName ${start.year}',
-      'currency': currency,
-      'spent_minor': spent,
-      'income_minor': income,
-      'left_over_minor': income - spent,
-      'group_share_minor': groupShare,
-      'by_category': totals,
+      'currency': finance.currency,
+      'spent_minor': flow.spendingMinor,
+      'income_minor': flow.incomeMinor,
+      'refunds_minor': flow.refundsMinor,
+      'left_over_minor': flow.incomeMinor - flow.spendingMinor,
+      'group_share_minor': flow.groupShareMinor,
+      'by_category': [
+        for (final c in flow.byCategory)
+          {
+            'category': switch (_categories[c.categoryId]) {
+              final category? => _categoryOut(category),
+              null => null,
+            },
+            'label': c.label,
+            'amount_minor': c.amountMinor,
+          },
+      ],
     };
   }
 
-  /// Your share of each live expense you have a share in: (date, currency, share).
-  late final List<(String, Object?, int)> _myShares = () {
+  /// Your share of the live group expenses dated in [period], in your currency
+  /// (personal/repository.py group_share): what cash flow adds to spending when it's counted.
+  int groupShareFor(DayRange period) {
+    final currency = userOut()['currency'];
+    var share = 0;
+    for (final (day, cur, amount) in _myShares) {
+      if (cur == currency && period.contains(day)) share += amount;
+    }
+    return share;
+  }
+
+  /// Your share of each live expense you have a share in: (day key, currency, share).
+  late final List<(int, Object?, int)> _myShares = () {
     final me = this.me;
-    final out = <(String, Object?, int)>[];
+    final out = <(int, Object?, int)>[];
     for (final x in _expenses.values) {
       if (x['deleted_at'] != null) continue;
       int? share;
       for (final split in x['splits'] as List) {
         if (split['user_id'] == me) share = (share ?? 0) + (split['share_minor'] as int);
       }
-      if (share != null) out.add((x['date'] as String, x['currency'], share));
+      if (share != null) out.add((dayKey(x['date'] as String), x['currency'], share));
     }
     return out;
   }();
 
-  /// GET /personal/accounts: each account or card your entries went through, most recently
-  /// used first, with the latest balance its bank reported (personal/service.py accounts).
-  List<Json> personalAccounts() {
+  /// GET /personal/accounts (personal/accounts.py list_accounts): your active and closed
+  /// accounts, oldest first; with [deleted], only the deleted ones.
+  List<Json> personalAccountList({bool deleted = false}) {
+    final rows = [
+      for (final a in _accounts.values)
+        if ((a['deleted_at'] != null) == deleted) (a, isoMicros(a['created_at'])),
+    ];
+    rows.sort((a, b) {
+      final t = a.$2.compareTo(b.$2);
+      return t != 0 ? t : (a.$1['id'] as String).compareTo(b.$1['id'] as String);
+    });
+    return [for (final (a, _) in rows) _accountOut(a)];
+  }
+
+  /// GET /personal/accounts/{id}, deleted ones too.
+  Json personalAccount(String id) => _accountOut(_accounts[id] ?? (throw const LocalNotFound('Account')));
+
+  /// personal/schemas.py PersonalAccountOut. No balance: core/finance works it out.
+  Json _accountOut(Json a) => {
+    'id': a['id'],
+    'name': a['name'],
+    'type': a['type'],
+    'currency': a['currency'],
+    'opening_balance_minor': a['opening_balance_minor'],
+    'sms_label': a['sms_label'],
+    'status': a['status'],
+    'acting_admin_id': a['acting_admin_id'],
+    'created_at': a['created_at'],
+    'updated_at': a['updated_at'],
+    'deleted_at': a['deleted_at'],
+    'version': a['version'],
+  };
+
+  /// GET /personal/accounts/reported: each account label your entries carry, most recently
+  /// used first, with the latest balance its bank reported (personal/service.py
+  /// reported_accounts).
+  List<Json> personalReportedAccounts() {
     // Latest by when it happened, then when it was made, then id.
     int when(PersonalRow a, PersonalRow b) {
       final at = a.atMicros.compareTo(b.atMicros);
@@ -968,8 +1138,14 @@ class Ledger {
 
   // ---- for reading bank SMS (core/sms/sms_scan.dart, features/sms/sms_importer.dart) ----
 
-  /// The id of every personal entry here, deleted ones too.
-  Set<String> personalIds() => {..._index.byId.keys};
+  /// The id of every personal entry here, deleted ones too, and of a type this build doesn't know
+  /// (which the views skip): a message whose entry a newer build changed isn't added again.
+  Set<String> personalIds() => {for (final t in _personal) t['id'] as String};
+
+  /// Every personal entry of a type this build knows, deleted ones too, as typed rows in the order
+  /// they were synced: where a read takes the spends a refund can be for and the other halves a
+  /// transfer can pair with. Shared: callers only read it.
+  List<PersonalRow> get personalRows => _index.rows;
 
   /// What [manualMatch] chooses from: by type and amount, the id and day (dayKey) of each live
   /// entry made by hand with no account yet, in the API's order.
@@ -997,6 +1173,7 @@ class Ledger {
   Json? rawSettlement(String id) => _settlements[id];
   Json? rawPersonal(String id) => _index.byId[id]?.raw;
   Json? rawCategory(String id) => _categories[id];
+  Json? rawAccount(String id) => _accounts[id];
   List<Json> rawMembers(String groupId) => _members[groupId] ?? const [];
   Json brief(String userId) => _brief(userId);
 }
@@ -1034,8 +1211,8 @@ class LearnedCategories {
   }
 }
 
-/// One account's entries while Ledger.personalAccounts goes through them: the latest, the latest
-/// with a balance its bank reported, and how many.
+/// One account label's entries while Ledger.personalReportedAccounts goes through them: the
+/// latest, the latest with a balance its bank reported, and how many.
 class _AccountUse {
   _AccountUse(this.name, this.last);
 
@@ -1078,7 +1255,5 @@ class _FeedRow {
     return t != 0 ? t : b.id.compareTo(a.id);
   }
 }
-
-String _day(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
 
 DateTime _time(Object? iso) => iso == null ? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true) : DateTime.parse(iso as String);

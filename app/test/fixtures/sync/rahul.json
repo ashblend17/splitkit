@@ -17,7 +17,8 @@
       "icon": "food",
       "scope": "all",
       "owner_id": null,
-      "sort": 10
+      "sort": 10,
+      "kind": "need"
      }
     },
     {
@@ -31,7 +32,8 @@
       "icon": "transport",
       "scope": "all",
       "owner_id": null,
-      "sort": 20
+      "sort": 20,
+      "kind": "need"
      }
     },
     {
@@ -45,7 +47,8 @@
       "icon": "shopping",
       "scope": "all",
       "owner_id": null,
-      "sort": 30
+      "sort": 30,
+      "kind": "want"
      }
     },
     {
@@ -59,7 +62,8 @@
       "icon": "entertainment",
       "scope": "all",
       "owner_id": null,
-      "sort": 40
+      "sort": 40,
+      "kind": "want"
      }
     },
     {
@@ -73,7 +77,8 @@
       "icon": "travel",
       "scope": "group",
       "owner_id": null,
-      "sort": 50
+      "sort": 50,
+      "kind": "want"
      }
     },
     {
@@ -87,7 +92,8 @@
       "icon": "rent",
       "scope": "group",
       "owner_id": null,
-      "sort": 60
+      "sort": 60,
+      "kind": "want"
      }
     },
     {
@@ -101,7 +107,8 @@
       "icon": "rent",
       "scope": "all",
       "owner_id": null,
-      "sort": 70
+      "sort": 70,
+      "kind": "need"
      }
     },
     {
@@ -115,7 +122,8 @@
       "icon": "bills",
       "scope": "all",
       "owner_id": null,
-      "sort": 80
+      "sort": 80,
+      "kind": "need"
      }
     },
     {
@@ -129,7 +137,8 @@
       "icon": "health",
       "scope": "personal",
       "owner_id": null,
-      "sort": 90
+      "sort": 90,
+      "kind": "need"
      }
     },
     {
@@ -143,7 +152,8 @@
       "icon": "income",
       "scope": "personal",
       "owner_id": null,
-      "sort": 100
+      "sort": 100,
+      "kind": "income"
      }
     },
     {
@@ -157,7 +167,8 @@
       "icon": "other",
       "scope": "all",
       "owner_id": null,
-      "sort": 999
+      "sort": 999,
+      "kind": null
      }
     },
     {
@@ -271,6 +282,22 @@
         "title": "Top merchants",
         "period": "this_month",
         "source": "personal_top_merchants",
+        "params_json": {}
+       },
+       {
+        "position": 8,
+        "type": "savings_rate",
+        "title": "Savings rate",
+        "period": "this_month",
+        "source": "personal_savings_rate",
+        "params_json": {}
+       },
+       {
+        "position": 9,
+        "type": "need_vs_want",
+        "title": "Needs and wants",
+        "period": "this_month",
+        "source": "personal_need_want",
         "params_json": {}
        }
       ]
@@ -4633,6 +4660,7 @@
    "currency": "INR",
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "left_over_minor": 0,
    "group_share_minor": 0,
    "by_category": []
@@ -4643,6 +4671,7 @@
    "currency": "INR",
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "left_over_minor": 0,
    "group_share_minor": 0,
    "by_category": []
@@ -4653,6 +4682,7 @@
    "currency": "INR",
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "left_over_minor": 0,
    "group_share_minor": 918200,
    "by_category": []
@@ -4661,38 +4691,52 @@
    "items": [],
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "count": 0
   },
   "personal_list:sep_expense": {
    "items": [],
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "count": 0
   },
   "personal_deleted": {
    "items": [],
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "count": 0
   },
   "personal_list:just_in": {
    "items": [],
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "count": 0
   },
   "personal_list:upi": {
    "items": [],
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "count": 0
   },
   "personal_list:hdfc": {
    "items": [],
    "spent_minor": 0,
    "income_minor": 0,
+   "refunds_minor": 0,
    "count": 0
   },
-  "personal_accounts": []
+  "personal_list:transfers": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "count": 0
+  },
+  "personal_accounts": [],
+  "personal_accounts_reported": []
  }
 }

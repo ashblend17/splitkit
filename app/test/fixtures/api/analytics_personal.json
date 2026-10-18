@@ -28,7 +28,7 @@
         },
         {
           "label": "Jul",
-          "value_minor": 3592000,
+          "value_minor": 3443000,
           "highlight": false
         },
         {
@@ -187,6 +187,40 @@
         {
           "label": "Blue Tokai coffee",
           "value_minor": 34000
+        }
+      ],
+      "stat": null
+    },
+    {
+      "id": "ea6cde56-d84e-5611-a14d-9480fe692b74",
+      "type": "savings_rate",
+      "title": "Savings rate",
+      "period_label": "September",
+      "source": "personal_savings_rate",
+      "headline": "62%",
+      "bars": [],
+      "rows": [],
+      "stat": {
+        "value_minor": 5255000,
+        "note": "₹52,550 saved of ₹85,000 income"
+      }
+    },
+    {
+      "id": "f887ef88-3f91-5c9d-ba23-dc757d95c031",
+      "type": "need_vs_want",
+      "title": "Needs and wants",
+      "period_label": "September",
+      "source": "personal_need_want",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Needs",
+          "value_minor": 2849100
+        },
+        {
+          "label": "Wants",
+          "value_minor": 395900
         }
       ],
       "stat": null

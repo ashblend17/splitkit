@@ -55,7 +55,8 @@ class CategorySelector extends StatelessWidget {
   }
 }
 
-/// 36px chip used for categories and history filters.
+/// 36px chip used for categories and history filters. Without [onTap] it's shown greyed out and
+/// can't be picked.
 class SelectableChip extends StatelessWidget {
   const SelectableChip({
     super.key,
@@ -69,14 +70,15 @@ class SelectableChip extends StatelessWidget {
   final String label;
   final String? icon;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final ChipAccent accent;
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? accent.foreground : SkColors.ink;
+    final fg = onTap == null ? SkColors.ink3 : (selected ? accent.foreground : SkColors.ink);
     return Semantics(
       button: true,
+      enabled: onTap != null,
       selected: selected,
       label: label,
       child: Material(

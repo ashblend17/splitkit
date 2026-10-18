@@ -16,21 +16,32 @@ SmsVerdict parseSms(RawSms sms, {Set<String> testSenders = const {}}) {
 
   final text = sms.body.replaceAll(RegExp(r'\s+'), ' ').trim();
   final lower = text.toLowerCase();
-  // What it isn't, before reading anything: an OTP mentions an amount too.
+  // What it isn't, before reading anything: an OTP mentions an amount too. The first pattern
+  // that matches decides: a skip, or a refund, card bill or own transfer, read on as that kind
+  // (and skipped as it when it can't be read). A message that matches none reads as it always did.
+  var (kind, unread) = (SmsKind.payment, SmsSkip.noTransaction);
   for (final (pattern, reason) in _skips) {
-    if (pattern.hasMatch(lower)) return SmsSkipped(reason);
+    if (!pattern.hasMatch(lower)) continue;
+    final readAs = _kinds[reason];
+    if (readAs == null) return SmsSkipped(reason);
+    (kind, unread) = (readAs, reason);
+    break;
   }
   if (_foreign.hasMatch(lower)) return const SmsSkipped(SmsSkip.foreignCurrency);
+  if (kind == SmsKind.refund && _refundPending.hasMatch(lower)) return const SmsSkipped(SmsSkip.notYet);
 
-  final direction = _direction(lower);
+  // Money back, and a card bill as the card's bank tells it, are always money in.
+  final direction = kind == SmsKind.refund || kind == SmsKind.cardBill ? SmsDirection.received : _direction(lower);
   final amount = _amount(text);
   final bank = bankFor(header?.group(1), lower);
-  final account = _account(text, lower, bank, header?.group(1));
+  // A card bill is about the card, even when it names the account it was paid from first.
+  final account = _account(text, lower, bank, header?.group(1), cardOnly: kind == SmsKind.cardBill);
   // A bank message names an account or card; a shop's "your order of Rs 486" doesn't.
-  if (direction == null || amount == null || account == null) return const SmsSkipped(SmsSkip.noTransaction);
+  if (direction == null || amount == null || account == null) return SmsSkipped(unread);
 
   final reference = _reference(text);
   final channel = _channel(lower, card: account.card, reference: reference);
+  final names = kind == SmsKind.refund ? _refunders : (direction == SmsDirection.spent ? _payees : _payers);
   return SmsParsed(
     SmsTxn(
       direction: direction,
@@ -39,9 +50,11 @@ SmsVerdict parseSms(RawSms sms, {Set<String> testSenders = const {}}) {
       date: _date(lower, sms.receivedAt),
       bank: bank?.name,
       account: account.label,
-      merchant: channel == 'atm' ? null : _merchant(text, direction),
+      merchant: channel == 'atm' ? null : _merchant(text, names),
       reference: reference,
       balanceMinor: _balance(text),
+      kind: kind,
+      counterpartDigits: kind == SmsKind.ownTransfer ? _counterpart(text, account) : null,
     ),
   );
 }
@@ -91,6 +104,16 @@ final _skips = [
     SmsSkip.ownTransfer,
   ),
 ];
+
+/// The [_skips] that aren't skipped but read, as these kinds of payment.
+const _kinds = {
+  SmsSkip.refund: SmsKind.refund,
+  SmsSkip.cardBill: SmsKind.cardBill,
+  SmsSkip.ownTransfer: SmsKind.ownTransfer,
+};
+
+/// A refund on its way, not here yet: "has been initiated and will be credited in 5-7 days".
+final _refundPending = _re(r'\binitiated\b|\bwill (?:be )?(?:credited|refunded|reversed|processed|reflect(?:ed)?)\b');
 
 final _foreign = _re(r'\b(?:usd|eur|gbp|aed|sgd|aud|cad|jpy|chf|thb|myr)\s?[0-9][0-9,]*(?:\.[0-9]+)?\b|\$\s?[0-9]');
 
@@ -147,19 +170,33 @@ final _card = _re(
 final _accountNumber = _re(r'\b(?:a/c|ac|acct|account)(?:\s*no\.?)?[\s:\-]*(?:[x*.]+)?\s*(\d{3,6})\b');
 final _hasLimit = _re(r'\b(?:avl\.?\s*lmt|avl(?:ailable)?\.?\s*(?:credit\s*)?limit|credit limit)\b');
 
-typedef _Account = ({String label, bool card});
+typedef _Account = ({String label, bool card, String digits});
 
-/// The account or card the money moved through (the first one named), as a label.
-_Account? _account(String text, String lower, Bank? bank, String? header) {
-  final card = _card.firstMatch(text), account = _accountNumber.firstMatch(text);
+/// The account or card the money moved through (the first one named), as a label. With
+/// [cardOnly], the first card.
+_Account? _account(String text, String lower, Bank? bank, String? header, {bool cardOnly = false}) {
+  final card = _card.firstMatch(text), account = cardOnly ? null : _accountNumber.firstMatch(text);
   final name = bank?.name ?? 'Bank';
   if (card != null && (account == null || card.start < account.start)) {
     final kind = card.group(1)?.toLowerCase();
     final credit = kind == 'credit' || (kind == null && (_hasLimit.hasMatch(lower) || creditCardHeaders.contains(header)));
     final type = credit ? 'Credit card' : (kind == 'debit' ? 'Debit card' : 'Card');
-    return (label: '$name $type ··${card.group(2)}', card: true);
+    return (label: '$name $type ··${card.group(2)}', card: true, digits: card.group(2)!);
   }
-  if (account != null) return (label: '$name ··${account.group(1)}', card: false);
+  if (account != null) return (label: '$name ··${account.group(1)}', card: false, digits: account.group(1)!);
+  return null;
+}
+
+/// The other account or card a message names besides [account] (the first other one), as its
+/// digits: an own transfer's other half.
+String? _counterpart(String text, _Account account) {
+  final numbers = [
+    for (final m in _card.allMatches(text)) (m.start, m.group(2)!),
+    for (final m in _accountNumber.allMatches(text)) (m.start, m.group(1)!),
+  ]..sort((a, b) => a.$1.compareTo(b.$1));
+  for (final (_, digits) in numbers) {
+    if (digits != account.digits) return digits;
+  }
   return null;
 }
 
@@ -248,11 +285,26 @@ final _payers = [
   _re('\\bby neft from\\s+$_name$_end'), // SBI
   _re('\\bfrom\\s+(?!(?:a/c|ac|acct|account|your|you|hdfc|icici|sbi)\\b)$_name$_end'),
 ];
+
+/// Where a refund's payer ends: as [_end], or before what happened to the money ("from AMAZON
+/// credited to …", "to ZOMATO has been reversed").
+final _refundEnd = _end.replaceFirst(
+  '(?:',
+  '(?:credited|debited|reversed|refunded|has|have|is|was|to|as|towards|against|in|',
+);
+
+/// Who a refund came from: the payer patterns, then the payee ones (a reversal names who was
+/// paid), ending names at [_refundEnd].
+final _refunders = [
+  for (final p in [..._payers, ..._payees])
+    RegExp(p.pattern.replaceAll(_end, _refundEnd), caseSensitive: p.isCaseSensitive),
+];
 final _notAName = _re(r'^(?:[x*]+\d+|\d+|.*\b(?:a/c|acct|account)\b.*|atm.*)$');
 
-/// Who was paid (a spend) or who paid (income), as the bank wrote it.
-String? _merchant(String text, SmsDirection direction) {
-  for (final pattern in direction == SmsDirection.spent ? _payees : _payers) {
+/// Who was paid (a spend: [_payees]) or who paid (income: [_payers]; a refund: [_refunders]),
+/// as the bank wrote it.
+String? _merchant(String text, List<RegExp> patterns) {
+  for (final pattern in patterns) {
     for (final m in pattern.allMatches(text)) {
       final name = m.group(1)!.replaceAll(RegExp(r'\s+'), ' ').replaceFirst(RegExp(r'^vpa\s+', caseSensitive: false), '').trim();
       if (name.length >= 2 && !_notAName.hasMatch(name.toLowerCase())) return name;

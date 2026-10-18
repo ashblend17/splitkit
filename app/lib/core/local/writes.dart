@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,13 +8,19 @@ import 'package:uuid/uuid.dart';
 import '../api/api.dart';
 import '../categorise/category_rules.dart';
 import '../clock.dart';
+import '../finance/finance.dart'
+    show AccountType, MoneyFlow, impliedFlow, pairedLegId, reconcileDelta, transferGroupIdFor, txnTypeFromWire;
+import '../integrations.dart';
 import '../money/money.dart';
 import '../session/session.dart';
 import '../splits/split_engine.dart';
 import 'balance_engine.dart';
 import 'ledger.dart';
 import 'outbox.dart';
+import 'personal_index.dart';
 import 'providers.dart';
+
+part 'writes_finance.dart';
 
 /// Writes that work offline: each one is queued in the outbox with the full state it leaves
 /// behind, shows on every screen straight away, and is sent by the next sync (which starts
@@ -26,11 +31,13 @@ import 'providers.dart';
 /// profile, categories and analytics layouts still go straight to the API.
 final writesProvider = Provider<LocalWrites>((ref) => LocalWrites(ref));
 
-/// The write was refused before it was queued (a read-only view-as session). An ApiException
-/// with the API's error body, so screens show its message like any other refusal.
+/// The write was refused before it was queued: a read-only view-as session, or one the server
+/// would refuse anyway ([code] and [message] are then the server's, so a write made offline isn't
+/// refused only later). An ApiException with the API's error body, so screens show its message
+/// like any other refusal.
 class WriteRefused extends ApiException {
-  WriteRefused(String message)
-    : super(403, jsonEncode({'error': {'code': 'read_only', 'message': message}}));
+  WriteRefused(String message, {String code = 'read_only', int status = 403})
+    : super(status, jsonEncode({'error': {'code': code, 'message': message}}));
 }
 
 class LocalWrites {
@@ -83,8 +90,11 @@ class LocalWrites {
     ];
   }
 
-  List<LocalEntity> _learnPersonal(Ledger l, Json data) =>
-      _learn(l, data['merchant'] as String? ?? data['description'] as String?, data['category_id'] as String?, income: data['type'] == 'income');
+  /// Only spending and income teach (personal/service.py _learn): transfers, refunds and the rest
+  /// don't.
+  List<LocalEntity> _learnPersonal(Ledger l, Json data) => data['type'] == 'income' || data['type'] == 'expense'
+      ? _learn(l, data['merchant'] as String? ?? data['description'] as String?, data['category_id'] as String?, income: data['type'] == 'income')
+      : const [];
 
   // ---- expenses ----
 
@@ -302,6 +312,8 @@ class LocalWrites {
     'id': id,
     'user_id': l.me,
     'type': body.type.value,
+    // The way the type implies; a transfer or a correction says its own (or keeps it).
+    'direction': impliedFlow(txnTypeFromWire(body.type.value)!)?.wire ?? body.direction?.value ?? before?['direction'],
     'amount_minor': body.amountMinor,
     'currency': before?['currency'] ?? l.userOut()['currency'],
     'category_id': body.categoryId,
@@ -318,6 +330,10 @@ class LocalWrites {
     'reviewed': body.reviewed,
     'expense_id': body.expenseId,
     'settlement_id': body.settlementId,
+    'account_id': body.accountId,
+    'transfer_group_id': body.transferGroupId,
+    'refund_of_id': body.refundOfId,
+    'holding_id': body.holdingId,
     'acting_admin_id': _ref.read(sessionProvider).value?.adminId,
     'created_at': before?['created_at'] ?? _now(),
     'deleted_at': null,
@@ -333,21 +349,20 @@ class LocalWrites {
   }
 
   /// [id]: one made from the entry itself (a bank SMS), so making it twice gives the same row.
+  /// Checked as the server checks it ([_Draft]); a transfer leg can't be made alone
+  /// ([createTransfer]).
   Future<String> createPersonal(PersonalTxnIn body, {String? id}) async {
     final l = await _ledger();
     id ??= _uuid.v4();
-    final data = _personalData(l, id, body, null);
+    // The entry, and the category rule a manual one teaches (the app guessed an SMS entry's).
+    final entities = (_Draft(this, l)..add(BatchItem.createEntry(id, body))).finish();
     body.id = id;
     await _queue(OutboxOp(
       method: 'POST',
       path: '/api/v1/personal/transactions',
       body: _json(body.toJson()),
-      label: 'Added ${_personalLabel(data)}',
-      entities: [
-        _entity('user:${l.me}', 'personal_transaction', id, 1, data),
-        // The app guessed an SMS entry's category; you chose a manual one's.
-        if (body.source_ != PersonalTxnInSource_Enum.sms) ..._learnPersonal(l, data),
-      ],
+      label: 'Added ${_personalLabel(_personalData(l, id, body, null))}',
+      entities: entities,
       createdAt: _now(),
     ));
     return id;
@@ -358,57 +373,22 @@ class LocalWrites {
     await _queue(_updatePersonalOp(l, id, body));
   }
 
+  /// Checked as the server checks it ([_Draft]): one leg of a transfer can't change its amount,
+  /// account or direction alone ([updateTransfer]).
   OutboxOp _updatePersonalOp(Ledger l, String id, PersonalTxnIn body) {
     final before = _required(l.rawPersonal(id), 'Transaction');
-    final data = _personalData(l, id, body, before);
+    // The entry first, then the category rule a changed category teaches.
+    final entities = (_Draft(this, l)..add(BatchItem.updateEntry(id, body))).finish();
     body.version = before['version'] as int;
     return OutboxOp(
       method: 'PUT',
       path: '/api/v1/personal/transactions/$id',
       body: _json(body.toJson()),
-      label: 'Edited ${_personalLabel(data)}',
-      entities: [
-        _entity('user:${l.me}', 'personal_transaction', id, data['version'], data),
-        if (before['category_id'] != data['category_id']) ..._learnPersonal(l, data),
-      ],
+      label: 'Edited ${_personalLabel(entities.first.data)}',
+      entities: entities,
       createdAt: _now(),
     );
   }
-
-  /// Entries read from bank SMS, each with the id the message gives it: POST
-  /// /personal/transactions/batch in chunks of [chunk], queued together (one rebuild however
-  /// many).
-  Future<void> importPersonal(List<(String, PersonalTxnIn)> entries, {int chunk = 50}) =>
-      importSms(entries, const [], chunk: chunk);
-
-  /// What a read of the bank SMS found, queued together (one rebuild): new [entries], as
-  /// [importPersonal] queues them, then entries you'd made by hand that a message was about,
-  /// edited to [attached] (id and new body), as [updatePersonal] would.
-  Future<void> importSms(
-    List<(String, PersonalTxnIn)> entries,
-    List<(String, PersonalTxnIn)> attached, {
-    int chunk = 50,
-  }) async {
-    if (entries.isEmpty && attached.isEmpty) return;
-    final l = await _ledger();
-    await _queueAll([
-      for (var i = 0; i < entries.length; i += chunk) _batchOp(l, entries.sublist(i, min(i + chunk, entries.length))),
-      for (final (id, body) in attached) _updatePersonalOp(l, id, body),
-    ]);
-  }
-
-  OutboxOp _batchOp(Ledger l, List<(String, PersonalTxnIn)> part) => OutboxOp(
-    method: 'POST',
-    path: '/api/v1/personal/transactions/batch',
-    body: {
-      'items': [for (final (id, body) in part) _json((body..id = id).toJson())],
-    },
-    label: part.length == 1 ? 'Added ${part.single.$2.description} from an SMS' : 'Added ${part.length} entries from bank SMS',
-    entities: [
-      for (final (id, body) in part) _entity('user:${l.me}', 'personal_transaction', id, 1, _personalData(l, id, body, null)),
-    ],
-    createdAt: _now(),
-  );
 
   // ---- personal entries in Split (core/integrations.dart) ----
 
@@ -454,6 +434,8 @@ class LocalWrites {
     await _queue(_updatePersonalOp(l, txnId, _bodyOf(l, txnId)..reviewed = true));
   }
 
+  /// Deleting or restoring a transfer leg takes the other leg with it, as the server does
+  /// (personal/service.py change_deleted), so both show at once.
   Future<void> deletePersonal(String id) => _setPersonalDeleted(id, true);
   Future<void> restorePersonal(String id) => _setPersonalDeleted(id, false);
 
@@ -462,13 +444,14 @@ class LocalWrites {
     final before = _required(l.rawPersonal(id), 'Transaction');
     if ((before['deleted_at'] != null) == deleted) return;
     final version = before['version'] as int;
-    final data = {...before, 'deleted_at': deleted ? _now() : null, 'version': version + 1};
+    // The entry addressed first (keepMine re-versions by it), then a transfer leg's partner.
+    final entities = (_Draft(this, l).._setDeleted(id, deleted)).finish();
     await _queue(OutboxOp(
       method: deleted ? 'DELETE' : 'POST',
       path: deleted ? '/api/v1/personal/transactions/$id' : '/api/v1/personal/transactions/$id/restore',
       query: {'version': '$version'},
       label: '${deleted ? 'Deleted' : 'Restored'} ${_personalLabel(before)}',
-      entities: [_entity('user:${l.me}', 'personal_transaction', id, version + 1, data)],
+      entities: entities,
       createdAt: _now(),
     ));
   }
@@ -541,30 +524,48 @@ class LocalWrites {
     await store.removeOps([op.id!]);
   }
 
-  /// A conflicting edit, sent again on top of the other person's change ("keep mine").
+  /// A conflicting edit, sent again on top of the other person's change ("keep mine"): at the
+  /// server's versions now. A single request's version is its first entity's (the one it
+  /// addresses); a batch's are each item's. Every entity it changes that the server has (a
+  /// transfer's other leg, entries an account claims) is laid over at the version after.
   Future<void> keepMine(OutboxOp op) async {
     final store = await _ref.read(localStoreProvider.future);
-    final entity = op.entities.single;
-    final current = store.serverEntity(entity.key)?.version;
-    if (current == null) {
-      await discard(op);
-      return;
+    if (op.entities.isEmpty) return discard(op);
+    int? server(String entity, String id) =>
+        store.serverEntity(LocalEntity.keyOf(op.entities.first.stream, entity, id))?.version;
+    var (query, body) = (op.query, op.body);
+    if (body?['items'] case final List items) {
+      final sent = <Map<String, dynamic>>[];
+      for (final item in items.cast<Map>().map((i) => i.cast<String, dynamic>())) {
+        if (item['version'] == null) {
+          sent.add(item);
+          continue;
+        }
+        final now = server(item['kind'] == 'account' ? 'personal_account' : 'personal_transaction', item['id'] as String);
+        if (now == null) return discard(op);
+        sent.add({...item, 'version': now});
+      }
+      body = {...body!, 'items': sent};
+    } else {
+      final current = store.serverEntity(op.entities.first.key)?.version;
+      if (current == null) return discard(op);
+      if (query.containsKey('version')) query = {...query, 'version': '$current'};
+      if (body != null && body.containsKey('version')) body = {...body, 'version': current};
     }
-    final retry = op.copyWith(
-      status: OutboxStatus.pending,
-      code: '',
-      error: '',
-      query: op.query.containsKey('version') ? {...op.query, 'version': '$current'} : op.query,
-      body: op.body != null && op.body!.containsKey('version') ? {...op.body!, 'version': current} : op.body,
-    );
     await store.removeOps([op.id!]);
     await _queue(OutboxOp(
-      method: retry.method,
-      path: retry.path,
-      query: retry.query,
-      body: retry.body,
-      label: retry.label,
-      entities: [LocalEntity(entity.stream, entity.entity, entity.entityId, current + 1, {...entity.data, 'version': current + 1})],
+      method: op.method,
+      path: op.path,
+      query: query,
+      body: body,
+      label: op.label,
+      entities: [
+        for (final e in op.entities)
+          if (store.serverEntity(e.key)?.version case final v? when e.version != null)
+            LocalEntity(e.stream, e.entity, e.entityId, v + 1, {...e.data, 'version': v + 1})
+          else
+            e,
+      ],
       createdAt: _now(),
     ));
   }
@@ -596,8 +597,9 @@ bool _hasToJson(Object o) {
   }
 }
 
-/// The full PUT body for an entry as it is now. The API applies every field it's sent, so an
-/// edit starts from this and changes only what it means to.
+/// The full PUT body for an entry as it is now. The API applies every field it's sent (the
+/// generated client sends every key, null too), so an edit starts from this and changes only what
+/// it means to: its account, direction, transfer, refund and holding links included.
 PersonalTxnIn personalBody(PersonalTxnOut t) => PersonalTxnIn(
   type: PersonalTxnInTypeEnum.fromJson(t.type.value)!,
   amountMinor: t.amountMinor,
@@ -611,6 +613,11 @@ PersonalTxnIn personalBody(PersonalTxnOut t) => PersonalTxnIn(
   expenseId: t.expenseId,
   settlementId: t.settlementId,
   reviewed: t.reviewed,
+  accountId: t.accountId,
+  direction: PersonalTxnInDirectionEnum.fromJson(t.direction.value),
+  transferGroupId: t.transferGroupId,
+  refundOfId: t.refundOfId,
+  holdingId: t.holdingId,
   source_: PersonalTxnInSource_Enum.fromJson(t.source_.value)!,
   reference: t.reference,
   balanceMinor: t.balanceMinor,

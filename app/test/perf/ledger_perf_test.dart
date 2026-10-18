@@ -30,6 +30,7 @@ import 'package:sembast/sembast_io.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/categorise/category_guesser.dart';
+import 'package:splitkit/core/finance/finance.dart';
 import 'package:splitkit/core/integrations.dart';
 import 'package:splitkit/core/local/ledger.dart';
 import 'package:splitkit/core/local/outbox.dart';
@@ -45,7 +46,7 @@ import 'package:splitkit/core/sms/sms_scan.dart';
 import 'package:splitkit/core/theme/theme.dart';
 import 'package:splitkit/design_system/design_system.dart' show IconTile;
 import 'package:splitkit/features/personal/personal_history_page.dart';
-import 'package:splitkit/features/sms/sms_importer.dart' show smsScanInput;
+import 'package:splitkit/features/sms/sms_importer.dart' show smsImportUnits, smsScanInput;
 
 import '../helpers.dart';
 import 'heavy_data.dart';
@@ -209,7 +210,7 @@ void main() {
     expect(ledger.groups().length + ledger.groups(archived: true).length, 30);
     expect(ledger.personalList()['count'], greaterThan(19000));
     expect(ledger.personalList(source: 'sms')['count'], greaterThan(15000));
-    expect(ledger.personalAccounts().map((a) => a['account']).toSet(), containsAll(heavyAccounts));
+    expect(ledger.personalReportedAccounts().map((a) => a['account']).toSet(), containsAll(heavyAccounts));
   });
 
   test('most generated SMS parse as payments', () {
@@ -253,9 +254,9 @@ void main() {
       );
     });
 
-    test('personalSummary, personalAccounts', () {
+    test('personalSummary, personalReportedAccounts', () {
       _under(_bench('personalSummary(Sep 2026)', () => ledger.personalSummary(month)), 2);
-      _under(_bench('personalAccounts()', () => ledger.personalAccounts()), 13);
+      _under(_bench('personalReportedAccounts()', () => ledger.personalReportedAccounts()), 13);
     });
 
     test('one entry by id', () {
@@ -279,10 +280,195 @@ void main() {
         _bench('personalList() + PersonalListOut.fromJson', () => PersonalListOut.fromJson(ledger.personalList())),
         16,
       );
-      final accounts = ledger.personalAccounts();
+      final accounts = ledger.personalReportedAccounts();
       _under(
-        _bench('AccountOut.listFromJson(personalAccounts()) (convert only)', () => AccountOut.listFromJson(accounts)),
+        _bench(
+          'AccountOut.listFromJson(personalReportedAccounts()) (convert only)',
+          () => AccountOut.listFromJson(accounts),
+        ),
         1,
+      );
+    });
+  });
+
+  test('the finance engine (core/finance): built, a month of cash flow and net worth', () {
+    // The heavy entries as migration 0013's backfill leaves them: an account for each bank label,
+    // entries linked to it, a direction from the type. Read here, untimed: a rebuilt Ledger
+    // reuses the rows of the entries that didn't change.
+    final accounts = [
+      for (final (i, label) in heavyAccounts.indexed)
+        FinAccount(
+          id: smsAccountId(data.me, label),
+          name: label,
+          type: accountTypeForLabel(label),
+          currency: 'INR',
+          smsLabel: label,
+          createdMicros: i,
+        ),
+    ];
+    final ids = {for (final a in accounts) a.smsLabel: a.id};
+    final entries = [
+      for (final e in data.entities)
+        if (e.entity == 'personal_transaction')
+          FinEntry({
+            ...e.data,
+            'account_id': ids[e.data['account']],
+            'direction': e.data['type'] == 'income' ? 'in' : 'out',
+          }),
+    ];
+    final notCounted = {
+      for (final e in entries)
+        if (e.expenseId != null || e.settlementId != null) e.id,
+    };
+    final sep = monthRange(2026, 9);
+    String label(String? id) => id ?? 'Uncategorised';
+    void overview(FinanceEngine f) {
+      f.cashFlow(sep, notCounted: notCounted, groupShareMinor: 0, countGroupShare: true, label: label);
+      f.netWorth(splitNetMinor: 0, countSplit: true);
+    }
+
+    _under(
+      _bench(
+        'FinanceEngine + cashFlow(Sep 2026) + netWorth (a new engine)',
+        () => overview(FinanceEngine(accounts: accounts, entries: entries, currency: 'INR')),
+        note: '${entries.length} entries, ${accounts.length} accounts',
+      ),
+      60,
+    );
+    final engine = FinanceEngine(accounts: accounts, entries: entries, currency: 'INR');
+    _under(_bench('FinanceEngine cashFlow(Sep 2026) + netWorth, remembered', () => overview(engine)), 1);
+    var month = 0;
+    _under(
+      _bench(
+        'FinanceEngine cashFlow(a month not asked for yet) on a built engine',
+        () => engine.cashFlow(
+          monthRange(2025, ++month),
+          notCounted: notCounted,
+          groupShareMinor: 0,
+          countGroupShare: true,
+          label: label,
+        ),
+      ),
+      2,
+    );
+  });
+
+  group("Ledger.finance: what the finance providers read (the heavy data with migration 0013's accounts)", () {
+    late List<LocalEntity> entities;
+    late Ledger inUse;
+    final sep = monthRange(2026, 9);
+    const window = Duration(minutes: 30);
+    setUpAll(() {
+      entities = _withAccounts(data);
+      inUse = Ledger(entities);
+    });
+
+    // As cashFlowProvider, netWorthProvider and transferSuggestionsProvider ask.
+    CashFlow cashFlow(Ledger l, DayRange month) => l.finance.cashFlow(
+      month,
+      notCounted: l.notCounted,
+      groupShareMinor: l.groupShareFor(month),
+      countGroupShare: true,
+      label: l.categoryLabel,
+    );
+    NetWorth netWorth(Ledger l) => l.finance.netWorth(splitNetMinor: l.splitNet(l.finance.currency), countSplit: true);
+    List<TransferSuggestion> suggestions(Ledger l, Set<String> dismissed) =>
+        l.finance.transferSuggestions(notCounted: l.notCounted, dismissed: dismissed, window: window);
+
+    test('after a change to personal entries: a new Ledger, a new engine', () {
+      _under(
+        _bench(
+          'Ledger() + finance.balances (engine built: entries sorted, balances)',
+          () => Ledger(entities).finance.balances,
+          note: '${heavyAccounts.length} accounts',
+        ),
+        60,
+      );
+      // Also notCounted, the group share and (for net worth) overallBalances, worked out anew.
+      _under(_bench('Ledger() + cashFlowProvider(Sep 2026)', () => cashFlow(Ledger(entities), sep)), 90);
+      _under(_bench('Ledger() + netWorthProvider (balances, splitNet)', () => netWorth(Ledger(entities))), 90);
+      _under(
+        _bench(
+          'Ledger() + transferSuggestionsProvider',
+          () => suggestions(Ledger(entities), const {}),
+          note: 'pairs found: ${suggestions(inUse, const {}).length}',
+        ),
+        90,
+      );
+    });
+
+    test('on a Ledger in use', () {
+      cashFlow(inUse, sep);
+      netWorth(inUse);
+      var month = 0;
+      _under(
+        _bench('cashFlowProvider(a month not asked for yet)', () => cashFlow(inUse, monthRange(2025, ++month))),
+        1,
+      );
+      _under(_bench('cashFlowProvider(Sep 2026), remembered', () => cashFlow(inUse, sep)), 0.5);
+      _under(_bench('netWorthProvider', () => netWorth(inUse)), 0.5);
+      _under(
+        _bench('transferSuggestionsProvider (dismissals changed: worked out again)', () => suggestions(inUse, {})),
+        30,
+      );
+    });
+
+    test('after a groups-only change the engine carries over; after a personal one it is built again', () async {
+      final store = await _heavyStore(data, 'perf-carry', entities: entities);
+      addTearDown(store.close);
+      final user = entities.firstWhere((e) => e.entity == 'profile').stream;
+      final group = entities.firstWhere((e) => e.entity == 'group');
+      final entry = entities.firstWhere((e) => e.entity == 'personal_transaction' && e.data['deleted_at'] == null);
+      var run = 0;
+      // The store's next Ledger and the Overview's finance answers on it, after [change] is queued.
+      Future<(double, FinanceEngine)> after(LocalEntity Function(int version) change) async {
+        await store.enqueue(
+          OutboxOp(
+            method: 'PUT',
+            path: '/api/v1/x',
+            label: 'Perf',
+            entities: [change(++run + 1)],
+            createdAt: '2026-09-25T10:00:00Z',
+          ),
+        );
+        final s = Stopwatch()..start();
+        final l = store.ledger;
+        cashFlow(l, sep);
+        netWorth(l);
+        return (_ms(s), l.finance);
+      }
+
+      LocalEntity renamed(int v) =>
+          LocalEntity(group.stream, 'group', group.entityId, v, {...group.data, 'name': 'Renamed $v', 'version': v});
+      LocalEntity edited(int v) => LocalEntity(user, 'personal_transaction', entry.entityId, v, {
+        ...entry.data,
+        'notes': 'Edit $v',
+        'version': v,
+      });
+
+      final engine = store.ledger.finance;
+      cashFlow(store.ledger, sep);
+      final groupsOnly = [for (var i = 0; i < 6; i++) await after(renamed)];
+      for (final (_, e) in groupsOnly) {
+        expect(e, same(engine));
+      }
+      _under(
+        _record(
+          'groups-only change: store.ledger + cash flow + net worth',
+          [for (final (ms, _) in groupsOnly.skip(1)) ms],
+          note: 'the engine carried over',
+        ),
+        80,
+      );
+      final personal = [for (var i = 0; i < 6; i++) await after(edited)];
+      expect(personal.map((p) => p.$2).toSet(), hasLength(6));
+      _under(
+        _record(
+          'personal change: store.ledger + cash flow + net worth',
+          [for (final (ms, _) in personal.skip(1)) ms],
+          note: 'a new engine',
+        ),
+        120,
       );
     });
   });
@@ -399,11 +585,13 @@ void main() {
   });
 
   test('after a write: the whole Ledger is rebuilt, and a visible tab reads its views again', () {
+    // ~28 ms before D2; the summary now comes from the finance engine, which sorts the entries
+    // once per new engine (~12 ms more; a change that isn't to Personal keeps the engine).
     _under(
       _bench('rebuild + Personal Overview (summary, accounts, list)', () {
         final l = Ledger(data.entities);
         PersonalSummaryOut.fromJson(l.personalSummary(month));
-        AccountOut.listFromJson(l.personalAccounts());
+        AccountOut.listFromJson(l.personalReportedAccounts());
         PersonalListOut.fromJson(l.personalList());
       }),
       90,
@@ -512,47 +700,50 @@ void main() {
   });
 
   test('SMS import: the scan (core/sms/sms_scan.dart), inline and on another isolate', () async {
+    // The heavy data as migration 0013 leaves it (an account per label, as on a phone since), and
+    // as it was before (no accounts: the read makes one per label, and each takes in the label's
+    // entries, which its opening balance counts).
+    final accounts = Ledger(_withAccounts(data));
     // On the UI isolate: what the scan needs, taken from the device's data.
-    _under(_bench('smsScanInput: from a Ledger in use', () => smsScanInput(ledger, sms, const Features())), 20);
+    _under(_bench('smsScanInput: from a Ledger in use', () => smsScanInput(accounts, sms, const Features())), 20);
+    _under(
+      _bench('smsScanInput: from a Ledger in use, no accounts yet', () => smsScanInput(ledger, sms, const Features())),
+      20,
+    );
+    final withAccounts = _withAccounts(data);
     final inputCold = _bench(
       'smsScanInput: the first time on a new Ledger (+ Ledger())',
-      () => smsScanInput(Ledger(data.entities), sms, const Features()),
+      () => smsScanInput(Ledger(withAccounts), sms, const Features()),
     );
     _under(inputCold, 150);
-    final input = smsScanInput(ledger, sms, const Features());
-    final out = scanSms(input);
-    expect((out.created.length, out.attached.length, out.known, out.skipped.length), (1719, 81, 200, 0));
-    _notes.add(
-      'SMS scan: ${out.created.length} created, ${out.attached.length} attached, ${out.known} known, '
-      '${out.skipped.length} skipped.',
-    );
-    _under(_bench('scanSms, all ${sms.length} SMS, inline (total)', () => scanSms(input), runs: 3), 600);
-    // Off the UI isolate: the whole wait, sending the input and the answer included.
-    await Isolate.run(() => scanSms(input));
-    final wall = <double>[];
-    for (var i = 0; i < 3; i++) {
-      final s = Stopwatch()..start();
+    for (final (l, made, name) in [(accounts, 4, ''), (ledger, 10, ', no accounts yet')]) {
+      final input = smsScanInput(l, sms, const Features());
+      final out = scanSms(input);
+      // The heavy SMS are all plain payments (no refunds, card bills, own transfers or ATM): the
+      // same entries as before, now each in its account; the labels with none get one.
+      expect((out.created.length, out.attached.length, out.known, out.skipped.length), (1719, 81, 200, 0));
+      expect((out.newAccounts.length, out.convert.length), (made, 0));
+      _notes.add(
+        'SMS scan$name: ${out.created.length} created, ${out.attached.length} attached, ${out.known} known, '
+        '${out.skipped.length} skipped, ${out.newAccounts.length} accounts made.',
+      );
+      _under(_bench('scanSms, all ${sms.length} SMS, inline (total)$name', () => scanSms(input), runs: 3), 600);
+      // Off the UI isolate: the whole wait, sending the input and the answer included.
       await Isolate.run(() => scanSms(input));
-      wall.add(_ms(s));
+      final wall = <double>[];
+      for (var i = 0; i < 3; i++) {
+        final s = Stopwatch()..start();
+        await Isolate.run(() => scanSms(input));
+        wall.add(_ms(s));
+      }
+      _record('scanSms, all ${sms.length} SMS, on another isolate (wall time)$name', wall, note: 'off the UI isolate');
     }
-    _record('scanSms, all ${sms.length} SMS, on another isolate (wall time)', wall, note: 'off the UI isolate');
     _inputMs = inputCold.median;
   });
 
   test('SMS import: queueing what a first read found', () async {
-    final q = await _ImportQueue.start(data);
+    final q = await _ImportQueue.start(data, entities: _withAccounts(data));
     final read = scanSms(smsScanInput(q.store.ledger, sms, const Features()));
-    final l = q.store.ledger;
-    final attached = [
-      for (final a in read.attached)
-        (
-          a.entryId,
-          personalBody(PersonalTxnOut.fromJson(l.personalTransaction(a.entryId))!)
-            ..merchant = a.merchant
-            ..account = a.account
-            ..channel ??= PersonalTxnInChannelEnum.fromJson(a.channel),
-        ),
-    ];
     Future<(double, int)> once(Future<void> Function() queue) async {
       final ops = q.store.outbox.length;
       final builds = q.store.ledgerBuilds;
@@ -574,8 +765,10 @@ void main() {
 
     final writes = q.container.read(writesProvider);
     final queued = await bench(
-      'importSms: ${read.created.length} new + ${read.attached.length} attached, one enqueueAll',
-      () => writes.importSms(read.created, attached),
+      'importUnits: ${read.created.length} new + ${read.attached.length} attached + ${read.newAccounts.length} '
+      'accounts, one enqueueAll',
+      // As the importer queues: a refused unit would be left out (none is here).
+      () => writes.importUnits(smsImportUnits(q.store.ledger, read), onRefused: (unit, why) => fail('$unit: $why')),
     );
     await q.close();
     // Before step 0.4: new entries, then one write (and rebuild) per attached entry: ~1.1 s,
@@ -722,11 +915,50 @@ class _SyncBurst {
   }
 }
 
-/// A device store holding the heavy dataset, every stream at seq 100.
-Future<LocalStore> _heavyStore(HeavyData data, String path, {DatabaseFactory? factory}) async {
+/// The heavy dataset as migration 0013's backfill leaves it: an account for each bank label, the
+/// entries that carry one linked to it, and a direction from each entry's type.
+List<LocalEntity> _withAccounts(HeavyData data) {
+  final user = data.entities.firstWhere((e) => e.entity == 'profile').stream;
+  final ids = {for (final label in heavyAccounts) label: smsAccountId(data.me, label)};
+  return [
+    for (final (i, label) in heavyAccounts.indexed)
+      LocalEntity(user, 'personal_account', ids[label]!, 1, {
+        'id': ids[label],
+        'user_id': data.me,
+        'name': label,
+        'type': accountTypeForLabel(label).wire,
+        'currency': 'INR',
+        'opening_balance_minor': 0,
+        'sms_label': label,
+        'status': 'active',
+        'acting_admin_id': null,
+        'created_at': DateTime.utc(2021, 1, 1, 0, i).toIso8601String(),
+        'updated_at': DateTime.utc(2021, 1, 1, 0, i).toIso8601String(),
+        'deleted_at': null,
+        'version': 1,
+      }),
+    for (final e in data.entities)
+      if (e.entity == 'personal_transaction')
+        LocalEntity(e.stream, e.entity, e.entityId, e.version, {
+          ...e.data,
+          'account_id': ids[e.data['account']],
+          'direction': e.data['type'] == 'income' ? 'in' : 'out',
+        })
+      else
+        e,
+  ];
+}
+
+/// A device store holding the heavy dataset (or [entities] made from it), every stream at seq 100.
+Future<LocalStore> _heavyStore(
+  HeavyData data,
+  String path, {
+  DatabaseFactory? factory,
+  List<LocalEntity>? entities,
+}) async {
   final store = await LocalStore.open(factory ?? databaseFactoryMemory, path);
   final byStream = <String, List<LocalEntity>>{};
-  for (final e in data.entities) {
+  for (final e in entities ?? data.entities) {
     (byStream[e.stream] ??= []).add(e);
   }
   for (final MapEntry(key: stream, value: entities) in byStream.entries) {
@@ -744,8 +976,8 @@ class _ImportQueue {
   final SyncEngine engine;
   final ProviderContainer container;
 
-  static Future<_ImportQueue> start(HeavyData data) async {
-    final store = await _heavyStore(data, 'perf-import-${DateTime.now().microsecondsSinceEpoch}');
+  static Future<_ImportQueue> start(HeavyData data, {List<LocalEntity>? entities}) async {
+    final store = await _heavyStore(data, 'perf-import-${DateTime.now().microsecondsSinceEpoch}', entities: entities);
     final offline = MockClient((req) async => throw http.ClientException('offline', req.url));
     final engine = SyncEngine(
       api: SyncApi(ApiClient(basePath: '')..client = offline),

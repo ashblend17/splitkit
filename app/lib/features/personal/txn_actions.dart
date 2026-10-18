@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/finance/finance.dart';
+import '../../core/finance/finance_providers.dart';
 import '../../core/integrations.dart';
 import '../../core/local/ledger.dart' show PersonalLink;
 import '../../core/local/writes.dart';
@@ -12,6 +14,7 @@ import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import '../settlements/settlement_sheet.dart';
+import 'personal_txn_sheet.dart';
 
 /// A personal entry in Split: what it became there (a split or a payment, with Open and
 /// Unlink), or the ways to make it something there. Which ways are offered is up to
@@ -37,12 +40,93 @@ class TxnInSplit extends ConsumerWidget {
   }
 }
 
+/// What [txn] can become among your own money, as the features allow: "Track this cash" for a
+/// cash withdrawal on one of your accounts (it becomes a transfer into Cash), "This was a
+/// transfer" when a suggested pair has it, and "Record a refund" for a spend. [likely] (the short
+/// list on "Just in", which shows suggested pairs itself) keeps to Track this cash. [leave] is
+/// called when the entry is about to change into something else, so a sheet showing it can close.
+List<Widget> entryActions(
+  BuildContext context,
+  WidgetRef ref,
+  PersonalTxnOut txn, {
+  bool likely = false,
+  VoidCallback? leave,
+}) {
+  final features = ref.watch(featuresProvider);
+  final spend = txn.type == PersonalTxnOutTypeEnum.expense;
+  final linked = txn.expenseId != null || txn.settlementId != null;
+  final cash =
+      features.accounts &&
+      features.atmToCash &&
+      spend &&
+      txn.channel?.value == 'atm' &&
+      txn.accountId != null &&
+      !linked;
+  final pair = likely || linked
+      ? null
+      : (ref.watch(transferSuggestionsProvider).value ?? const <TransferSuggestion>[])
+            .where((p) => p.outflow.id == txn.id || p.inflow.id == txn.id)
+            .firstOrNull;
+  return [
+    if (cash)
+      SkButton(
+        'Track this cash',
+        icon: 'wallet',
+        size: SkButtonSize.small,
+        variant: SkButtonVariant.secondary,
+        onPressed: () => _run(context, ref, () => ref.read(writesProvider).trackCash(txn.id), then: leave),
+      ),
+    if (pair != null)
+      SkButton(
+        'This was a transfer',
+        icon: 'swap',
+        size: SkButtonSize.small,
+        variant: SkButtonVariant.secondary,
+        onPressed: () => _run(
+          context,
+          ref,
+          () => ref.read(writesProvider).pairAsTransfer(pair.outflow.id, pair.inflow.id),
+          then: leave,
+        ),
+      ),
+    if (spend && features.refunds && !likely)
+      SkButton(
+        'Record a refund',
+        icon: 'refresh',
+        size: SkButtonSize.small,
+        variant: SkButtonVariant.secondary,
+        onPressed: () {
+          // The sheet this may be in closes first; the refund's opens over the screen.
+          final screen = Navigator.of(context, rootNavigator: true).context;
+          leave?.call();
+          showPersonalTxnSheet(screen, type: 'refund', refundOf: txn);
+        },
+      ),
+  ];
+}
+
+/// [entryActions] in a row, or nothing when there are none.
+class EntryActions extends ConsumerWidget {
+  const EntryActions({super.key, required this.txn, this.leave});
+  final PersonalTxnOut txn;
+  final VoidCallback? leave;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final actions = entryActions(context, ref, txn, leave: leave);
+    if (actions.isEmpty) return const SizedBox.shrink();
+    return Wrap(spacing: 8, runSpacing: 8, children: actions);
+  }
+}
+
 /// The buttons that turn [txn] into something in Split, as the integrations allow: "Split it"
-/// and "Already split" for a spend, "Paid a friend" / "From a friend" for a payment. [likely]
-/// keeps the friend button to when the bank's text names one (the short list on "Just in").
+/// and "Already split" for a spend, "Paid a friend" / "From a friend" for a payment. Only a spend
+/// or an income can be one. [likely] keeps the friend button to when the bank's text names one
+/// (the short list on "Just in").
 List<Widget> txnActions(BuildContext context, WidgetRef ref, PersonalTxnOut txn, {bool likely = false}) {
   final on = ref.watch(integrationsProvider);
   final spend = txn.type == PersonalTxnOutTypeEnum.expense;
+  if (!spend && txn.type != PersonalTxnOutTypeEnum.income) return const [];
   final candidates = spend && on.linkToExistingSplit
       ? ref.watch(linkCandidatesProvider(txn.id)).value ?? const <ExpenseOut>[]
       : const <ExpenseOut>[];
@@ -182,10 +266,12 @@ Future<void> _pickFriend(BuildContext context, WidgetRef ref, PersonalTxnOut txn
   );
 }
 
-Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() write) async {
+/// Runs [write], then [then] (when it went through).
+Future<void> _run(BuildContext context, WidgetRef ref, Future<void> Function() write, {VoidCallback? then}) async {
   try {
     await write();
     refreshPersonal(ref.invalidate);
+    then?.call();
   } catch (e) {
     if (context.mounted) showMessage(context, apiErrorMessage(e));
   }

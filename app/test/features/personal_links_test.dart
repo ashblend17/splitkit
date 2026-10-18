@@ -83,13 +83,13 @@ void main() {
   });
 
   testWidgets('Just in: Looks right, and Not mine with Undo', (tester) async {
-    final be = await pumpApp(tester, location: '/personal');
+    final be = await pumpApp(tester, location: '/personal', size: tall);
     be.offline = true;
     await _tap(tester, find.text('Looks right'));
     expect(find.text('Just in'), findsNothing);
     expect(_queued(tester).single.$3!['reviewed'], true);
 
-    final be2 = await pumpApp(tester, location: '/personal');
+    final be2 = await pumpApp(tester, location: '/personal', size: tall);
     be2.offline = true;
     await _tap(tester, find.text('Not mine'));
     expect(find.text('Just in'), findsNothing);

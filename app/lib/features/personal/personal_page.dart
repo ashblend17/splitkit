@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/api/api.dart';
 import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/finance/finance.dart';
+import '../../core/finance/finance_providers.dart';
 import '../../core/integrations.dart';
+import '../../core/money/money.dart';
+import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
@@ -29,8 +34,10 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
 
   @override
   Widget build(BuildContext context) {
-    final summary = ref.watch(personalSummaryProvider(_month));
+    final flow = ref.watch(cashFlowProvider(_month));
     final recent = ref.watch(personalListProvider(const PersonalQuery(limit: 5)));
+    // Names the account on a transfer's other side in Recent.
+    final finance = ref.watch(financeEngineProvider).value;
     final groupShare = ref.watch(integrationsProvider).groupShareInPersonal;
     return Scaffold(
       body: SafeArea(
@@ -39,7 +46,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
           color: SkColors.personal,
           onRefresh: () async {
             refreshPersonal(ref.invalidate);
-            await ref.read(personalSummaryProvider(_month).future);
+            await ref.read(cashFlowProvider(_month).future);
           },
           child: ListView(
             // Room at the bottom for the floating "Add entry".
@@ -78,14 +85,14 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: _thisMonth(summary, groupShare)),
+                          Expanded(child: _thisMonth(flow, groupShare)),
                           const SizedBox(width: 16),
-                          Expanded(child: _recent(recent)),
+                          Expanded(child: _recent(recent, finance)),
                         ],
                       )
                     else ...[
-                      _thisMonth(summary, groupShare),
-                      _recent(recent),
+                      _thisMonth(flow, groupShare),
+                      _recent(recent, finance),
                     ],
                   ],
                 ),
@@ -97,15 +104,15 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
     );
   }
 
-  /// This month's summary, then the SMS prompt, entries just in and accounts when there are any.
-  Widget _thisMonth(AsyncValue<PersonalSummaryOut> summary, bool groupShare) => Column(
+  /// This month's cash flow, then the SMS prompt, entries just in and your accounts.
+  Widget _thisMonth(AsyncValue<CashFlow> flow, bool groupShare) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       AsyncBody(
-        value: summary,
-        onRetry: () => ref.invalidate(personalSummaryProvider(_month)),
+        value: flow,
+        onRetry: () => ref.invalidate(cashFlowProvider(_month)),
         skeletonRows: 2,
-        builder: (s) => _summaryCard(s, groupShare: groupShare),
+        builder: (f) => _summaryCard(f, groupShare: groupShare),
       ),
       const SizedBox(height: 20),
       const SmsPromptCard(),
@@ -114,7 +121,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
     ],
   );
 
-  Widget _recent(AsyncValue<PersonalListOut> recent) => Column(
+  Widget _recent(AsyncValue<PersonalListOut> recent, FinanceEngine? finance) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Row(
@@ -143,15 +150,15 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
               )
             : Column(
                 children: [
-                  for (final t in list.items) ...[_card(t), const SizedBox(height: 8)],
+                  for (final t in list.items) ...[_card(t, finance), const SizedBox(height: 8)],
                 ],
               ),
       ),
     ],
   );
 
-  Widget _card(PersonalTxnOut t) {
-    final v = personalView(t);
+  Widget _card(PersonalTxnOut t, FinanceEngine? finance) {
+    final v = personalView(t, finance: finance);
     return TransactionCard(
       title: v.title,
       subtitle: v.subtitle,
@@ -167,67 +174,125 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
     );
   }
 
-  /// [groupShare]: also show your share of group spending (an integration, see
-  /// integrations.dart).
-  Widget _summaryCard(PersonalSummaryOut s, {required bool groupShare}) {
-    final c = s.currency;
-    final top = s.byCategory.take(3).toList();
+  /// What you spent in the month and what's left of your income: the finance engine's cash flow.
+  /// [groupShare]: your share of group spending shows (an integration, see integrations.dart); it's
+  /// part of what you spent while cash flow counts it ([CashFlow.groupShareCounted]).
+  Widget _summaryCard(CashFlow f, {required bool groupShare}) {
+    final c = ref.watch(meProvider).currency;
+    final header = Row(
+      children: [
+        Expanded(
+          child: Text(
+            'Spent in ${DateFormat('MMMM').format(_month)}',
+            style: SkText.body(14, 600, color: SkColors.ink2),
+          ),
+        ),
+        SkPillButton(shortMonthLabel(_month), trailing: 'down', onPressed: _pickMonth),
+      ],
+    );
+    if (f.isEmpty) {
+      return SkCard(
+        radius: 20,
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            const SizedBox(height: 18),
+            Text('Nothing this month yet', style: SkText.display(22, 700)),
+            const SizedBox(height: 6),
+            Text(
+              'Add what you spend and earn, and this month adds up here.',
+              style: SkText.body(13, 400, color: SkColors.ink2),
+            ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: SkButton(
+                'Add entry',
+                icon: 'plus',
+                size: SkButtonSize.small,
+                variant: SkButtonVariant.strong,
+                onPressed: () => showPersonalTxnSheet(context),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    final shareCounted = f.groupShareCounted && f.groupShareMinor > 0;
+    // What Spent is made of, when it's more than your own spending.
+    final parts = [
+      if (f.expensesMinor > 0) _line('On your own', money(f.expensesMinor, c), SkColors.ink),
+      if (shareCounted) _line('Your share in groups', money(f.groupShareMinor, c), SkColors.brandInk),
+      if (f.refundsMinor > 0) _line('Refunds', money(-f.refundsMinor, c), SkColors.owed),
+    ];
+    final ownOnly = parts.length == 1 && f.expensesMinor > 0;
+    final top = [
+      for (final t in f.byCategory.take(3))
+        if (t.amountMinor > 0) t,
+    ];
     final max = top.isEmpty ? 0 : top.first.amountMinor;
     // With no income logged there's nothing to be left over from (not "overspent").
-    final noIncome = s.incomeMinor == 0;
-    final over = s.leftOverMinor < 0 && !noIncome;
+    final noIncome = f.incomeMinor == 0;
+    final over = f.netMinor < 0 && !noIncome;
+    final rate = f.savingsRatePercent;
+    final behind = rate != null && rate < 0;
     return SkCard(
       radius: 20,
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Spent in ${s.monthLabel.split(' ').first}',
-                  style: SkText.body(14, 600, color: SkColors.ink2),
-                ),
-              ),
-              SkPillButton(shortMonthLabel(_month), trailing: 'down', onPressed: _pickMonth),
-            ],
+          header,
+          const SizedBox(height: 14),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(money(f.consumptionMinor, c), maxLines: 1, style: SkText.display(44, 800, height: 1)),
           ),
-          const SizedBox(height: 14),
-          Text(money(s.spentMinor, c), style: SkText.display(44, 800, height: 1)),
+          if (parts.isNotEmpty && !ownOnly) ...[
+            const SizedBox(height: 10),
+            for (final (i, p) in parts.indexed) ...[if (i > 0) const SizedBox(height: 6), p],
+          ],
           const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
-                child: _tile('Income', money(s.incomeMinor, c), SkColors.owedSoft, SkColors.owedInk, SkColors.owed),
+                child: _tile('Income', money(f.incomeMinor, c), SkColors.owedSoft, SkColors.owedInk, SkColors.owed),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: over
-                    ? _tile('Overspent', money(-s.leftOverMinor, c), SkColors.oweSoft, SkColors.oweInk, SkColors.owe)
+                    ? _tile('Overspent', money(-f.netMinor, c), SkColors.oweSoft, SkColors.oweInk, SkColors.owe)
                     : _tile(
                         'Left over',
-                        noIncome ? '—' : money(s.leftOverMinor, c),
+                        noIncome ? '—' : money(f.netMinor, c),
                         SkColors.paper,
                         SkColors.ink2,
                         SkColors.ink,
                       ),
               ),
-            ],
-          ),
-          if (groupShare && s.groupShareMinor > 0) ...[
-            const SizedBox(height: 12),
-            Semantics(
-              label: 'Your share in groups: ${money(s.groupShareMinor, c)}',
-              child: ExcludeSemantics(
-                child: Row(
-                  children: [
-                    Expanded(child: Text('Your share in groups', style: SkText.body(13, 600, color: SkColors.ink2))),
-                    Text(money(s.groupShareMinor, c), style: SkText.body(13, 700, color: SkColors.brandInk)),
-                  ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: _tile(
+                  'Saved',
+                  rate == null ? '—' : '${behind ? minus : ''}${rate.abs()}%',
+                  behind ? SkColors.oweSoft : SkColors.personalSoft,
+                  behind ? SkColors.oweInk : SkColors.personalInk,
+                  behind ? SkColors.owe : SkColors.personalInk,
                 ),
               ),
-            ),
+            ],
+          ),
+          // Shown next to your spending but not part of it (groupShareInCashFlow is off).
+          if (groupShare && !f.groupShareCounted && f.groupShareMinor > 0) ...[
+            const SizedBox(height: 12),
+            _line('Your share in groups (not counted)', money(f.groupShareMinor, c), SkColors.brandInk),
+          ],
+          if (f.investedMinor != 0) ...[
+            const SizedBox(height: 12),
+            _line('Invested', money(f.investedMinor, c), SkColors.ink),
           ],
           if (top.isNotEmpty) ...[
             const SizedBox(height: 14),
@@ -254,7 +319,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
                         ),
                         alignment: Alignment.centerLeft,
                         child: FractionallySizedBox(
-                          widthFactor: max == 0 ? 0 : t.amountMinor / max,
+                          widthFactor: max <= 0 ? 0 : (t.amountMinor / max).clamp(0.0, 1.0),
                           child: Container(
                             decoration: BoxDecoration(
                               color: SkColors.personal,
@@ -273,6 +338,21 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
       ),
     );
   }
+
+  /// One line of the summary: what, and how much.
+  Widget _line(String label, String value, Color color) => Semantics(
+    label: '$label: $value',
+    child: ExcludeSemantics(
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: SkText.body(13, 600, color: SkColors.ink2)),
+          ),
+          Text(value, style: SkText.body(13, 700, color: color)),
+        ],
+      ),
+    ),
+  );
 
   Widget _tile(String label, String value, Color bg, Color labelColor, Color valueColor) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

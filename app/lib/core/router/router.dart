@@ -19,6 +19,7 @@ import '../../features/import_tricount/import_done_page.dart';
 import '../../features/import_tricount/import_review_page.dart';
 import '../../features/import_tricount/import_upload_page.dart';
 import '../../features/tricount_sync/tricount_sync_page.dart';
+import '../../features/personal/accounts_page.dart';
 import '../../features/personal/personal_history_page.dart';
 import '../../features/personal/personal_page.dart';
 import '../../features/profile/categories_page.dart';
@@ -129,14 +130,25 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           // Personal's tabs: Overview, Transactions, Insights. AppShell's keys follow this order.
           StatefulShellBranch(
-            routes: [GoRoute(path: '/personal', builder: (_, _) => const PersonalPage())],
+            routes: [
+              GoRoute(
+                path: '/personal',
+                builder: (_, _) => const PersonalPage(),
+                // Your accounts and net worth (from Overview).
+                routes: [GoRoute(path: 'accounts', builder: (_, _) => const AccountsPage())],
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/personal/transactions',
-                // ?account=: an account's entries (from Overview's Accounts).
-                builder: (_, s) => PersonalHistoryPage(account: s.uri.queryParameters['account']),
+                // ?account_id=: an account's entries (from Overview and Accounts); ?account=, a bank
+                // SMS label, from links made before accounts.
+                builder: (_, s) => PersonalHistoryPage(
+                  accountId: s.uri.queryParameters['account_id'],
+                  account: s.uri.queryParameters['account'],
+                ),
               ),
             ],
           ),

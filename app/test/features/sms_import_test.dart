@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/finance/finance.dart' show pairedLegId, smsAccountId, transferGroupIdFor;
+import 'package:splitkit/core/integrations.dart';
+import 'package:splitkit/core/local/ledger.dart';
+import 'package:splitkit/core/local/outbox.dart';
 import 'package:splitkit/core/local/providers.dart';
+import 'package:splitkit/core/local/store.dart';
+import 'package:splitkit/core/local/writes.dart';
 import 'package:splitkit/core/router/router.dart';
 import 'package:splitkit/core/session/session.dart';
 import 'package:splitkit/core/sms/sms.dart';
 import 'package:splitkit/core/sms/sms_ids.dart';
 import 'package:splitkit/core/sms/sms_parser.dart';
+import 'package:splitkit/core/sms/sms_scan.dart' show scanSms;
 import 'package:splitkit/features/sms/sms_importer.dart';
 import 'package:splitkit/features/sms/sms_source.dart';
 
@@ -51,11 +59,32 @@ List<RawSms> _inbox() => [
   _sms('+919876543210', 'Sent you Rs 500 for dinner!', DateTime(2026, 9, 22, 9, 0)), // a person: never read
 ];
 
-Future<FakeBackend> _setUp(WidgetTester tester, FakeSmsSource sms) async {
-  final be = await pumpApp(tester, location: '/profile/sms', size: tall, sms: sms);
+Future<FakeBackend> _setUp(WidgetTester tester, FakeSmsSource sms, {List<Override> overrides = const []}) async {
+  final be = await pumpApp(tester, location: '/profile/sms', size: tall, sms: sms, overrides: overrides);
   be.offline = true; // what's read stays queued, for the test to see
   return be;
 }
+
+LocalStore _store(WidgetTester tester) => appContainer(tester).read(localStoreProvider).value!;
+
+Ledger _ledger(WidgetTester tester) => _store(tester).ledger;
+
+String _account(Ledger l, String label) =>
+    l.personalAccountList().firstWhere((a) => a['sms_label'] == label || a['name'] == label)['id'] as String;
+
+/// The items of [ops], each a `POST /personal/batch` that parses as the generated client's model
+/// (so its shape can't drift from the API's).
+List<Map> _items(List<OutboxOp> ops) => [
+  for (final op in ops) ...[
+    if (op.path != '/api/v1/personal/batch' || PersonalMixedBatchIn.fromJson(op.body) == null)
+      throw TestFailure('not a personal batch: ${op.method} ${op.path}'),
+    ...(op.body!['items'] as List).cast<Map>(),
+  ],
+];
+
+Map _txn(Map item) => item['transaction'] as Map;
+
+String _idOf(RawSms sms) => smsEntryId(me, sms, (parseSms(sms) as SmsParsed).txn);
 
 Future<void> _tap(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder);
@@ -76,24 +105,33 @@ void main() {
     expect(sms.reads.single.since, DateTime(2026, 7)); // the last 3 months
     expect(RegExp(sms.reads.single.pattern).hasMatch('+919876543210'), isFalse);
 
+    // One request for everything read: the new entries, each in its account, then the entry you'd
+    // made, given the account and merchant the message names.
     final ops = appContainer(tester).read(outboxProvider);
-    final batch = ops.firstWhere((o) => o.path.endsWith('/batch'));
-    final items = (batch.body!['items'] as List).cast<Map>();
+    final items = _items(ops);
+    expect(ops.length, 1);
+    final ledger = _ledger(tester);
+    final (hdfc, card) = (_account(ledger, 'HDFC ··4821'), _account(ledger, 'ICICI Credit card ··9012'));
     final zomato = _inbox().first;
-    expect(items[1]['id'], smsEntryId(me, zomato, (parseSms(zomato) as SmsParsed).txn));
-    expect([for (final i in items) (i['description'], i['reviewed'], i['source'])], [
-      ('Myntra', true, 'sms'),
-      ('Zomato', false, 'sms'),
+    final [myntra, made, attach] = items;
+    expect(made['id'], smsEntryId(me, zomato, (parseSms(zomato) as SmsParsed).txn));
+    Object entry(Map i) =>
+        (i['op'], _txn(i)['description'], _txn(i)['reviewed'], _txn(i)['source'], _txn(i)['account_id']);
+    expect([entry(myntra), entry(made)], [
+      ('create', 'Myntra', true, 'sms', card),
+      ('create', 'Zomato', false, 'sms', hdfc),
     ]);
-    expect((items[1]['account'], items[1]['channel'], items[1]['reference']), ('HDFC ··4821', 'upi', '626800000001'));
+    expect(
+      (_txn(made)['account'], _txn(made)['channel'], _txn(made)['reference']),
+      ('HDFC ··4821', 'upi', '626800000001'),
+    );
     final food = (fixture('personal_categories') as List).firstWhere((c) => c['key'] == 'food')['id'];
-    expect(items[1]['category_id'], food); // Zomato
-    final attach = ops.firstWhere((o) => o.method == 'PUT');
-    expect((attach.body!['description'], attach.body!['account'], attach.body!['merchant']), (
-      'Weekend groceries',
-      'HDFC ··4821',
-      'bigbasket@hdfcbank',
-    ));
+    expect(_txn(made)['category_id'], food); // Zomato
+    final a = _txn(attach);
+    expect(
+      (attach['op'], a['description'], a['account'], a['merchant'], a['account_id']),
+      ('update', 'Weekend groceries', 'HDFC ··4821', 'bigbasket@hdfcbank', hdfc),
+    );
 
     // Reading again finds nothing new.
     await _tap(tester, find.text('Read again'));
@@ -119,6 +157,255 @@ void main() {
     expect(await runWrite(tester, importer.importOne(inbox[3])), idOf((t) => t['description'] == 'Weekend groceries'));
     // A code is no payment.
     expect(await runWrite(tester, importer.importOne(inbox[4])), isNull);
+  });
+
+  testWidgets("a notification's refund is added as one; an unpaired card bill isn't an entry", (tester) async {
+    final sms = FakeSmsSource(available: true, inbox: _inbox());
+    await _setUp(tester, sms);
+    await _tap(tester, find.text('Allow and read my bank SMS'));
+    final importer = appContainer(tester).read(smsImporterProvider);
+    final refund = _swiggyRefund();
+    sms.messages.add(refund);
+    expect(await runWrite(tester, importer.importOne(refund)), _idOf(refund));
+    expect(_ledger(tester).rawPersonal(_idOf(refund))!['type'], 'refund');
+    final atm = _atm();
+    sms.messages.add(atm);
+    expect(await runWrite(tester, importer.importOne(atm)), _idOf(atm));
+    expect(await runWrite(tester, importer.isSpend(_idOf(atm))), isFalse); // a transfer: Split isn't offered
+    final bill = _cardBill(777700);
+    sms.messages.add(bill);
+    expect(await runWrite(tester, importer.importOne(bill)), isNull);
+  });
+
+  testWidgets('a first read makes the accounts, refunds and transfers it finds, in one batch; again, nothing', (
+    tester,
+  ) async {
+    final inbox = [
+      _sms(
+        'VM-HDFCBK-S',
+        'Rs.200.00 debited from HDFC Bank A/c XX7777 on 20-09-26 towards BLINKIT via NetBanking.',
+        DateTime(2026, 9, 20, 10),
+      ),
+      _sms(
+        'VM-HDFCBK-S',
+        'Rs.520.00 debited from HDFC Bank A/c XX7777 on 21-09-26 towards SWIGGY via NetBanking. Avl bal Rs.10,000.00',
+        DateTime(2026, 9, 21, 10),
+      ),
+      _swiggyRefund(),
+      _sms(
+        'VM-HDFCBK-S',
+        'Refund of Rs.799.00 from DECATHLON credited to HDFC Bank A/c XX4821 on 24-09-26.',
+        DateTime(2026, 9, 24, 12),
+      ),
+      _atm(),
+      _sms(
+        'VM-HDFCBK-S',
+        'Rs.4,321.00 debited from HDFC Bank A/c XX4821 on 24-09-26 towards ICICI CREDIT CARD via NetBanking. '
+        'Avl bal Rs.30,000.00',
+        DateTime(2026, 9, 24, 14),
+      ),
+      _cardBill(432100),
+      _cardBill(777700), // no payment of it: skipped, and read again next time
+      ..._ownTransfer(25000),
+    ];
+    final sms = FakeSmsSource(available: true, inbox: inbox);
+    await _setUp(tester, sms);
+    await _tap(tester, find.text('Allow and read my bank SMS'));
+    final ops = appContainer(tester).read(outboxProvider);
+    final items = _items(ops);
+    final ledger = _ledger(tester);
+    Map entry(RawSms m) => _txn(items.singleWhere((i) => i['id'] == _idOf(m)));
+
+    // The accounts first: each label with none gets one, its fixed id, reconciled from the first
+    // balance its messages report (₹10,000 after ₹200 and ₹520 went out).
+    final newHdfc = smsAccountId(me, 'HDFC ··7777'), icici = smsAccountId(me, 'ICICI ··9911');
+    Object account(Map i) => (i['kind'], i['op'], i['id'], (i['account'] as Map)['opening_balance_minor']);
+    expect([for (final i in items.take(2)) account(i)], [
+      ('account', 'create', newHdfc, 1072000),
+      ('account', 'create', icici, 0),
+    ]);
+    expect((items.first['account'] as Map)['sms_label'], 'HDFC ··7777');
+    expect(entry(inbox[1])['account_id'], newHdfc);
+    final balance = ledger.finance.balanceOf(newHdfc)!;
+    expect((balance.balanceMinor, balance.lastReported!.gapMinor), (1000000, 0));
+
+    // Refunds: the Swiggy order's, in its category; Decathlon's, for no spend we know.
+    final swiggy = ledger.rawPersonal(_swiggyOrder)!;
+    expect(
+      (entry(inbox[2])['type'], entry(inbox[2])['refund_of_id'], entry(inbox[2])['category_id']),
+      ('refund', _swiggyOrder, swiggy['category_id']),
+    );
+    expect((entry(inbox[3])['type'], entry(inbox[3])['refund_of_id']), ('refund', null));
+
+    // The cash withdrawal moved to Cash; the card bill paid from HDFC; the self transfer.
+    final hdfc = _account(ledger, 'HDFC ··4821'), cash = _account(ledger, 'Cash');
+    final card = _account(ledger, 'ICICI Credit card ··9012');
+    final atmLeg = _txn(items.singleWhere((i) => i['id'] == pairedLegId(_idOf(inbox[4]))));
+    Object leg(Map t) => (t['type'], t['direction'], t['account_id'], t['transfer_group_id']);
+    expect([leg(entry(inbox[4])), leg(atmLeg)], [
+      ('transfer', 'out', hdfc, transferGroupIdFor(_idOf(inbox[4]))),
+      ('transfer', 'in', cash, transferGroupIdFor(_idOf(inbox[4]))),
+    ]);
+    expect([leg(entry(inbox[5])), leg(entry(inbox[6]))], [
+      ('transfer', 'out', hdfc, transferGroupIdFor(_idOf(inbox[6]))),
+      ('transfer', 'in', card, transferGroupIdFor(_idOf(inbox[6]))),
+    ]);
+    final self = transferGroupIdFor(_idOf(inbox[8]), _idOf(inbox[9]));
+    expect([leg(entry(inbox[8])), leg(entry(inbox[9]))], [
+      ('transfer', 'in', icici, self),
+      ('transfer', 'out', hdfc, self),
+    ]);
+    expect(items.any((i) => i['id'] == _idOf(inbox[7])), isFalse);
+    expect(find.text('Added 9 entries.'), findsOneWidget); // the cash half isn't a message's
+
+    expect(await runWrite(tester, _store(tester).deviceValue(SmsKeys.retry)), isNull);
+
+    // Reading again finds nothing new: the same ids, and the unpaid bill is still waiting.
+    await _tap(tester, find.text('Read again'));
+    expect(find.text('Nothing new.'), findsOneWidget);
+    expect(appContainer(tester).read(outboxProvider).length, ops.length);
+    await _tap(tester, find.text('Messages we skipped (1)'));
+    expect(find.text('A card bill with no matching payment yet'), findsOneWidget);
+  });
+
+  testWidgets('an own transfer pairs with an entry read before: it becomes the other half', (tester) async {
+    final [income, debit] = _ownTransfer(5000, plainIncome: true);
+    final sms = FakeSmsSource(available: true, inbox: [income]);
+    await _setUp(tester, sms);
+    await _tap(tester, find.text('Allow and read my bank SMS'));
+    expect(_ledger(tester).rawPersonal(_idOf(income))!['type'], 'income');
+    final before = appContainer(tester).read(outboxProvider).length;
+
+    sms.messages.add(debit);
+    await runWrite(tester, appContainer(tester).read(smsImporterProvider).scan());
+    final ops = appContainer(tester).read(outboxProvider).skip(before).toList();
+    final [changed, made] = _items(ops);
+    final group = transferGroupIdFor(_idOf(debit), _idOf(income));
+    final leg = _txn(changed);
+    expect(
+      (changed['op'], changed['id'], changed['version'], leg['type'], leg['direction'], leg['category_id']),
+      ('update', _idOf(income), 1, 'transfer', 'in', null),
+    );
+    expect(
+      (leg['transfer_group_id'], made['id'], _txn(made)['transfer_group_id']),
+      (group, _idOf(debit), group),
+    );
+    expect(_ledger(tester).finance.transferLegs(group).length, 2);
+  });
+
+  testWidgets("a card bill skipped for want of its payment pairs on the next read, and isn't listed as skipped", (
+    tester,
+  ) async {
+    final bill = _cardBill(432100);
+    final sms = FakeSmsSource(available: true, inbox: [bill]);
+    await _setUp(tester, sms);
+    await _tap(tester, find.text('Allow and read my bank SMS'));
+    expect(find.text('Messages we skipped (1)'), findsOneWidget);
+    // The bank's message comes later, the same day; the next read goes back over the bill too.
+    sms.messages.add(
+      _sms(
+        'VM-HDFCBK-S',
+        'Rs.4,321.00 debited from HDFC Bank A/c XX4821 on 24-09-26 towards ICICI CREDIT CARD via NetBanking. '
+        'Avl bal Rs.30,000.00',
+        DateTime(2026, 9, 24, 18),
+      ),
+    );
+    await runWrite(tester, appContainer(tester).read(smsImporterProvider).scan());
+    expect(_ledger(tester).rawPersonal(_idOf(bill))!['type'], 'transfer');
+    expect(await runWrite(tester, appContainer(tester).read(smsImporterProvider).skipped()), isEmpty);
+  });
+
+  testWidgets("a message whose entry the device refuses is read again, then listed as skipped; the rest goes", (
+    tester,
+  ) async {
+    // Over the largest amount an entry can have: refused however often it's read.
+    final huge = _sms(
+      'VM-HDFCBK-S',
+      'Rs.12,00,00,000.00 debited from HDFC Bank A/c XX4821 on 10-09-26 towards ACME CORP via NetBanking.',
+      DateTime(2026, 9, 10, 10),
+    );
+    final zomato = _inbox().first;
+    final sms = FakeSmsSource(available: true, inbox: [huge, zomato]);
+    final logs = <String?>[];
+    final print = debugPrint;
+    debugPrint = (message, {wrapWidth}) => logs.add(message);
+    await _setUp(tester, sms);
+    await _tap(tester, find.text('Allow and read my bank SMS'));
+    expect(find.text('Added 1 entry.'), findsOneWidget);
+    final ops = appContainer(tester).read(outboxProvider);
+    expect([for (final i in _items(ops)) i['id']], [_idOf(zomato)]);
+
+    final importer = appContainer(tester).read(smsImporterProvider);
+    Future<List<Object?>> tries() async => [
+      for (final r in (await runWrite(tester, _store(tester).deviceValue(SmsKeys.retry)) as List?) ?? const [])
+        (r as Map)['tries'],
+    ];
+    Future<List<SkippedSms>> skipped() => runWrite(tester, importer.skipped());
+    expect(await tries(), [1]);
+    expect(await skipped(), isEmpty);
+    // The next read starts after it (three days before the newest message): it's read anyway.
+    await runWrite(tester, importer.scan());
+    expect(sms.reads.last.since.isAfter(huge.receivedAt), isTrue);
+    expect(await tries(), [2]);
+    // Refused on a third read: listed as skipped, and no longer read.
+    await runWrite(tester, importer.scan());
+    expect(await tries(), isEmpty);
+    expect([for (final s in await skipped()) (s.sms.body, s.reason)], [(huge.body, SmsSkip.noTransaction)]);
+    expect(logs.where((l) => l!.contains('refused on 3 reads')), hasLength(1));
+    await runWrite(tester, importer.scan());
+    expect((await skipped()).length, 1);
+    expect(appContainer(tester).read(outboxProvider).length, ops.length);
+    debugPrint = print;
+  });
+
+  testWidgets('an account closed between a read and its queueing: the rest is queued, its entry read again', (
+    tester,
+  ) async {
+    await _setUp(tester, FakeSmsSource(available: true));
+    final [myntra, zomato] = [_inbox()[1], _inbox()[0]];
+    final read = scanSms(smsScanInput(_ledger(tester), [myntra, zomato], const Features()));
+    final writes = appContainer(tester).read(writesProvider);
+    await runWrite(tester, writes.closeAccount(_account(_ledger(tester), 'ICICI Credit card ··9012')));
+    final before = appContainer(tester).read(outboxProvider).length;
+    final refused = <(String, String?)>[];
+    await runWrite(
+      tester,
+      writes.importUnits(
+        smsImportUnits(_ledger(tester), read),
+        onRefused: (unit, why) => refused.add((unit.single.id, apiErrorCode(why))),
+      ),
+    );
+    expect(refused, [(_idOf(myntra), 'account_closed')]);
+    final ops = appContainer(tester).read(outboxProvider).skip(before).toList();
+    expect([for (final i in _items(ops)) i['id']], [_idOf(zomato)]);
+  });
+
+  testWidgets("a closed account's label gives the entry no account", (tester) async {
+    await _setUp(tester, FakeSmsSource(available: true, inbox: _inbox().sublist(1, 2)));
+    final card = _account(_ledger(tester), 'ICICI Credit card ··9012');
+    await runWrite(tester, appContainer(tester).read(writesProvider).closeAccount(card));
+    final before = appContainer(tester).read(outboxProvider).length;
+    await _tap(tester, find.text('Allow and read my bank SMS'));
+    final myntra = _txn(_items(appContainer(tester).read(outboxProvider).skip(before).toList()).single);
+    expect((myntra['account'], myntra['account_id']), ('ICICI Credit card ··9012', null));
+  });
+
+  testWidgets('without a Cash account, a cash withdrawal is spending or left out, as countAtmAsSpending says', (
+    tester,
+  ) async {
+    for (final spending in [true, false]) {
+      await _setUp(
+        tester,
+        FakeSmsSource(available: true, inbox: [_atm()]),
+        overrides: [featuresProvider.overrideWithValue(Features(countAtmAsSpending: spending))],
+      );
+      final cash = _account(_ledger(tester), 'Cash');
+      await runWrite(tester, appContainer(tester).read(writesProvider).closeAccount(cash));
+      final before = appContainer(tester).read(outboxProvider).length;
+      await _tap(tester, find.text('Allow and read my bank SMS'));
+      final ops = appContainer(tester).read(outboxProvider).skip(before).toList();
+      expect([for (final i in _items(ops)) _txn(i)['type']], [if (spending) 'expense']);
+    }
   });
 
   testWidgets('what was skipped is listed (never OTPs), with the message, on this phone', (tester) async {
@@ -156,7 +443,7 @@ void main() {
     await tester.pumpAndSettle();
     final ops = appContainer(tester).read(outboxProvider);
     expect(ops.length, before + 1);
-    expect((ops.last.body!['items'] as List).single['description'], 'Rapido');
+    expect(_txn(_items([ops.last]).single)['description'], 'Rapido');
   });
 
   testWidgets('refused access says how to allow it, and reads nothing', (tester) async {
@@ -202,6 +489,57 @@ void main() {
     expect(scan.added, 0);
     expect(sms.reads, isEmpty);
   });
+}
+
+const _swiggyOrder = '7519b197-caab-50b4-83b7-16f72b5b9456'; // the seed's, ₹486 on 23 Sep
+
+RawSms _swiggyRefund() => _sms(
+  'VM-HDFCBK-S',
+  'Rs.486.00 credited to HDFC Bank A/c XX4821 on 24-09-26 by a/c linked to VPA swiggy.stores@icici as a refund '
+      '(UPI Ref No 626900000099).',
+  DateTime(2026, 9, 24, 11),
+);
+
+RawSms _atm() => _sms(
+  'VM-HDFCBK-S',
+  'Rs.2000.00 withdrawn at ATM HDFC0001234 from A/c XX4821 on 24-09-26. Avl Bal: Rs.40,276.50 Not you? Call '
+  '18002586161',
+  DateTime(2026, 9, 24, 13),
+);
+
+/// The ICICI card's bank saying a bill of [amountMinor] was paid, on 24 Sep.
+RawSms _cardBill(int amountMinor) {
+  final rupees = amountMinor ~/ 100;
+  final amount = rupees >= 1000 ? '${rupees ~/ 1000},${(rupees % 1000).toString().padLeft(3, '0')}' : '$rupees';
+  return _sms(
+    'VM-ICICIT-S',
+    'Dear Customer, Payment of INR $amount.00 has been received on your ICICI Bank Credit Card Account 4xxx9012 on '
+        '24-Sep-26. Thank you.',
+    DateTime(2026, 9, 24, 15),
+  );
+}
+
+/// ₹[rupees] from HDFC ··4821 to ICICI ··9911 on 24 Sep, as both banks tell it, the credit first;
+/// with [plainIncome], ICICI's message doesn't say it's a transfer.
+List<RawSms> _ownTransfer(int rupees, {bool plainIncome = false}) {
+  final amount = '${rupees ~/ 1000},${(rupees % 1000).toString().padLeft(3, '0')}.00';
+  return [
+    _sms(
+      'VM-ICICIB-S',
+      plainIncome
+          ? 'Dear Customer, Acct XX9911 is credited with Rs $amount on 24-Sep-26 from JOHN D. '
+                'UPI:626900000123-ICICI Bank.'
+          : 'ICICI Bank Acct XX9911 credited with Rs $amount on 24-Sep-26 by self transfer from HDFC Bank A/c XX4821. '
+                'IMPS:628712345602.',
+      DateTime(2026, 9, 24, 16),
+    ),
+    _sms(
+      'VM-HDFCBK-S',
+      'Rs.$amount debited from HDFC Bank A/c XX4821 on 24-09-26 for self transfer to A/c XX9911 (IMPS Ref No '
+      '628712345602). Avl bal: Rs.20,276.50',
+      DateTime(2026, 9, 24, 16, 2),
+    ),
+  ];
 }
 
 class _FixedSession extends SessionController {

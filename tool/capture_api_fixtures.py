@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Capture real API responses into app/test/fixtures/api for the Dart contract tests.
 
-Needs the API running with freshly seeded data:
-  docker compose exec api python -m app.seed --reset && python3 tool/capture_api_fixtures.py
+Needs the API running with freshly seeded data on a throwaway database (create it first: seeding
+the compose one wipes what's in it):
+  cd api && export DATABASE_URL=postgresql+psycopg://splitkit:splitkit@localhost:5433/splitkit_fixtures
+  uv run alembic upgrade head && uv run python -m app.seed --reset && uv run uvicorn app.main:app --port 8001
+  API=http://localhost:8001 python3 tool/capture_api_fixtures.py   # from the repo root
 Read-only except for one rejected (422) request.
 
 Also writes app/test/fixtures/sync/<user>.json: every sync snapshot a seeded user can see plus the
@@ -62,6 +65,7 @@ def main():
         "personal_list": call("/personal/transactions?start=2026-09-01&end=2026-09-23", token=token),
         "personal_categories": call("/categories?scope=personal", token=token),
         "personal_accounts": call("/personal/accounts", token=token),
+        "personal_accounts_reported": call("/personal/accounts/reported", token=token),
         "analytics_personal": call("/analytics/personal?period=month&on=2026-09-23", token=token),
         "analytics_group": call(f"/analytics/groups/{goa['id']}?on=2026-09-23", token=token),
         "analytics_layout": call("/analytics/layout/personal", token=token),
@@ -131,7 +135,18 @@ def capture_sync():
         answers["personal_list:upi"] = call("/personal/transactions?channel=upi&limit=500", token=token)
         hdfc = urllib.parse.quote("HDFC ··4821")
         answers["personal_list:hdfc"] = call(f"/personal/transactions?account={hdfc}&limit=500", token=token)
-        answers["personal_accounts"] = call("/personal/accounts", token=token)
+        answers["personal_list:transfers"] = call("/personal/transactions?type=transfer&limit=500", token=token)
+        # Accounts (finance revamp): the raw list, each one, and the old label view.
+        accounts = call("/personal/accounts", token=token)
+        answers["personal_accounts"] = accounts
+        answers["personal_accounts_reported"] = call("/personal/accounts/reported", token=token)
+        for a in accounts:
+            answers[f"personal_account:{a['id']}"] = call(f"/personal/accounts/{a['id']}", token=token)
+        hdfc_account = next((a for a in accounts if a["sms_label"] == "HDFC ··4821"), None)
+        if hdfc_account:
+            answers["personal_list:hdfc_account"] = call(
+                f"/personal/transactions?account_id={hdfc_account['id']}&limit=500", token=token
+            )
         out = {"user": key, "email": email, "snapshots": snapshots, "answers": answers}
         (SYNC_OUT / f"{key}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 

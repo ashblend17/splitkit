@@ -288,12 +288,52 @@ class ApiClient {
           return PersonBalance.fromJson(value);
         case 'PersonOut':
           return PersonOut.fromJson(value);
+        case 'PersonalAccountIn':
+          return PersonalAccountIn.fromJson(value);
+        case 'PersonalAccountOut':
+          return PersonalAccountOut.fromJson(value);
+        case 'PersonalAllocationPlanIn':
+          return PersonalAllocationPlanIn.fromJson(value);
+        case 'PersonalAllocationPlanOut':
+          return PersonalAllocationPlanOut.fromJson(value);
+        case 'PersonalAllocationRuleIn':
+          return PersonalAllocationRuleIn.fromJson(value);
+        case 'PersonalAllocationRuleOut':
+          return PersonalAllocationRuleOut.fromJson(value);
         case 'PersonalBatchIn':
           return PersonalBatchIn.fromJson(value);
+        case 'PersonalBatchItem':
+          return PersonalBatchItem.fromJson(value);
         case 'PersonalBatchOut':
           return PersonalBatchOut.fromJson(value);
+        case 'PersonalBatchResult':
+          return PersonalBatchResult.fromJson(value);
+        case 'PersonalGoalContributionIn':
+          return PersonalGoalContributionIn.fromJson(value);
+        case 'PersonalGoalContributionOut':
+          return PersonalGoalContributionOut.fromJson(value);
+        case 'PersonalGoalIn':
+          return PersonalGoalIn.fromJson(value);
+        case 'PersonalGoalOut':
+          return PersonalGoalOut.fromJson(value);
+        case 'PersonalHoldingIn':
+          return PersonalHoldingIn.fromJson(value);
+        case 'PersonalHoldingOut':
+          return PersonalHoldingOut.fromJson(value);
         case 'PersonalListOut':
           return PersonalListOut.fromJson(value);
+        case 'PersonalMixedBatchIn':
+          return PersonalMixedBatchIn.fromJson(value);
+        case 'PersonalMixedBatchOut':
+          return PersonalMixedBatchOut.fromJson(value);
+        case 'PersonalReminderScheduleIn':
+          return PersonalReminderScheduleIn.fromJson(value);
+        case 'PersonalReminderScheduleOut':
+          return PersonalReminderScheduleOut.fromJson(value);
+        case 'PersonalReminderStateIn':
+          return PersonalReminderStateIn.fromJson(value);
+        case 'PersonalReminderStateOut':
+          return PersonalReminderStateOut.fromJson(value);
         case 'PersonalSummaryOut':
           return PersonalSummaryOut.fromJson(value);
         case 'PersonalTxnIn':

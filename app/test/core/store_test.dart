@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sembast/sembast_memory.dart';
 import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/finance/finance.dart';
 import 'package:splitkit/core/local/ledger.dart';
 import 'package:splitkit/core/local/outbox.dart';
 import 'package:splitkit/core/local/store.dart';
@@ -220,6 +221,113 @@ void main() {
     final other = await LocalStore.open(databaseFactoryMemory, 'store-test-${_n++}');
     addTearDown(other.close);
     expect(other.ledger.revisions.of(LedgerDomain.values.toSet()), isNot(now().of(LedgerDomain.values.toSet())));
+  });
+
+  group('the finance engine and what it is asked with go on to the next Ledger', () {
+    final sep = monthRange(2026, 9);
+    CashFlow september(Ledger l) => l.finance.cashFlow(
+      sep,
+      notCounted: l.notCounted,
+      groupShareMinor: l.groupShareFor(sep),
+      countGroupShare: true,
+      label: l.categoryLabel,
+    );
+
+    test('while what each reads is unchanged', () async {
+      final (store, _, be, _) = await _setup();
+      final user = be.snapshots.keys.firstWhere((s) => s.startsWith('user:'));
+      final first = store.ledger;
+      final (engine, notCounted, label) = (first.finance, first.notCounted, first.categoryLabel);
+      final flow = september(first);
+
+      // Layouts only: everything carries, so the month's cash flow is the one already worked out.
+      await store.enqueue(_op('Layout', [LocalEntity(user, 'layout', 'layout-1', 1, {'id': 'layout-1'})]));
+      var l = store.ledger;
+      expect(l, isNot(same(first)));
+      expect(l.finance, same(engine));
+      expect(l.notCounted, same(notCounted));
+      expect(l.categoryLabel, same(label));
+      expect(september(l), same(flow));
+
+      // Groups only: the same engine; what isn't counted is worked out again, and as it comes out
+      // the same, it's the set from before, so the month's cash flow is still the one worked out.
+      await store.enqueue(_op('Renamed', [_renamed(store, be.goa['id'], 'Goa (renamed)')]));
+      l = store.ledger;
+      expect(l.finance, same(engine));
+      expect(l.categoryLabel, same(label));
+      expect(l.notCounted, same(notCounted));
+      expect(september(l), same(flow));
+
+      // Categories only: the same engine and set; new labels.
+      final rule = LocalEntity(user, 'category_rule', 'rule-1', null, {
+        'id': 'rule-1',
+        'pattern': 'coffee',
+        'income': false,
+      });
+      final before = l.notCounted;
+      await store.enqueue(_op('Rule', [rule]));
+      l = store.ledger;
+      expect(l.finance, same(engine));
+      expect(l.notCounted, same(before));
+      expect(l.categoryLabel, isNot(same(label)));
+    });
+
+    test('and are worked out again when it changes', () async {
+      final (store, _, be, _) = await _setup();
+      final user = be.snapshots.keys.firstWhere((s) => s.startsWith('user:'));
+      var l = store.ledger;
+      final engine = l.finance;
+      final flow = september(l);
+
+      // A split an entry is linked to is deleted (groups only): the entry counts again, on the
+      // same engine, and your share of the split is gone.
+      final linked = l.rawPersonal('39c7318c-cba7-563c-ac13-489819661019')!;
+      final split = l.rawExpense(linked['expense_id'] as String)!;
+      final v = (split['version'] as int) + 1;
+      final deleted = {...split, 'deleted_at': '2026-09-25T10:00:00Z', 'version': v};
+      final stream = 'group:${split['group_id']}';
+      await store.enqueue(_op('Deleted', [LocalEntity(stream, 'expense', split['id'], v, deleted)]));
+      final before = l.notCounted;
+      l = store.ledger;
+      expect(l.finance, same(engine));
+      expect(l.notCounted, isNot(same(before)));
+      expect(l.notCounted, isNot(contains(linked['id'])));
+      final myShare = [
+        for (final s in split['splits'] as List)
+          if (s['user_id'] == l.me) s['share_minor'] as int,
+      ].single;
+      final after = september(l);
+      expect(
+        (after.spendingMinor, after.groupShareMinor),
+        (flow.spendingMinor + (linked['amount_minor'] as int), flow.groupShareMinor - myShare),
+      );
+
+      // A personal entry: a new engine, with it.
+      await store.enqueue(_op('Entry', [_entry(store, 'entry-1', 'Coffee')]));
+      l = store.ledger;
+      expect(l.finance, isNot(same(engine)));
+      expect(september(l).spendingMinor, after.spendingMinor + 1200);
+
+      // Your profile (your currency is in it): a new engine.
+      final carried = l.finance;
+      final profile = store.serverEntity(LocalEntity.keyOf(user, 'profile', l.me))!;
+      await store.applyChanges(user, [_change(store.cursors[user]! + 1, profile)]);
+      expect(store.ledger.finance, isNot(same(carried)));
+    });
+
+    test('never from another store, nor between Ledgers built outside one', () async {
+      final (store, _, _, _) = await _setup();
+      final (other, _, _, _) = await _setup();
+      final all = LedgerDomain.values.toSet();
+      expect(store.ledger.revisions.of(all), isNot(other.ledger.revisions.of(all)));
+      expect(store.ledger.finance, isNot(same(other.ledger.finance)));
+      final entities = store.entities.toList();
+      final (a, b) = (Ledger(entities), Ledger(entities));
+      expect((a.revisions.store, b.revisions.store), (0, 0));
+      expect(a.finance, isNot(same(b.finance)));
+      expect(a.notCounted, isNot(same(b.notCounted)));
+      expect(september(a).spendingMinor, september(b).spendingMinor);
+    });
   });
 
   test('a sync with nothing new tells nobody anything', () async {

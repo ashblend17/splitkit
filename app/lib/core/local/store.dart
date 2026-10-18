@@ -20,8 +20,9 @@ import 'outbox.dart';
 class LocalStore {
   LocalStore._(this._db);
 
-  /// Bump when the stored shape changes: the store is wiped and rebuilt from snapshots.
-  static const schemaVersion = 1;
+  /// Bump when the stored shape changes: the store is wiped and rebuilt from snapshots. 2: what
+  /// migration 0013 filled in (accounts, directions) reaches a device only through a snapshot.
+  static const schemaVersion = 2;
 
   final Database _db;
   final _entities = stringMapStoreFactory.store('entities');
@@ -97,6 +98,7 @@ class LocalStore {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    Ledger.forgetCarried(_id);
     await _ledgerChanges.close();
     await _outboxChanges.close();
     await _db.close();

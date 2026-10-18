@@ -306,10 +306,10 @@ class SmsSkippedPage extends ConsumerWidget {
     SmsSkip.promotional: 'An offer',
     SmsSkip.notYet: 'Still to come, or asked for',
     SmsSkip.failed: "Didn't go through",
-    SmsSkip.refund: 'A refund (not added yet)',
+    SmsSkip.refund: "A refund we couldn't read",
     SmsSkip.statement: 'A statement or bill',
-    SmsSkip.cardBill: 'A credit card bill paid',
-    SmsSkip.ownTransfer: 'Between your own accounts',
+    SmsSkip.cardBill: 'A card bill with no matching payment yet',
+    SmsSkip.ownTransfer: 'Between your own accounts (other half not found)',
     SmsSkip.foreignCurrency: 'Not in rupees',
     SmsSkip.noTransaction: 'No payment in it',
   };

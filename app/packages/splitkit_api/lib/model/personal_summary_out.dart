@@ -18,6 +18,7 @@ class PersonalSummaryOut {
     required this.currency,
     required this.spentMinor,
     required this.incomeMinor,
+    required this.refundsMinor,
     required this.leftOverMinor,
     required this.groupShareMinor,
     this.byCategory = const [],
@@ -33,6 +34,8 @@ class PersonalSummaryOut {
 
   int incomeMinor;
 
+  int refundsMinor;
+
   int leftOverMinor;
 
   int groupShareMinor;
@@ -46,6 +49,7 @@ class PersonalSummaryOut {
     other.currency == currency &&
     other.spentMinor == spentMinor &&
     other.incomeMinor == incomeMinor &&
+    other.refundsMinor == refundsMinor &&
     other.leftOverMinor == leftOverMinor &&
     other.groupShareMinor == groupShareMinor &&
     _deepEquality.equals(other.byCategory, byCategory);
@@ -58,12 +62,13 @@ class PersonalSummaryOut {
     (currency.hashCode) +
     (spentMinor.hashCode) +
     (incomeMinor.hashCode) +
+    (refundsMinor.hashCode) +
     (leftOverMinor.hashCode) +
     (groupShareMinor.hashCode) +
     (byCategory.hashCode);
 
   @override
-  String toString() => 'PersonalSummaryOut[month=$month, monthLabel=$monthLabel, currency=$currency, spentMinor=$spentMinor, incomeMinor=$incomeMinor, leftOverMinor=$leftOverMinor, groupShareMinor=$groupShareMinor, byCategory=$byCategory]';
+  String toString() => 'PersonalSummaryOut[month=$month, monthLabel=$monthLabel, currency=$currency, spentMinor=$spentMinor, incomeMinor=$incomeMinor, refundsMinor=$refundsMinor, leftOverMinor=$leftOverMinor, groupShareMinor=$groupShareMinor, byCategory=$byCategory]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -72,6 +77,7 @@ class PersonalSummaryOut {
       json[r'currency'] = this.currency;
       json[r'spent_minor'] = this.spentMinor;
       json[r'income_minor'] = this.incomeMinor;
+      json[r'refunds_minor'] = this.refundsMinor;
       json[r'left_over_minor'] = this.leftOverMinor;
       json[r'group_share_minor'] = this.groupShareMinor;
       json[r'by_category'] = this.byCategory;
@@ -102,6 +108,7 @@ class PersonalSummaryOut {
         currency: mapValueOfType<String>(json, r'currency')!,
         spentMinor: mapValueOfType<int>(json, r'spent_minor')!,
         incomeMinor: mapValueOfType<int>(json, r'income_minor')!,
+        refundsMinor: mapValueOfType<int>(json, r'refunds_minor')!,
         leftOverMinor: mapValueOfType<int>(json, r'left_over_minor')!,
         groupShareMinor: mapValueOfType<int>(json, r'group_share_minor')!,
         byCategory: CategoryTotal.listFromJson(json[r'by_category']),
@@ -157,6 +164,7 @@ class PersonalSummaryOut {
     'currency',
     'spent_minor',
     'income_minor',
+    'refunds_minor',
     'left_over_minor',
     'group_share_minor',
     'by_category',

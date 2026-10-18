@@ -14,10 +14,13 @@ void main() {
     await pumpApp(tester, location: '/personal');
     expect(find.text('Only you see this'), findsOneWidget);
     expect(find.text('Spent in September'), findsOneWidget);
+    // What you spent includes your share in groups (₹32,450 on your own + ₹18,210).
+    expect(find.text('₹50,660'), findsOneWidget);
     expect(find.text('₹32,450'), findsOneWidget);
     expect(find.text('₹85,000'), findsOneWidget);
     expect(find.text('Left over'), findsOneWidget);
-    expect(find.text('₹52,550'), findsOneWidget);
+    expect(find.text('₹34,340'), findsOneWidget);
+    expect(find.text('40%'), findsOneWidget);
     expect(find.text('Rent'), findsOneWidget);
     final swiggy = tester.widget<TransactionCard>(find.widgetWithText(TransactionCard, 'Swiggy order'));
     expect((swiggy.subtitle, swiggy.label, swiggy.amount, swiggy.scope), ('Food · UPI', 'spent', '₹486', TxnScope.personal));
@@ -37,12 +40,14 @@ void main() {
     await tester.enterText(find.byType(TextField).at(1), 'Books');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(SelectableChip, 'Shopping'));
+    await tester.ensureVisible(find.text('Save expense'));
     await tester.tap(find.text('Save expense'));
     await tester.pumpAndSettle();
     expect(find.text('₹250'), findsWidgets);
     expect(find.text('Overspent'), findsNothing);
     expect(find.text('Left over'), findsOneWidget);
-    expect(find.text('—'), findsOneWidget);
+    expect(find.text('—'), findsNWidgets(2)); // left over, and saved
+    expect(find.text('Saved'), findsOneWidget);
   });
 
   testWidgets('adding a personal expense sends the right body', (tester) async {
@@ -56,6 +61,7 @@ void main() {
     await tester.enterText(find.byType(TextField).at(1), 'Books');
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(SelectableChip, 'Shopping'));
+    await tester.ensureVisible(find.text('Save expense'));
     await tester.tap(find.text('Save expense'));
     await tester.pumpAndSettle();
     final (method, path, body) = be.writes.single;
@@ -82,6 +88,7 @@ void main() {
     await tester.enterText(find.byType(TextField).at(1), 'ubar ride to dinner');
     await tester.pumpAndSettle();
     expect(selected('Transport'), isTrue); // chosen now, so it no longer follows the words
+    await tester.ensureVisible(find.text('Save expense'));
     await tester.tap(find.text('Save expense'));
     await tester.pumpAndSettle();
     final transport = (fixture('personal_categories') as List).firstWhere((c) => c['key'] == 'transport')['id'];
@@ -171,6 +178,8 @@ void main() {
       'spending_by_account',
       'spending_by_channel',
       'top_merchants',
+      'savings_rate',
+      'need_vs_want',
     ]);
   });
 

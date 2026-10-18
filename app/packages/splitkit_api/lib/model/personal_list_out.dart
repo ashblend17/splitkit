@@ -16,6 +16,7 @@ class PersonalListOut {
     this.items = const [],
     required this.spentMinor,
     required this.incomeMinor,
+    required this.refundsMinor,
     required this.count,
   });
 
@@ -25,6 +26,8 @@ class PersonalListOut {
 
   int incomeMinor;
 
+  int refundsMinor;
+
   int count;
 
   @override
@@ -32,6 +35,7 @@ class PersonalListOut {
     _deepEquality.equals(other.items, items) &&
     other.spentMinor == spentMinor &&
     other.incomeMinor == incomeMinor &&
+    other.refundsMinor == refundsMinor &&
     other.count == count;
 
   @override
@@ -40,16 +44,18 @@ class PersonalListOut {
     (items.hashCode) +
     (spentMinor.hashCode) +
     (incomeMinor.hashCode) +
+    (refundsMinor.hashCode) +
     (count.hashCode);
 
   @override
-  String toString() => 'PersonalListOut[items=$items, spentMinor=$spentMinor, incomeMinor=$incomeMinor, count=$count]';
+  String toString() => 'PersonalListOut[items=$items, spentMinor=$spentMinor, incomeMinor=$incomeMinor, refundsMinor=$refundsMinor, count=$count]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'items'] = this.items;
       json[r'spent_minor'] = this.spentMinor;
       json[r'income_minor'] = this.incomeMinor;
+      json[r'refunds_minor'] = this.refundsMinor;
       json[r'count'] = this.count;
     return json;
   }
@@ -76,6 +82,7 @@ class PersonalListOut {
         items: PersonalTxnOut.listFromJson(json[r'items']),
         spentMinor: mapValueOfType<int>(json, r'spent_minor')!,
         incomeMinor: mapValueOfType<int>(json, r'income_minor')!,
+        refundsMinor: mapValueOfType<int>(json, r'refunds_minor')!,
         count: mapValueOfType<int>(json, r'count')!,
       );
     }
@@ -127,6 +134,7 @@ class PersonalListOut {
     'items',
     'spent_minor',
     'income_minor',
+    'refunds_minor',
     'count',
   };
 }

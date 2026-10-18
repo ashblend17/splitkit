@@ -213,6 +213,7 @@ class PersonalQuery {
     this.categories = '',
     this.limit = 100,
     this.account,
+    this.accountId,
     this.channel,
     this.source,
     this.reviewed,
@@ -225,12 +226,17 @@ class PersonalQuery {
   /// Category keys, comma-joined and sorted.
   final String categories;
   final int limit;
+
+  /// A bank SMS label ("HDFC ··4821"): entries that carry it.
   final String? account;
+
+  /// One of your accounts: the entries in it.
+  final String? accountId;
   final String? channel;
   final String? source;
   final bool? reviewed;
 
-  Object get _key => (start, end, type, categories, limit, account, channel, source, reviewed);
+  Object get _key => (start, end, type, categories, limit, account, accountId, channel, source, reviewed);
 
   @override
   bool operator ==(Object other) => other is PersonalQuery && other._key == _key;
@@ -250,6 +256,7 @@ final personalListProvider = FutureProvider.family<PersonalListOut, PersonalQuer
         type: q.type,
         categoryKeys: q.categories.isEmpty ? null : q.categories.split(','),
         account: q.account,
+        accountId: q.accountId,
         channel: q.channel,
         source: q.source,
         reviewed: q.reviewed,
@@ -299,7 +306,7 @@ String? suggestCategory(WidgetRef ref, String text, {required String scope, bool
 
 /// The accounts and cards your entries went through, with their latest balance.
 final personalAccountsProvider = FutureProvider<List<AccountOut>>(
-  (ref) => localOn(ref, {LedgerDomain.personal}, (l) => AccountOut.listFromJson(l.personalAccounts())),
+  (ref) => localOn(ref, {LedgerDomain.personal}, (l) => AccountOut.listFromJson(l.personalReportedAccounts())),
 );
 
 final personalCategoriesProvider = FutureProvider<List<CategoryOut>>(

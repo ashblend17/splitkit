@@ -15,6 +15,11 @@ class PersonalTxnOut {
   PersonalTxnOut({
     required this.id,
     required this.type,
+    required this.direction,
+    this.accountId,
+    this.transferGroupId,
+    this.refundOfId,
+    this.holdingId,
     required this.amountMinor,
     required this.currency,
     required this.description,
@@ -41,6 +46,16 @@ class PersonalTxnOut {
   String id;
 
   PersonalTxnOutTypeEnum type;
+
+  PersonalTxnOutDirectionEnum direction;
+
+  String? accountId;
+
+  String? transferGroupId;
+
+  String? refundOfId;
+
+  String? holdingId;
 
   int amountMinor;
 
@@ -88,6 +103,11 @@ class PersonalTxnOut {
   bool operator ==(Object other) => identical(this, other) || other is PersonalTxnOut &&
     other.id == id &&
     other.type == type &&
+    other.direction == direction &&
+    other.accountId == accountId &&
+    other.transferGroupId == transferGroupId &&
+    other.refundOfId == refundOfId &&
+    other.holdingId == holdingId &&
     other.amountMinor == amountMinor &&
     other.currency == currency &&
     other.description == description &&
@@ -115,6 +135,11 @@ class PersonalTxnOut {
     // ignore: unnecessary_parenthesis
     (id.hashCode) +
     (type.hashCode) +
+    (direction.hashCode) +
+    (accountId == null ? 0 : accountId!.hashCode) +
+    (transferGroupId == null ? 0 : transferGroupId!.hashCode) +
+    (refundOfId == null ? 0 : refundOfId!.hashCode) +
+    (holdingId == null ? 0 : holdingId!.hashCode) +
     (amountMinor.hashCode) +
     (currency.hashCode) +
     (description.hashCode) +
@@ -138,12 +163,33 @@ class PersonalTxnOut {
     (version.hashCode);
 
   @override
-  String toString() => 'PersonalTxnOut[id=$id, type=$type, amountMinor=$amountMinor, currency=$currency, description=$description, date=$date, category=$category, notes=$notes, channel=$channel, merchant=$merchant, account=$account, source_=$source_, reference=$reference, balanceMinor=$balanceMinor, smsAt=$smsAt, reviewed=$reviewed, expenseId=$expenseId, settlementId=$settlementId, counted=$counted, actingAdminId=$actingAdminId, createdAt=$createdAt, deletedAt=$deletedAt, version=$version]';
+  String toString() => 'PersonalTxnOut[id=$id, type=$type, direction=$direction, accountId=$accountId, transferGroupId=$transferGroupId, refundOfId=$refundOfId, holdingId=$holdingId, amountMinor=$amountMinor, currency=$currency, description=$description, date=$date, category=$category, notes=$notes, channel=$channel, merchant=$merchant, account=$account, source_=$source_, reference=$reference, balanceMinor=$balanceMinor, smsAt=$smsAt, reviewed=$reviewed, expenseId=$expenseId, settlementId=$settlementId, counted=$counted, actingAdminId=$actingAdminId, createdAt=$createdAt, deletedAt=$deletedAt, version=$version]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
       json[r'id'] = this.id;
       json[r'type'] = this.type;
+      json[r'direction'] = this.direction;
+    if (this.accountId != null) {
+      json[r'account_id'] = this.accountId;
+    } else {
+      json[r'account_id'] = null;
+    }
+    if (this.transferGroupId != null) {
+      json[r'transfer_group_id'] = this.transferGroupId;
+    } else {
+      json[r'transfer_group_id'] = null;
+    }
+    if (this.refundOfId != null) {
+      json[r'refund_of_id'] = this.refundOfId;
+    } else {
+      json[r'refund_of_id'] = null;
+    }
+    if (this.holdingId != null) {
+      json[r'holding_id'] = this.holdingId;
+    } else {
+      json[r'holding_id'] = null;
+    }
       json[r'amount_minor'] = this.amountMinor;
       json[r'currency'] = this.currency;
       json[r'description'] = this.description;
@@ -237,6 +283,11 @@ class PersonalTxnOut {
       return PersonalTxnOut(
         id: mapValueOfType<String>(json, r'id')!,
         type: PersonalTxnOutTypeEnum.fromJson(json[r'type'])!,
+        direction: PersonalTxnOutDirectionEnum.fromJson(json[r'direction'])!,
+        accountId: mapValueOfType<String>(json, r'account_id'),
+        transferGroupId: mapValueOfType<String>(json, r'transfer_group_id'),
+        refundOfId: mapValueOfType<String>(json, r'refund_of_id'),
+        holdingId: mapValueOfType<String>(json, r'holding_id'),
         amountMinor: mapValueOfType<int>(json, r'amount_minor')!,
         currency: mapValueOfType<String>(json, r'currency')!,
         description: mapValueOfType<String>(json, r'description')!,
@@ -307,6 +358,7 @@ class PersonalTxnOut {
   static const requiredKeys = <String>{
     'id',
     'type',
+    'direction',
     'amount_minor',
     'currency',
     'description',
@@ -334,11 +386,21 @@ class PersonalTxnOutTypeEnum {
 
   static const income = PersonalTxnOutTypeEnum._(r'income');
   static const expense = PersonalTxnOutTypeEnum._(r'expense');
+  static const transfer = PersonalTxnOutTypeEnum._(r'transfer');
+  static const refund = PersonalTxnOutTypeEnum._(r'refund');
+  static const investmentContribution = PersonalTxnOutTypeEnum._(r'investment_contribution');
+  static const investmentWithdrawal = PersonalTxnOutTypeEnum._(r'investment_withdrawal');
+  static const adjustment = PersonalTxnOutTypeEnum._(r'adjustment');
 
   /// List of all possible values in this [enum][PersonalTxnOutTypeEnum].
   static const values = <PersonalTxnOutTypeEnum>[
     income,
     expense,
+    transfer,
+    refund,
+    investmentContribution,
+    investmentWithdrawal,
+    adjustment,
   ];
 
   static PersonalTxnOutTypeEnum? fromJson(dynamic value) => PersonalTxnOutTypeEnumTypeTransformer().decode(value);
@@ -379,6 +441,11 @@ class PersonalTxnOutTypeEnumTypeTransformer {
       switch (data) {
         case r'income': return PersonalTxnOutTypeEnum.income;
         case r'expense': return PersonalTxnOutTypeEnum.expense;
+        case r'transfer': return PersonalTxnOutTypeEnum.transfer;
+        case r'refund': return PersonalTxnOutTypeEnum.refund;
+        case r'investment_contribution': return PersonalTxnOutTypeEnum.investmentContribution;
+        case r'investment_withdrawal': return PersonalTxnOutTypeEnum.investmentWithdrawal;
+        case r'adjustment': return PersonalTxnOutTypeEnum.adjustment;
         default:
           if (!allowNull) {
             throw ArgumentError('Unknown enum value to decode: $data');
@@ -390,6 +457,80 @@ class PersonalTxnOutTypeEnumTypeTransformer {
 
   /// Singleton [PersonalTxnOutTypeEnumTypeTransformer] instance.
   static PersonalTxnOutTypeEnumTypeTransformer? _instance;
+}
+
+
+
+class PersonalTxnOutDirectionEnum {
+  /// Instantiate a new enum with the provided [value].
+  const PersonalTxnOutDirectionEnum._(this.value);
+
+  /// The underlying value of this enum member.
+  final String value;
+
+  @override
+  String toString() => value;
+
+  String toJson() => value;
+
+  static const in_ = PersonalTxnOutDirectionEnum._(r'in');
+  static const out_ = PersonalTxnOutDirectionEnum._(r'out');
+
+  /// List of all possible values in this [enum][PersonalTxnOutDirectionEnum].
+  static const values = <PersonalTxnOutDirectionEnum>[
+    in_,
+    out_,
+  ];
+
+  static PersonalTxnOutDirectionEnum? fromJson(dynamic value) => PersonalTxnOutDirectionEnumTypeTransformer().decode(value);
+
+  static List<PersonalTxnOutDirectionEnum> listFromJson(dynamic json, {bool growable = false,}) {
+    final result = <PersonalTxnOutDirectionEnum>[];
+    if (json is List && json.isNotEmpty) {
+      for (final row in json) {
+        final value = PersonalTxnOutDirectionEnum.fromJson(row);
+        if (value != null) {
+          result.add(value);
+        }
+      }
+    }
+    return result.toList(growable: growable);
+  }
+}
+
+/// Transformation class that can [encode] an instance of [PersonalTxnOutDirectionEnum] to String,
+/// and [decode] dynamic data back to [PersonalTxnOutDirectionEnum].
+class PersonalTxnOutDirectionEnumTypeTransformer {
+  factory PersonalTxnOutDirectionEnumTypeTransformer() => _instance ??= const PersonalTxnOutDirectionEnumTypeTransformer._();
+
+  const PersonalTxnOutDirectionEnumTypeTransformer._();
+
+  String encode(PersonalTxnOutDirectionEnum data) => data.value;
+
+  /// Decodes a [dynamic value][data] to a PersonalTxnOutDirectionEnum.
+  ///
+  /// If [allowNull] is true and the [dynamic value][data] cannot be decoded successfully,
+  /// then null is returned. However, if [allowNull] is false and the [dynamic value][data]
+  /// cannot be decoded successfully, then an [UnimplementedError] is thrown.
+  ///
+  /// The [allowNull] is very handy when an API changes and a new enum value is added or removed,
+  /// and users are still using an old app with the old code.
+  PersonalTxnOutDirectionEnum? decode(dynamic data, {bool allowNull = true}) {
+    if (data != null) {
+      switch (data) {
+        case r'in': return PersonalTxnOutDirectionEnum.in_;
+        case r'out': return PersonalTxnOutDirectionEnum.out_;
+        default:
+          if (!allowNull) {
+            throw ArgumentError('Unknown enum value to decode: $data');
+          }
+      }
+    }
+    return null;
+  }
+
+  /// Singleton [PersonalTxnOutDirectionEnumTypeTransformer] instance.
+  static PersonalTxnOutDirectionEnumTypeTransformer? _instance;
 }
 
 

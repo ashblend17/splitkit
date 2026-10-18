@@ -4,6 +4,7 @@
   "currency": "INR",
   "spent_minor": 3245000,
   "income_minor": 8500000,
+  "refunds_minor": 0,
   "left_over_minor": 5255000,
   "group_share_minor": 1821000,
   "by_category": [

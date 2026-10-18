@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/data/providers.dart';
+import 'package:splitkit/core/local/providers.dart';
+import 'package:splitkit/core/local/writes.dart';
 
 import '../fake_backend.dart';
 
@@ -58,6 +60,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Your share is settled'), findsOneWidget, reason: 'the expense page is open');
     expect(find.text("You're offline. Showing what's on this device."), findsOneWidget);
+  });
+
+  testWidgets('offline: a transfer is one change, sent as one batch when back online', (tester) async {
+    final be = await pumpApp(tester, location: '/personal');
+    be.offline = true;
+    final container = ProviderScope.containerOf(tester.element(find.byType(Scaffold).first));
+    final accounts = container.read(localStoreProvider).value!.ledger.personalAccountList();
+    String account(String name) => accounts.firstWhere((a) => a['name'] == name)['id'] as String;
+    await runWrite(
+      tester,
+      container.read(writesProvider).createTransfer(
+        fromAccountId: account('HDFC ··4821'),
+        toAccountId: account('Cash'),
+        amountMinor: 150000,
+        date: DateTime(2026, 9, 24),
+        description: 'ATM on MG Road',
+      ),
+    );
+    expect(find.text("You're offline. 1 change will sync when you're back."), findsOneWidget);
+    final cash = container.read(localStoreProvider).value!.ledger.finance.balanceOf(account('Cash'))!;
+    expect(cash.balanceMinor, 50000 + 200000 + 150000, reason: 'the opening, the seed\'s withdrawal and this one');
+    expect(be.writes, isEmpty);
+
+    be.offline = false;
+    refreshLedger(container.invalidate);
+    await tester.pumpAndSettle();
+    final (method, path, body) = be.writes.single;
+    expect((method, path), ('POST', '/api/v1/personal/batch'));
+    expect([for (final i in body['items'] as List) (i['op'], i['transaction']['direction'])], [('create', 'out'), ('create', 'in')]);
+    expect(find.textContaining("You're offline"), findsNothing);
   });
 
   testWidgets('restarting offline opens the saved sign-in from the device', (tester) async {

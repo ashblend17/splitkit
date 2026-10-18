@@ -18,6 +18,21 @@ class RawSms {
 
 enum SmsDirection { spent, received }
 
+/// What a payment was, as far as the message says.
+enum SmsKind {
+  /// Spending or income.
+  payment,
+
+  /// Money back for a spend: a refund, reversal, cashback or chargeback. Always received.
+  refund,
+
+  /// Between two of your own accounts ("to your own A/c", "self transfer").
+  ownTransfer,
+
+  /// A credit card bill paid, as the card's bank tells it: money received on the card.
+  cardBill,
+}
+
 /// A payment a bank told you about.
 class SmsTxn {
   const SmsTxn({
@@ -30,6 +45,8 @@ class SmsTxn {
     this.merchant,
     this.reference,
     this.balanceMinor,
+    this.kind = SmsKind.payment,
+    this.counterpartDigits,
   });
 
   final SmsDirection direction;
@@ -59,10 +76,18 @@ class SmsTxn {
   /// The account balance the message reported after this, if it did (cards report a limit).
   final int? balanceMinor;
 
+  /// A payment, unless the message says it's a refund, a card bill or a transfer between your
+  /// own accounts.
+  final SmsKind kind;
+
+  /// The other account or card an own transfer names, as its digits ("9911"), if it does.
+  final String? counterpartDigits;
+
   @override
   String toString() =>
-      'SmsTxn(${direction.name} $amountMinor $channel ${date.toIso8601String().substring(0, 10)} '
-      'account: $account, merchant: $merchant, reference: $reference, balance: $balanceMinor)';
+      'SmsTxn(${kind.name} ${direction.name} $amountMinor $channel ${date.toIso8601String().substring(0, 10)} '
+      'account: $account, merchant: $merchant, reference: $reference, balance: $balanceMinor, '
+      'counterpart: $counterpartDigits)';
 }
 
 /// Why a message isn't a payment to add.
@@ -81,14 +106,17 @@ enum SmsSkip {
   notYet,
   failed,
 
-  /// Refunds and reversals (not netted against the spend yet: ISSUES.md).
+  /// A refund or reversal the parser couldn't read (no amount or account). One it can read is
+  /// an [SmsKind.refund] payment.
   refund,
   statement,
 
-  /// Paying off a credit card: the spending was already counted, card spend by card spend.
+  /// A credit card bill paid that the parser couldn't read (no amount or card), or whose other
+  /// half (the bank's payment) wasn't found. One it can read is an [SmsKind.cardBill] payment.
   cardBill,
 
-  /// Between your own accounts.
+  /// Between your own accounts: couldn't be read (no amount, direction or account), or the
+  /// other half wasn't found. One it can read is an [SmsKind.ownTransfer] payment.
   ownTransfer,
 
   /// In a currency other than rupees.

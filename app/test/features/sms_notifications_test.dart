@@ -5,6 +5,7 @@ import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/session/session.dart';
 import 'package:splitkit/core/sms/sms.dart';
 import 'package:splitkit/core/sms/sms_notification.dart';
+import 'package:splitkit/core/sms/sms_parser.dart';
 import 'package:splitkit/features/expenses/add_expense_page.dart';
 import 'package:splitkit/features/sms/sms_importer.dart';
 import 'package:splitkit/features/sms/sms_source.dart';
@@ -65,6 +66,34 @@ void main() {
         ),
       );
       expect(d, (title: '₹2,500 from Rahul Sharma', text: 'ICICI ··123 · UPI', split: false));
+    });
+
+    test('a refund, from whom if the bank says', () {
+      RawSms refund(String body) => RawSms(address: 'VM-HDFCBK-S', body: body, receivedAt: DateTime(2026, 9, 25));
+      expect(
+        describeForNotification(
+          refund(
+            'Rs.450.00 credited to HDFC Bank A/c XX4821 on 25-09-26 by a/c linked to VPA swiggy.stores@icici as a refund '
+            '(UPI Ref No 626900000012).',
+          ),
+        ),
+        (title: '₹450 refund from Swiggy', text: 'HDFC ··4821 · UPI', split: false),
+      );
+      expect(
+        describeForNotification(refund('Rs.640.00 has been reversed to your HDFC Bank A/c XX4821 on 25-09-26. UPI Ref No 626900000013')),
+        (title: '₹640 refund', text: 'HDFC ··4821 · UPI', split: false),
+      );
+    });
+
+    test('nothing for a card bill paid or a transfer between your own accounts', () {
+      for (final (address, body) in [
+        ('VM-HDFCBK-S', 'Payment of Rs 12,345.00 has been received on your HDFC Bank Credit Card ending 9876 on 25-09-26. Thank you'),
+        ('VM-SBIINB-S', 'Your A/C XXXXX4821 debited INR 10,000.00 on 25/09/26 transferred to your own A/c XXXXX9911. -SBI'),
+      ]) {
+        final sms = RawSms(address: address, body: body, receivedAt: DateTime(2026, 9, 25));
+        expect(parseSms(sms), isA<SmsParsed>()); // read, but no news: the money was already yours
+        expect(describeForNotification(sms), isNull);
+      }
     });
 
     test('nothing for what isn\'t a payment, or isn\'t from a bank', () {

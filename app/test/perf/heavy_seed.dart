@@ -20,7 +20,8 @@ const heavySeedJson = r'''
           "icon": "food",
           "scope": "all",
           "owner_id": null,
-          "sort": 10
+          "sort": 10,
+          "kind": "need"
         }
       },
       {
@@ -34,7 +35,8 @@ const heavySeedJson = r'''
           "icon": "transport",
           "scope": "all",
           "owner_id": null,
-          "sort": 20
+          "sort": 20,
+          "kind": "need"
         }
       },
       {
@@ -48,7 +50,8 @@ const heavySeedJson = r'''
           "icon": "shopping",
           "scope": "all",
           "owner_id": null,
-          "sort": 30
+          "sort": 30,
+          "kind": "want"
         }
       },
       {
@@ -62,7 +65,8 @@ const heavySeedJson = r'''
           "icon": "entertainment",
           "scope": "all",
           "owner_id": null,
-          "sort": 40
+          "sort": 40,
+          "kind": "want"
         }
       },
       {
@@ -76,7 +80,8 @@ const heavySeedJson = r'''
           "icon": "travel",
           "scope": "group",
           "owner_id": null,
-          "sort": 50
+          "sort": 50,
+          "kind": "want"
         }
       },
       {
@@ -90,7 +95,8 @@ const heavySeedJson = r'''
           "icon": "rent",
           "scope": "group",
           "owner_id": null,
-          "sort": 60
+          "sort": 60,
+          "kind": "want"
         }
       },
       {
@@ -104,7 +110,8 @@ const heavySeedJson = r'''
           "icon": "rent",
           "scope": "all",
           "owner_id": null,
-          "sort": 70
+          "sort": 70,
+          "kind": "need"
         }
       },
       {
@@ -118,7 +125,8 @@ const heavySeedJson = r'''
           "icon": "bills",
           "scope": "all",
           "owner_id": null,
-          "sort": 80
+          "sort": 80,
+          "kind": "need"
         }
       },
       {
@@ -132,7 +140,8 @@ const heavySeedJson = r'''
           "icon": "health",
           "scope": "personal",
           "owner_id": null,
-          "sort": 90
+          "sort": 90,
+          "kind": "need"
         }
       },
       {
@@ -146,7 +155,8 @@ const heavySeedJson = r'''
           "icon": "income",
           "scope": "personal",
           "owner_id": null,
-          "sort": 100
+          "sort": 100,
+          "kind": "income"
         }
       },
       {
@@ -160,7 +170,8 @@ const heavySeedJson = r'''
           "icon": "other",
           "scope": "all",
           "owner_id": null,
-          "sort": 999
+          "sort": 999,
+          "kind": null
         }
       },
       {
@@ -274,6 +285,22 @@ const heavySeedJson = r'''
               "title": "Top merchants",
               "period": "this_month",
               "source": "personal_top_merchants",
+              "params_json": {}
+            },
+            {
+              "position": 8,
+              "type": "savings_rate",
+              "title": "Savings rate",
+              "period": "this_month",
+              "source": "personal_savings_rate",
+              "params_json": {}
+            },
+            {
+              "position": 9,
+              "type": "need_vs_want",
+              "title": "Needs and wants",
+              "period": "this_month",
+              "source": "personal_need_want",
               "params_json": {}
             }
           ]

@@ -5,9 +5,11 @@
 library;
 
 import '../categorise/category_rules.dart';
+import '../finance/model.dart';
 
 /// One personal entry (personal_transactions) as synced ([raw], which the views turn into JSON),
-/// with the fields views filter, sort and add up by already read from it.
+/// with the fields views filter, sort and add up by already read from it. It's also the entry
+/// the finance maths reads (core/finance, as FinEntry).
 ///
 /// A row is read once per synced map: the store keeps the same maps from one Ledger to the next
 /// (a change brings a new map, nothing edits one in place), so a rebuilt Ledger reuses the rows
@@ -18,12 +20,22 @@ class PersonalRow {
   factory PersonalRow._from(Map<String, dynamic> raw) {
     final created = isoMicros(raw['created_at']);
     final sms = raw['sms_at'];
-    return PersonalRow._(raw, created, sms == null ? created : isoMicros(sms), plainDayKey(raw['date'] as String));
+    final type = txnTypeFromWire(raw['type'] as String);
+    // Rows synced before migration 0013 have no direction; they're income or expense.
+    final flow = flowFromWire(raw['direction'] as String?) ?? (type == null ? null : impliedFlow(type));
+    return PersonalRow._(
+      raw,
+      created,
+      sms == null ? created : isoMicros(sms),
+      plainDayKey(raw['date'] as String),
+      type,
+      flow ?? MoneyFlow.outflow,
+    );
   }
 
   static final _read = Expando<PersonalRow>('PersonalRow');
 
-  PersonalRow._(this.raw, this.createdMicros, this.atMicros, this._plainDay)
+  PersonalRow._(this.raw, this.createdMicros, this.atMicros, this._plainDay, this.txnType, this.flow)
     : id = raw['id'] as String,
       date = raw['date'] as String,
       day = _plainDay >= 0 ? _plainDay : dayKey(raw['date'] as String),
@@ -41,6 +53,11 @@ class PersonalRow {
       balance = raw['balance_minor'] as int?,
       expenseId = raw['expense_id'] as String?,
       settlementId = raw['settlement_id'] as String?,
+      // Rows synced before these columns existed (migrations 0013 and 0016) have no such keys.
+      accountId = raw['account_id'] as String?,
+      transferGroupId = raw['transfer_group_id'] as String?,
+      refundOfId = raw['refund_of_id'] as String?,
+      holdingId = raw['holding_id'] as String?,
       deleted = raw['deleted_at'] != null;
 
   final Map<String, dynamic> raw;
@@ -74,9 +91,34 @@ class PersonalRow {
   final int? balance;
   final String? expenseId;
   final String? settlementId;
+
+  /// [type] typed, or null for a type this build doesn't know (one added after it). Such an
+  /// entry is skipped everywhere (PersonalIndex leaves it out): the generated PersonalTxnOut
+  /// can't read it, so it can't be listed, and it's in no figure (ISS-073).
+  final TxnType? txnType;
+
+  /// Which way the money moved: `direction`, or for an entry synced before it existed (income or
+  /// expense), the way its type implies.
+  final MoneyFlow flow;
+
+  /// The account it went through (personal_accounts); [account] is the bank's label.
+  final String? accountId;
+
+  /// The same for both legs of a transfer between two of your accounts.
+  final String? transferGroupId;
+
+  /// The spend a refund gives money back for, if known.
+  final String? refundOfId;
+
+  /// The holding an investment entry bought into or sold from.
+  final String? holdingId;
+
   final bool deleted;
 
   bool get income => type == 'income';
+
+  /// Read from a bank SMS.
+  bool get fromSms => source == 'sms';
 
   /// The API's order (personal/repository.py): newest date first, then newest made, then id.
   static int newestFirst(PersonalRow a, PersonalRow b) {
@@ -87,9 +129,14 @@ class PersonalRow {
   }
 }
 
-/// Every personal entry on the device, indexed.
+/// Every personal entry on the device, indexed, except those of a type this build doesn't know
+/// (PersonalRow.txnType), which every view skips.
 class PersonalIndex {
-  PersonalIndex(Iterable<Map<String, dynamic>> raw) : rows = List.unmodifiable([for (final t in raw) PersonalRow(t)]);
+  PersonalIndex(Iterable<Map<String, dynamic>> raw)
+    : rows = List.unmodifiable([
+        for (final t in raw)
+          if (PersonalRow(t) case final row when row.txnType != null) row,
+      ]);
 
   /// In the order they were synced.
   final List<PersonalRow> rows;

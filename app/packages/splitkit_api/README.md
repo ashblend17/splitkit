@@ -103,15 +103,64 @@ Class | Method | HTTP request | Description
 *ImportApi* | [**listImportBatches**](doc//ImportApi.md#listimportbatches) | **GET** /api/v1/import/batches | List Import Batches
 *ImportApi* | [**previewTricount**](doc//ImportApi.md#previewtricount) | **POST** /api/v1/import/tricount/preview | Preview Tricount
 *ImportApi* | [**undoImportBatch**](doc//ImportApi.md#undoimportbatch) | **POST** /api/v1/import/batches/{batch_id}/undo | Undo Import Batch
+*PersonalApi* | [**applyPersonalBatch**](doc//PersonalApi.md#applypersonalbatch) | **POST** /api/v1/personal/batch | Apply Personal Batch
+*PersonalApi* | [**createAllocationPlan**](doc//PersonalApi.md#createallocationplan) | **POST** /api/v1/personal/allocation-plans | Create Allocation Plan
+*PersonalApi* | [**createAllocationRule**](doc//PersonalApi.md#createallocationrule) | **POST** /api/v1/personal/allocation-rules | Create Allocation Rule
+*PersonalApi* | [**createGoalContribution**](doc//PersonalApi.md#creategoalcontribution) | **POST** /api/v1/personal/goal-contributions | Create Goal Contribution
 *PersonalApi* | [**createPersonal**](doc//PersonalApi.md#createpersonal) | **POST** /api/v1/personal/transactions | Create Personal
+*PersonalApi* | [**createPersonalAccount**](doc//PersonalApi.md#createpersonalaccount) | **POST** /api/v1/personal/accounts | Create Personal Account
 *PersonalApi* | [**createPersonalBatch**](doc//PersonalApi.md#createpersonalbatch) | **POST** /api/v1/personal/transactions/batch | Create Personal Batch
+*PersonalApi* | [**createPersonalGoal**](doc//PersonalApi.md#createpersonalgoal) | **POST** /api/v1/personal/goals | Create Personal Goal
+*PersonalApi* | [**createPersonalHolding**](doc//PersonalApi.md#createpersonalholding) | **POST** /api/v1/personal/holdings | Create Personal Holding
+*PersonalApi* | [**createReminderSchedule**](doc//PersonalApi.md#createreminderschedule) | **POST** /api/v1/personal/reminder-schedules | Create Reminder Schedule
+*PersonalApi* | [**deleteAllocationPlan**](doc//PersonalApi.md#deleteallocationplan) | **DELETE** /api/v1/personal/allocation-plans/{plan_id} | Delete Allocation Plan
+*PersonalApi* | [**deleteAllocationRule**](doc//PersonalApi.md#deleteallocationrule) | **DELETE** /api/v1/personal/allocation-rules/{rule_id} | Delete Allocation Rule
+*PersonalApi* | [**deleteGoalContribution**](doc//PersonalApi.md#deletegoalcontribution) | **DELETE** /api/v1/personal/goal-contributions/{contribution_id} | Delete Goal Contribution
 *PersonalApi* | [**deletePersonal**](doc//PersonalApi.md#deletepersonal) | **DELETE** /api/v1/personal/transactions/{txn_id} | Delete Personal
+*PersonalApi* | [**deletePersonalAccount**](doc//PersonalApi.md#deletepersonalaccount) | **DELETE** /api/v1/personal/accounts/{account_id} | Delete Personal Account
+*PersonalApi* | [**deletePersonalGoal**](doc//PersonalApi.md#deletepersonalgoal) | **DELETE** /api/v1/personal/goals/{goal_id} | Delete Personal Goal
+*PersonalApi* | [**deletePersonalHolding**](doc//PersonalApi.md#deletepersonalholding) | **DELETE** /api/v1/personal/holdings/{holding_id} | Delete Personal Holding
+*PersonalApi* | [**deleteReminderSchedule**](doc//PersonalApi.md#deletereminderschedule) | **DELETE** /api/v1/personal/reminder-schedules/{schedule_id} | Delete Reminder Schedule
+*PersonalApi* | [**deleteReminderState**](doc//PersonalApi.md#deletereminderstate) | **DELETE** /api/v1/personal/reminder-states/{state_id} | Delete Reminder State
+*PersonalApi* | [**getAllocationPlan**](doc//PersonalApi.md#getallocationplan) | **GET** /api/v1/personal/allocation-plans/{plan_id} | Get Allocation Plan
+*PersonalApi* | [**getAllocationRule**](doc//PersonalApi.md#getallocationrule) | **GET** /api/v1/personal/allocation-rules/{rule_id} | Get Allocation Rule
+*PersonalApi* | [**getGoalContribution**](doc//PersonalApi.md#getgoalcontribution) | **GET** /api/v1/personal/goal-contributions/{contribution_id} | Get Goal Contribution
 *PersonalApi* | [**getPersonal**](doc//PersonalApi.md#getpersonal) | **GET** /api/v1/personal/transactions/{txn_id} | Get Personal
+*PersonalApi* | [**getPersonalAccount**](doc//PersonalApi.md#getpersonalaccount) | **GET** /api/v1/personal/accounts/{account_id} | Get Personal Account
+*PersonalApi* | [**getPersonalGoal**](doc//PersonalApi.md#getpersonalgoal) | **GET** /api/v1/personal/goals/{goal_id} | Get Personal Goal
+*PersonalApi* | [**getPersonalHolding**](doc//PersonalApi.md#getpersonalholding) | **GET** /api/v1/personal/holdings/{holding_id} | Get Personal Holding
+*PersonalApi* | [**getReminderSchedule**](doc//PersonalApi.md#getreminderschedule) | **GET** /api/v1/personal/reminder-schedules/{schedule_id} | Get Reminder Schedule
+*PersonalApi* | [**getReminderState**](doc//PersonalApi.md#getreminderstate) | **GET** /api/v1/personal/reminder-states/{state_id} | Get Reminder State
+*PersonalApi* | [**listAllocationPlans**](doc//PersonalApi.md#listallocationplans) | **GET** /api/v1/personal/allocation-plans | List Allocation Plans
+*PersonalApi* | [**listAllocationRules**](doc//PersonalApi.md#listallocationrules) | **GET** /api/v1/personal/allocation-rules | List Allocation Rules
+*PersonalApi* | [**listGoalContributions**](doc//PersonalApi.md#listgoalcontributions) | **GET** /api/v1/personal/goal-contributions | List Goal Contributions
 *PersonalApi* | [**listPersonal**](doc//PersonalApi.md#listpersonal) | **GET** /api/v1/personal/transactions | List Personal
-*PersonalApi* | [**personalAccounts**](doc//PersonalApi.md#personalaccounts) | **GET** /api/v1/personal/accounts | Personal Accounts
+*PersonalApi* | [**listPersonalAccounts**](doc//PersonalApi.md#listpersonalaccounts) | **GET** /api/v1/personal/accounts | List Personal Accounts
+*PersonalApi* | [**listPersonalGoals**](doc//PersonalApi.md#listpersonalgoals) | **GET** /api/v1/personal/goals | List Personal Goals
+*PersonalApi* | [**listPersonalHoldings**](doc//PersonalApi.md#listpersonalholdings) | **GET** /api/v1/personal/holdings | List Personal Holdings
+*PersonalApi* | [**listReminderSchedules**](doc//PersonalApi.md#listreminderschedules) | **GET** /api/v1/personal/reminder-schedules | List Reminder Schedules
+*PersonalApi* | [**listReminderStates**](doc//PersonalApi.md#listreminderstates) | **GET** /api/v1/personal/reminder-states | List Reminder States
+*PersonalApi* | [**personalReportedAccounts**](doc//PersonalApi.md#personalreportedaccounts) | **GET** /api/v1/personal/accounts/reported | Personal Reported Accounts
 *PersonalApi* | [**personalSummary**](doc//PersonalApi.md#personalsummary) | **GET** /api/v1/personal/summary | Personal Summary
+*PersonalApi* | [**restoreAllocationPlan**](doc//PersonalApi.md#restoreallocationplan) | **POST** /api/v1/personal/allocation-plans/{plan_id}/restore | Restore Allocation Plan
+*PersonalApi* | [**restoreAllocationRule**](doc//PersonalApi.md#restoreallocationrule) | **POST** /api/v1/personal/allocation-rules/{rule_id}/restore | Restore Allocation Rule
+*PersonalApi* | [**restoreGoalContribution**](doc//PersonalApi.md#restoregoalcontribution) | **POST** /api/v1/personal/goal-contributions/{contribution_id}/restore | Restore Goal Contribution
 *PersonalApi* | [**restorePersonal**](doc//PersonalApi.md#restorepersonal) | **POST** /api/v1/personal/transactions/{txn_id}/restore | Restore Personal
+*PersonalApi* | [**restorePersonalAccount**](doc//PersonalApi.md#restorepersonalaccount) | **POST** /api/v1/personal/accounts/{account_id}/restore | Restore Personal Account
+*PersonalApi* | [**restorePersonalGoal**](doc//PersonalApi.md#restorepersonalgoal) | **POST** /api/v1/personal/goals/{goal_id}/restore | Restore Personal Goal
+*PersonalApi* | [**restorePersonalHolding**](doc//PersonalApi.md#restorepersonalholding) | **POST** /api/v1/personal/holdings/{holding_id}/restore | Restore Personal Holding
+*PersonalApi* | [**restoreReminderSchedule**](doc//PersonalApi.md#restorereminderschedule) | **POST** /api/v1/personal/reminder-schedules/{schedule_id}/restore | Restore Reminder Schedule
+*PersonalApi* | [**restoreReminderState**](doc//PersonalApi.md#restorereminderstate) | **POST** /api/v1/personal/reminder-states/{state_id}/restore | Restore Reminder State
+*PersonalApi* | [**saveReminderState**](doc//PersonalApi.md#savereminderstate) | **POST** /api/v1/personal/reminder-states | Save Reminder State
+*PersonalApi* | [**updateAllocationPlan**](doc//PersonalApi.md#updateallocationplan) | **PUT** /api/v1/personal/allocation-plans/{plan_id} | Update Allocation Plan
+*PersonalApi* | [**updateAllocationRule**](doc//PersonalApi.md#updateallocationrule) | **PUT** /api/v1/personal/allocation-rules/{rule_id} | Update Allocation Rule
+*PersonalApi* | [**updateGoalContribution**](doc//PersonalApi.md#updategoalcontribution) | **PUT** /api/v1/personal/goal-contributions/{contribution_id} | Update Goal Contribution
 *PersonalApi* | [**updatePersonal**](doc//PersonalApi.md#updatepersonal) | **PUT** /api/v1/personal/transactions/{txn_id} | Update Personal
+*PersonalApi* | [**updatePersonalAccount**](doc//PersonalApi.md#updatepersonalaccount) | **PUT** /api/v1/personal/accounts/{account_id} | Update Personal Account
+*PersonalApi* | [**updatePersonalGoal**](doc//PersonalApi.md#updatepersonalgoal) | **PUT** /api/v1/personal/goals/{goal_id} | Update Personal Goal
+*PersonalApi* | [**updatePersonalHolding**](doc//PersonalApi.md#updatepersonalholding) | **PUT** /api/v1/personal/holdings/{holding_id} | Update Personal Holding
+*PersonalApi* | [**updateReminderSchedule**](doc//PersonalApi.md#updatereminderschedule) | **PUT** /api/v1/personal/reminder-schedules/{schedule_id} | Update Reminder Schedule
+*PersonalApi* | [**updateReminderState**](doc//PersonalApi.md#updatereminderstate) | **PUT** /api/v1/personal/reminder-states/{state_id} | Update Reminder State
 *SettlementsApi* | [**createSettlement**](doc//SettlementsApi.md#createsettlement) | **POST** /api/v1/groups/{group_id}/settlements | Create Settlement
 *SettlementsApi* | [**deleteSettlement**](doc//SettlementsApi.md#deletesettlement) | **DELETE** /api/v1/settlements/{settlement_id} | Delete Settlement
 *SettlementsApi* | [**getSettlement**](doc//SettlementsApi.md#getsettlement) | **GET** /api/v1/settlements/{settlement_id} | Get Settlement
@@ -190,9 +239,29 @@ Class | Method | HTTP request | Description
  - [OverallBalancesOut](doc//OverallBalancesOut.md)
  - [PersonBalance](doc//PersonBalance.md)
  - [PersonOut](doc//PersonOut.md)
+ - [PersonalAccountIn](doc//PersonalAccountIn.md)
+ - [PersonalAccountOut](doc//PersonalAccountOut.md)
+ - [PersonalAllocationPlanIn](doc//PersonalAllocationPlanIn.md)
+ - [PersonalAllocationPlanOut](doc//PersonalAllocationPlanOut.md)
+ - [PersonalAllocationRuleIn](doc//PersonalAllocationRuleIn.md)
+ - [PersonalAllocationRuleOut](doc//PersonalAllocationRuleOut.md)
  - [PersonalBatchIn](doc//PersonalBatchIn.md)
+ - [PersonalBatchItem](doc//PersonalBatchItem.md)
  - [PersonalBatchOut](doc//PersonalBatchOut.md)
+ - [PersonalBatchResult](doc//PersonalBatchResult.md)
+ - [PersonalGoalContributionIn](doc//PersonalGoalContributionIn.md)
+ - [PersonalGoalContributionOut](doc//PersonalGoalContributionOut.md)
+ - [PersonalGoalIn](doc//PersonalGoalIn.md)
+ - [PersonalGoalOut](doc//PersonalGoalOut.md)
+ - [PersonalHoldingIn](doc//PersonalHoldingIn.md)
+ - [PersonalHoldingOut](doc//PersonalHoldingOut.md)
  - [PersonalListOut](doc//PersonalListOut.md)
+ - [PersonalMixedBatchIn](doc//PersonalMixedBatchIn.md)
+ - [PersonalMixedBatchOut](doc//PersonalMixedBatchOut.md)
+ - [PersonalReminderScheduleIn](doc//PersonalReminderScheduleIn.md)
+ - [PersonalReminderScheduleOut](doc//PersonalReminderScheduleOut.md)
+ - [PersonalReminderStateIn](doc//PersonalReminderStateIn.md)
+ - [PersonalReminderStateOut](doc//PersonalReminderStateOut.md)
  - [PersonalSummaryOut](doc//PersonalSummaryOut.md)
  - [PersonalTxnIn](doc//PersonalTxnIn.md)
  - [PersonalTxnOut](doc//PersonalTxnOut.md)

@@ -1,0 +1,16 @@
+[
+  {
+    "account": "HDFC ··4821",
+    "currency": "INR",
+    "balance_minor": 3993600,
+    "balance_at": "2026-09-23T12:45:00Z",
+    "count": 6
+  },
+  {
+    "account": "ICICI Credit card ··9012",
+    "currency": "INR",
+    "balance_minor": null,
+    "balance_at": null,
+    "count": 1
+  }
+]

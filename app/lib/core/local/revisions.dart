@@ -8,7 +8,17 @@ enum LedgerDomain { personal, groups, categories, profile, layouts }
 
 /// Synced entities of Personal. Each new personal entity (accounts, goals, rules, plans,
 /// holdings, reminder states…) goes in this list.
-const personalEntities = {'personal_transaction', 'personal_account', 'personal_goal', 'personal_goal_contribution'};
+const personalEntities = {
+  'personal_transaction',
+  'personal_account',
+  'personal_goal',
+  'personal_goal_contribution',
+  'personal_allocation_rule',
+  'personal_allocation_plan',
+  'personal_holding',
+  'personal_reminder_state',
+  'personal_reminder_schedule',
+};
 
 /// Synced entities of the groups you're in, and your memberships.
 const groupEntities = {'group', 'member', 'membership', 'expense', 'settlement'};

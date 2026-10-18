@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/api/api.dart';
+import 'package:splitkit/core/finance/finance.dart';
 import 'package:splitkit/core/local/ledger.dart';
 
 /// Every screen answer the device computes must equal the API's for the same data.
@@ -50,11 +51,15 @@ void main() {
                 'just_in' => ledger.personalList(source: 'sms', reviewed: false, limit: 500),
                 'upi' => ledger.personalList(channel: 'upi', limit: 500),
                 'hdfc' => ledger.personalList(account: 'HDFC ··4821', limit: 500),
+                'hdfc_account' => ledger.personalList(accountId: _accountId(ledger, 'HDFC ··4821'), limit: 500),
+                'transfers' => ledger.personalList(type: 'transfer', limit: 500),
                 _ => throw StateError('No local view for ${entry.key}'),
               },
               PersonalListOut.fromJson,
             ),
-            'personal_accounts' => (ledger.personalAccounts(), AccountOut.listFromJson),
+            'personal_accounts' => (ledger.personalAccountList(), PersonalAccountOut.listFromJson),
+            'personal_accounts_reported' => (ledger.personalReportedAccounts(), AccountOut.listFromJson),
+            'personal_account' => (ledger.personalAccount(arg!), PersonalAccountOut.fromJson),
             'personal_deleted' => (ledger.personalList(deleted: true, limit: 500), PersonalListOut.fromJson),
             _ => throw StateError('No local view for ${entry.key}'),
           };
@@ -63,9 +68,40 @@ void main() {
           expect(_normal(parse(mine)), expected);
         });
       }
+
+      // The finance engine on its own, without personalSummary's JSON: its cash flow (group share
+      // not counted) is the API's summary.
+      for (final month in ['2026-07-01', '2026-08-01', '2026-09-01']) {
+        test('finance.cashFlow($month) is personal_summary:$month', () {
+          final summary = answers['personal_summary:$month'] as Map<String, dynamic>?;
+          expect(summary, isNotNull, reason: 'the fixture has the month');
+          final first = DateTime.parse(month);
+          final period = monthRange(first.year, first.month);
+          final flow = ledger.finance.cashFlow(
+            period,
+            notCounted: ledger.notCounted,
+            groupShareMinor: ledger.groupShareFor(period),
+            countGroupShare: false,
+            label: ledger.categoryLabel,
+          );
+          expect(
+            (flow.spendingMinor, flow.incomeMinor, flow.refundsMinor, flow.groupShareMinor),
+            (summary!['spent_minor'], summary['income_minor'], summary['refunds_minor'], summary['group_share_minor']),
+          );
+          expect(flow.netMinor, summary['left_over_minor']);
+          expect(
+            [for (final c in flow.byCategory) (c.label, c.amountMinor)],
+            [for (final c in (summary['by_category'] as List).cast<Map>()) (c['label'], c['amount_minor'])],
+          );
+        });
+      }
     });
   }
 }
+
+/// The id of the account with SMS label [label].
+String _accountId(Ledger ledger, String label) =>
+    ledger.personalAccountList().firstWhere((a) => a['sms_label'] == label)['id'] as String;
 
 (String, String?) _split(String key) {
   final i = key.indexOf(':');

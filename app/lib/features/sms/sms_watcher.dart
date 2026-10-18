@@ -61,12 +61,15 @@ class _SmsWatcherState extends ConsumerState<SmsWatcher> with WidgetsBindingObse
     final source = ref.read(smsSourceProvider);
     final launch = await source.takeLaunch();
     if (launch == null || !mounted) return;
-    final id = await ref.read(smsImporterProvider).importOne(launch.sms);
+    final importer = ref.read(smsImporterProvider);
+    final id = await importer.importOne(launch.sms);
+    // Only a spend can be split: a cash withdrawal into your Cash account is a transfer.
+    final spend = id != null && await importer.isSpend(id);
     await source.cancelNotification(launch.notification);
     if (!mounted) return;
     final links = ref.read(integrationsProvider);
     final router = GoRouter.of(context);
-    if (id != null && launch.split && links.splitFromTransaction && links.notificationSplitAction) {
+    if (spend && launch.split && links.splitFromTransaction && links.notificationSplitAction) {
       router.push('/expenses/new?from_txn=$id');
     } else {
       router.go('/personal');
