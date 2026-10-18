@@ -615,6 +615,111 @@ void main() {
         5,
       );
     });
+
+    test('allocation: 20 rules, 2,000 plans filled by 3,000 contributions; an income edit reconciled', () {
+      final user = entities.firstWhere((e) => e.entity == 'profile').stream;
+      String id(int kind, int i) => 'b0000000-0000-4000-8000-$kind${'$i'.padLeft(11, '0')}';
+      final made = DateTime.utc(2021, 1, 1).toIso8601String();
+      final incomes = [
+        for (final e in entities)
+          if (e.entity == 'personal_transaction' && e.data['type'] == 'income' && e.data['deleted_at'] == null) e.data,
+      ]..sort((a, b) => (b['date'] as String).compareTo(a['date'] as String));
+      // 14 percentage rules and 6 fixed, 10 of them filtered by category; 2 goals take the money.
+      Json rule(int i) => {
+        'id': id(1, i),
+        'name': null,
+        'trigger': 'income_recorded',
+        'source_category_id': i < 10 ? incomes[i % incomes.length]['category_id'] : null,
+        'source_account_id': null,
+        'kind': i < 14 ? 'percentage' : 'fixed',
+        'percent_bp': i < 14 ? 500 + i * 10 : null,
+        'amount_minor': i < 14 ? null : 100000,
+        'currency': 'INR',
+        'goal_id': id(2, i % 2),
+        'account_id': null,
+        'active': true,
+        'priority': i,
+        'created_at': made,
+        'deleted_at': null,
+        'version': 1,
+      };
+      final rules = [for (var i = 0; i < 20; i++) rule(i)];
+      final withPlans = [
+        ...entities,
+        for (var g = 0; g < 2; g++)
+          LocalEntity(user, 'personal_goal', id(2, g), 1, {
+            'id': id(2, g),
+            'name': 'Goal $g',
+            'target_minor': 1000000000,
+            'currency': 'INR',
+            'tracking_mode': 'contribution',
+            'priority': g,
+            'status': 'active',
+            'created_at': made,
+            'deleted_at': null,
+            'version': 1,
+          }),
+        for (final r in rules) LocalEntity(user, 'personal_allocation_rule', r['id'] as String, 1, r),
+        // The newest 100 incomes, each planned by all 20 rules.
+        for (final income in incomes.take(100))
+          for (final r in rules)
+            LocalEntity(user, 'personal_allocation_plan', planId(income['id'] as String, r['id'] as String), 1, {
+              'id': planId(income['id'] as String, r['id'] as String),
+              'source_transaction_id': income['id'],
+              'rule_id': r['id'],
+              'snapshot_kind': r['kind'],
+              'snapshot_percent_bp': r['percent_bp'],
+              'snapshot_amount_minor': r['amount_minor'],
+              'planned_minor': 100000,
+              'currency': 'INR',
+              'goal_id': r['goal_id'],
+              'account_id': null,
+              'created_at': income['created_at'],
+              'deleted_at': null,
+              'version': 1,
+            }),
+        for (var c = 0; c < 3000; c++)
+          LocalEntity(user, 'personal_goal_contribution', id(3, c), 1, {
+            'id': id(3, c),
+            'goal_id': id(2, c % 2),
+            'transaction_id': null,
+            'amount_minor': 30000,
+            'currency': 'INR',
+            'date': DateTime.utc(2021, 1, 1).add(Duration(days: c * 2068 ~/ 3000)).toIso8601String().substring(0, 10),
+            'created_at': made,
+            'deleted_at': null,
+            'version': 1,
+          }),
+      ];
+      final f = Ledger(withPlans).finance;
+      expect(f.planViews.length, 2000);
+      expect(f.planViews.values.where((v) => v.status == PlanStatus.fulfilled), isNotEmpty);
+      _under(
+        _benchPrepared(
+          'Ledger.finance: planViews + plannedVsActual(Sep) + allocationLoad (first asked)',
+          () => Ledger(withPlans)..finance.balances,
+          (l) {
+            l.finance.planViews;
+            l.finance.plannedVsActual(sep);
+            l.finance.allocationLoad();
+          },
+          note: '20 rules, 2,000 plans, 3,000 contributions',
+        ),
+        16,
+      );
+      final edits = [
+        for (final income in incomes.take(50))
+          (FinEntry(income), FinEntry({...income, 'amount_minor': (income['amount_minor'] as int) + 100})),
+      ];
+      _under(
+        _benchEach(
+          'finance.reconcilePlans: an income\'s amount edited (20 rules)',
+          edits,
+          (e) => f.reconcilePlans(before: e.$1, after: e.$2),
+        ),
+        1,
+      );
+    });
   });
 
   group('Split views', () {

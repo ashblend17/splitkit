@@ -11,11 +11,17 @@ import '../clock.dart';
 import '../finance/finance.dart'
     show
         AccountType,
+        AllocationKind,
         FinGoal,
+        FinPlan,
+        FinRule,
+        FinanceEngine,
         GoalMode,
         GoalStatus,
         HoldingType,
         MoneyFlow,
+        PlanAmount,
+        PlanDraft,
         impliedFlow,
         pairedLegId,
         reconcileDelta,
@@ -34,6 +40,7 @@ import 'providers.dart';
 part 'writes_finance.dart';
 part 'writes_goals.dart';
 part 'writes_holdings.dart';
+part 'writes_plans.dart';
 
 /// Writes that work offline: each one is queued in the outbox with the full state it leaves
 /// behind, shows on every screen straight away, and is sent by the next sync (which starts
@@ -318,40 +325,9 @@ class LocalWrites {
 
   // ---- personal finance ----
 
-  /// The entry as the server will store it. Where it came from (source, reference, balance,
-  /// SMS time) is set when it's made: on an edit the server ignores those, so they're kept
-  /// from [before].
-  Json _personalData(Ledger l, String id, PersonalTxnIn body, Json? before) => {
-    'id': id,
-    'user_id': l.me,
-    'type': body.type.value,
-    // The way the type implies; a transfer or a correction says its own (or keeps it).
-    'direction': impliedFlow(txnTypeFromWire(body.type.value)!)?.wire ?? body.direction?.value ?? before?['direction'],
-    'amount_minor': body.amountMinor,
-    'currency': before?['currency'] ?? l.userOut()['currency'],
-    'category_id': body.categoryId,
-    'date': _day(body.date),
-    'description': body.description.trim(),
-    'notes': body.notes,
-    'channel': body.channel?.value,
-    'merchant': _text(body.merchant),
-    'account': _text(body.account),
-    'source': before == null ? body.source_.value : before['source'] ?? 'manual',
-    'reference': before == null ? _text(body.reference) : before['reference'],
-    'balance_minor': before == null ? body.balanceMinor : before['balance_minor'],
-    'sms_at': before == null ? body.smsAt?.toUtc().toIso8601String() : before['sms_at'],
-    'reviewed': body.reviewed,
-    'expense_id': body.expenseId,
-    'settlement_id': body.settlementId,
-    'account_id': body.accountId,
-    'transfer_group_id': body.transferGroupId,
-    'refund_of_id': body.refundOfId,
-    'holding_id': body.holdingId,
-    'acting_admin_id': _ref.read(sessionProvider).value?.adminId,
-    'created_at': before?['created_at'] ?? _now(),
-    'deleted_at': null,
-    'version': (before?['version'] as int? ?? 0) + 1,
-  };
+  /// The entry as the server will store it ([_personalJson]).
+  Json _personalData(Ledger l, String id, PersonalTxnIn body, Json? before) =>
+      _personalJson(l, id, body, before, now: _now(), adminId: _ref.read(sessionProvider).value?.adminId);
 
   String _personalLabel(Json t) => '${t['description']} · ${formatMinor(t['amount_minor'] as int, currency: t['currency'] as String)}';
 
@@ -363,18 +339,26 @@ class LocalWrites {
 
   /// [id]: one made from the entry itself (a bank SMS), so making it twice gives the same row.
   /// Checked as the server checks it ([_Draft]); a transfer leg can't be made alone
-  /// ([createTransfer]).
+  /// ([createTransfer]). An income the allocation rules apply to goes with its plans in one
+  /// `POST /personal/batch` [entry, plan creates]; anything else is a plain POST.
   Future<String> createPersonal(PersonalTxnIn body, {String? id}) async {
     final l = await _ledger();
     id ??= _uuid.v4();
-    // The entry, and the category rule a manual one teaches (the app guessed an SMS entry's).
-    final entities = (_Draft(this, l)..add(BatchItem.createEntry(id, body))).finish();
+    // The entry, its plans, and the category rule a manual one teaches (the app guessed an SMS
+    // entry's).
+    final draft = _Draft(this, l)..addEntryCreate(id, body);
+    final label = 'Added ${_personalLabel(_personalData(l, id, body, null))}';
+    if (draft._items.length > 1) {
+      await _queue(draft.op(label));
+      return id;
+    }
+    final entities = draft.finish();
     body.id = id;
     await _queue(OutboxOp(
       method: 'POST',
       path: '/api/v1/personal/transactions',
       body: _json(body.toJson()),
-      label: 'Added ${_personalLabel(_personalData(l, id, body, null))}',
+      label: label,
       entities: entities,
       createdAt: _now(),
     ));
@@ -383,24 +367,37 @@ class LocalWrites {
 
   Future<void> updatePersonal(String id, PersonalTxnIn body) async {
     final l = await _ledger();
-    await _queue(_updatePersonalOp(l, id, body));
+    await _queueAll(_updatePersonalOps(l, id, body));
   }
 
-  /// Checked as the server checks it ([_Draft]): one leg of a transfer can't change its amount,
-  /// account or direction alone ([updateTransfer]).
-  OutboxOp _updatePersonalOp(Ledger l, String id, PersonalTxnIn body) {
+  /// Every edit of an entry goes through here. Checked as the server checks it ([_Draft]): one
+  /// leg of a transfer can't change its amount, account or direction alone ([updateTransfer]).
+  ///
+  /// When the edit changes an income's plans (reconcilePlans in core/finance/allocation.dart), it's
+  /// one `POST /personal/batch` [plan deletes, the entry, plan updates, plan creates, plan
+  /// deletes], so a type change sends the plan deletes first; otherwise a plain PUT. A deleted
+  /// plan that applies again comes back with ops of its own after it ([_Draft.ops]).
+  List<OutboxOp> _updatePersonalOps(Ledger l, String id, PersonalTxnIn body) {
     final before = _required(l.rawPersonal(id), 'Transaction');
+    final draft = _Draft(this, l)..addEntryUpdate(id, body);
+    if (draft._items.length > 1) {
+      return draft.ops('Edited ${_personalLabel(draft.entry(id)!)}');
+    }
+    final restores = draft._takeRestores();
     // The entry first, then the category rule a changed category teaches.
-    final entities = (_Draft(this, l)..add(BatchItem.updateEntry(id, body))).finish();
+    final entities = draft.finish();
     body.version = before['version'] as int;
-    return OutboxOp(
-      method: 'PUT',
-      path: '/api/v1/personal/transactions/$id',
-      body: _json(body.toJson()),
-      label: 'Edited ${_personalLabel(entities.first.data)}',
-      entities: entities,
-      createdAt: _now(),
-    );
+    return [
+      OutboxOp(
+        method: 'PUT',
+        path: '/api/v1/personal/transactions/$id',
+        body: _json(body.toJson()),
+        label: 'Edited ${_personalLabel(entities.first.data)}',
+        entities: entities,
+        createdAt: _now(),
+      ),
+      ..._planRestoreOps(l, restores),
+    ];
   }
 
   // ---- personal entries in Split (core/integrations.dart) ----
@@ -413,7 +410,7 @@ class LocalWrites {
   Future<String> splitPersonal(String txnId, String groupId, ExpenseIn body) async {
     final l = await _ledger();
     final expense = _createExpenseOp(l, groupId, body);
-    final link = _updatePersonalOp(
+    final link = _updatePersonalOps(
       l,
       txnId,
       _bodyOf(l, txnId)
@@ -421,7 +418,7 @@ class LocalWrites {
         ..settlementId = null
         ..reviewed = true,
     );
-    await _queueAll([expense, link]);
+    await _queueAll([expense, ...link]);
     return body.id!;
   }
 
@@ -429,8 +426,8 @@ class LocalWrites {
   /// unlinks it when both are null. Either way it has been looked at.
   Future<void> linkPersonal(String txnId, {String? expenseId, String? settlementId}) async {
     final l = await _ledger();
-    await _queue(
-      _updatePersonalOp(
+    await _queueAll(
+      _updatePersonalOps(
         l,
         txnId,
         _bodyOf(l, txnId)
@@ -444,7 +441,7 @@ class LocalWrites {
   /// "Looks right": an entry the app added from a bank SMS has been looked at.
   Future<void> reviewPersonal(String txnId) async {
     final l = await _ledger();
-    await _queue(_updatePersonalOp(l, txnId, _bodyOf(l, txnId)..reviewed = true));
+    await _queueAll(_updatePersonalOps(l, txnId, _bodyOf(l, txnId)..reviewed = true));
   }
 
   /// Deleting or restoring a transfer leg takes the other leg with it, as the server does
@@ -558,6 +555,9 @@ class LocalWrites {
           'account' => 'personal_account',
           'goal' => 'personal_goal',
           'goal_contribution' => 'personal_goal_contribution',
+          'holding' => 'personal_holding',
+          'allocation_rule' => 'personal_allocation_rule',
+          'allocation_plan' => 'personal_allocation_plan',
           _ => 'personal_transaction',
         };
         final now = server(entity, item['id'] as String);
@@ -642,3 +642,39 @@ PersonalTxnIn personalBody(PersonalTxnOut t) => PersonalTxnIn(
   balanceMinor: t.balanceMinor,
   smsAt: t.smsAt,
 );
+
+/// Entry [id] as the server will store it, made from [body] ([before]: as it is now, or null for a
+/// new one) [now], by admin [adminId] if acting as you. Where it came from (source, reference,
+/// balance, SMS time) is set when it's made: on an edit the server ignores those, so they're kept
+/// from [before].
+Json _personalJson(Ledger l, String id, PersonalTxnIn body, Json? before, {required String now, String? adminId}) => {
+  'id': id,
+  'user_id': l.me,
+  'type': body.type.value,
+  // The way the type implies; a transfer or a correction says its own (or keeps it).
+  'direction': impliedFlow(txnTypeFromWire(body.type.value)!)?.wire ?? body.direction?.value ?? before?['direction'],
+  'amount_minor': body.amountMinor,
+  'currency': before?['currency'] ?? l.userOut()['currency'],
+  'category_id': body.categoryId,
+  'date': LocalWrites._day(body.date),
+  'description': body.description.trim(),
+  'notes': body.notes,
+  'channel': body.channel?.value,
+  'merchant': LocalWrites._text(body.merchant),
+  'account': LocalWrites._text(body.account),
+  'source': before == null ? body.source_.value : before['source'] ?? 'manual',
+  'reference': before == null ? LocalWrites._text(body.reference) : before['reference'],
+  'balance_minor': before == null ? body.balanceMinor : before['balance_minor'],
+  'sms_at': before == null ? body.smsAt?.toUtc().toIso8601String() : before['sms_at'],
+  'reviewed': body.reviewed,
+  'expense_id': body.expenseId,
+  'settlement_id': body.settlementId,
+  'account_id': body.accountId,
+  'transfer_group_id': body.transferGroupId,
+  'refund_of_id': body.refundOfId,
+  'holding_id': body.holdingId,
+  'acting_admin_id': adminId,
+  'created_at': before?['created_at'] ?? now,
+  'deleted_at': null,
+  'version': (before?['version'] as int? ?? 0) + 1,
+};

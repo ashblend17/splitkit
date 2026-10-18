@@ -68,6 +68,8 @@ def main():
         "personal_accounts_reported": call("/personal/accounts/reported", token=token),
         "personal_goals": call("/personal/goals", token=token),
         "goal_contributions": call("/personal/goal-contributions", token=token),
+        "allocation_rules": call("/personal/allocation-rules", token=token),
+        "allocation_plans": call("/personal/allocation-plans", token=token),
         "analytics_personal": call("/analytics/personal?period=month&on=2026-09-23", token=token),
         "analytics_group": call(f"/analytics/groups/{goa['id']}?on=2026-09-23", token=token),
         "analytics_layout": call("/analytics/layout/personal", token=token),
@@ -161,7 +163,22 @@ def capture_sync():
             answers[f"goal_contributions:{g['id']}"] = call(
                 f"/personal/goal-contributions?goal_id={g['id']}", token=token
             )
-        out = {"user": key, "email": email, "snapshots": snapshots, "answers": answers}
+        # Allocation rules and plans (finance revamp Phase 3): the lists, each rule, the deleted
+        # ones, and the plans of each income, rule, goal and account that has some.
+        rules = call("/personal/allocation-rules", token=token)
+        answers["allocation_rules"] = rules
+        answers["allocation_rules_deleted"] = call("/personal/allocation-rules?deleted=true", token=token)
+        for r in rules:
+            answers[f"allocation_rule:{r['id']}"] = call(f"/personal/allocation-rules/{r['id']}", token=token)
+        plans = call("/personal/allocation-plans", token=token)
+        answers["allocation_plans"] = plans
+        answers["allocation_plans_deleted"] = call("/personal/allocation-plans?deleted=true", token=token)
+        for by, field in (("income", "source_transaction_id"), ("rule", "rule_id"), ("goal", "goal_id"), ("account", "account_id")):
+            for value in sorted({p[field] for p in plans if p[field]}):
+                answers[f"allocation_plans:{by}:{value}"] = call(
+                    f"/personal/allocation-plans?{field}={value}", token=token
+                )
+        out ={"user": key, "email": email, "snapshots": snapshots, "answers": answers}
         (SYNC_OUT / f"{key}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 
 

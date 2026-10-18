@@ -262,7 +262,7 @@ final class GoalGuards {
 
   /// The ids of the live allocation rules, active or not (ISS-079), that send money to this goal.
   /// While there's one, the goal can't be deleted or archived, or switched away from
-  /// contributions (rule_points_here). Empty until the device reads allocation rules.
+  /// contributions (rule_points_here).
   final List<String> rulesPointingHere;
 
   final Map<String, FinGoal> _followers;

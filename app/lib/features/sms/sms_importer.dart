@@ -497,6 +497,12 @@ SmsScanInput smsScanInput(
 /// message says. Bodies of entries already here start from [ledger] (what's on the device now): a
 /// transfer half that changed since the read saw it is left out with its other half, and so is
 /// an entry you'd made that's gone, so the next read decides again.
+///
+/// An income goes with the plans your allocation rules make for it (entryCreateUnit), in its
+/// unit, which is never split; an entry changed goes with what that does to its plans
+/// (entryUpdateUnit: an income turned into a transfer half deletes its plans first). Worked out
+/// here, on the main isolate, from what the read found: a few incomes times a few rules. Old SMS
+/// get no plans, since a rule applies only to incomes recorded after it.
 List<List<BatchItem>> smsImportUnits(Ledger ledger, SmsScanResult read) {
   final units = <List<BatchItem>>[
     for (final a in read.newAccounts)
@@ -527,22 +533,27 @@ List<List<BatchItem>> smsImportUnits(Ledger ledger, SmsScanResult read) {
       stale.add(c.groupId);
       continue;
     }
-    add(
-      c.groupId,
-      BatchItem.updateEntry(
-        c.id,
-        bodyOf(c.id)
-          ..type = PersonalTxnInTypeEnum.transfer
-          ..direction = PersonalTxnInDirectionEnum.fromJson(c.flow.wire)
-          ..categoryId = null
-          ..transferGroupId = c.groupId
-          ..refundOfId = null
-          ..holdingId = null,
-      ),
+    final changed = entryUpdateUnit(
+      ledger,
+      c.id,
+      bodyOf(c.id)
+        ..type = PersonalTxnInTypeEnum.transfer
+        ..direction = PersonalTxnInDirectionEnum.fromJson(c.flow.wire)
+        ..categoryId = null
+        ..transferGroupId = c.groupId
+        ..refundOfId = null
+        ..holdingId = null,
     );
+    for (final item in changed) {
+      add(c.groupId, item);
+    }
   }
   for (final (id, body) in read.created) {
-    add(body.transferGroupId, BatchItem.createEntry(id, body));
+    if (body.transferGroupId case final group?) {
+      add(group, BatchItem.createEntry(id, body));
+    } else {
+      units.add(entryCreateUnit(ledger, id, body));
+    }
   }
   for (final a in read.attached) {
     final t = ledger.rawPersonal(a.entryId);
@@ -552,7 +563,7 @@ List<List<BatchItem>> smsImportUnits(Ledger ledger, SmsScanResult read) {
       ..account = a.account
       ..channel ??= PersonalTxnInChannelEnum.fromJson(a.channel);
     body.accountId ??= a.accountId;
-    units.add([BatchItem.updateEntry(a.entryId, body)]);
+    units.add(entryUpdateUnit(ledger, a.entryId, body));
   }
   for (final group in stale) {
     units.remove(transfers[group]);

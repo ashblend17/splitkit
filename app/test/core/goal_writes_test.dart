@@ -51,8 +51,10 @@ Future<void> _expectRefused(WidgetTester tester, Future<Object?> write, String c
   expect(_ops(tester).length, queued);
 }
 
+/// The seed without its allocation rules, which would refuse archiving or deleting the Ladakh trip
+/// (rule_points_here: plan_writes_test.dart checks that).
 Future<void> _offline(WidgetTester tester) async {
-  final be = await pumpApp(tester);
+  final be = await pumpApp(tester, backend: FakeBackend().withoutAllocationRules());
   be.offline = true;
 }
 

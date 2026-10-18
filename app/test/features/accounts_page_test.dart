@@ -248,7 +248,13 @@ void main() {
   });
 
   testWidgets('deleting an account with no entries, and Undo', (tester) async {
-    final be = await pumpApp(tester, location: '/personal/accounts', size: tall);
+    // Without the seed's rules: Emergency top-up sends money to Emergency savings (rule_points_here).
+    final be = await pumpApp(
+      tester,
+      location: '/personal/accounts',
+      size: tall,
+      backend: FakeBackend().withoutAllocationRules(),
+    );
     be.offline = true;
     // One with entries is closed instead.
     await _open(tester, hdfc);

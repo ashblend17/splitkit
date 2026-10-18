@@ -69,6 +69,27 @@ void main() {
               ledger.goalContributionList(deleted: true),
               PersonalGoalContributionOut.listFromJson,
             ),
+            'allocation_rules' => (ledger.allocationRuleList(), PersonalAllocationRuleOut.listFromJson),
+            'allocation_rules_deleted' => (
+              ledger.allocationRuleList(deleted: true),
+              PersonalAllocationRuleOut.listFromJson,
+            ),
+            'allocation_rule' => (ledger.allocationRule(arg!), PersonalAllocationRuleOut.fromJson),
+            'allocation_plans' => (
+              switch (arg?.split(':')) {
+                null => ledger.allocationPlanList(),
+                ['income', final id] => ledger.allocationPlanList(sourceTransactionId: id),
+                ['rule', final id] => ledger.allocationPlanList(ruleId: id),
+                ['goal', final id] => ledger.allocationPlanList(goalId: id),
+                ['account', final id] => ledger.allocationPlanList(accountId: id),
+                _ => throw StateError('No local view for ${entry.key}'),
+              },
+              PersonalAllocationPlanOut.listFromJson,
+            ),
+            'allocation_plans_deleted' => (
+              ledger.allocationPlanList(deleted: true),
+              PersonalAllocationPlanOut.listFromJson,
+            ),
             _ => throw StateError('No local view for ${entry.key}'),
           };
           final expected = _normal(parse(entry.value));

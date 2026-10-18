@@ -1,11 +1,13 @@
-/// The finance maths in one place: [FinanceEngine], over your accounts, personal entries and
-/// goals. Import this file for all of core/finance.
+/// The finance maths in one place: [FinanceEngine], over your accounts, personal entries, goals,
+/// holdings and allocation rules and plans. Import this file for all of core/finance.
 ///
 /// An engine never changes. Build one per change to the personal entries or accounts; it works
 /// out what its answers share (entries in ledger order, transfer partners, balances) the first
 /// time one asks, and remembers its answers for the arguments it was last given.
 library;
 
+import 'allocation.dart';
+import 'allocation.dart' as allocation show plansForIncome, reconcilePlans;
 import 'balances.dart';
 import 'cash_flow.dart';
 import 'cash_flow.dart' as flows show cashFlow;
@@ -19,6 +21,7 @@ import 'refunds.dart' as refunds show refundTarget;
 import 'transfers.dart';
 import 'transfers.dart' as transfers show transferSuggestions;
 
+export 'allocation.dart';
 export 'balances.dart';
 export 'cash_flow.dart';
 export 'goals.dart';
@@ -34,7 +37,7 @@ export 'transfers.dart';
 class FinanceEngine {
   /// [accounts] as synced (deleted ones too) and [entries] as synced (every personal entry,
   /// deleted ones too: they're skipped where they don't count); likewise [goals] and their
-  /// [contributions], and [holdings].
+  /// [contributions], [holdings], and allocation [rules] and their [plans].
   FinanceEngine({
     required List<FinAccount> accounts,
     required List<FinEntry> entries,
@@ -42,11 +45,15 @@ class FinanceEngine {
     List<FinGoal> goals = const [],
     List<FinContribution> contributions = const [],
     List<FinHolding> holdings = const [],
+    List<FinRule> rules = const [],
+    List<FinPlan> plans = const [],
   }) : _allAccounts = [...accounts]..sort(_accountOrder),
        _entries = entries,
        _allGoals = [...goals]..sort(FinGoal.order),
        _contributions = contributions,
-       _allHoldings = holdings;
+       _allHoldings = holdings,
+       _allRules = [...rules]..sort(FinRule.order),
+       _allPlans = plans;
 
   /// Your currency: cash flow and net worth count only this one.
   final String currency;
@@ -470,9 +477,275 @@ class FinanceEngine {
   ];
 
   /// The live allocation rules, active or not (ISS-079), that send money to goal [goalId] or
-  /// account [accountId], as ids. Always none for now: the device doesn't read allocation rules
-  /// yet (the rules step fills this in), so only the server refuses with rule_points_here.
-  List<String> rulesPointingAt({String? goalId, String? accountId}) => const [];
+  /// account [accountId], as ids, oldest first (allocation_rules.refuse_if_pointed_at names the
+  /// first). While there's one, the goal can't be deleted, archived or switched away from
+  /// contributions, and the account can't be closed or deleted (rule_points_here).
+  List<String> rulesPointingAt({String? goalId, String? accountId}) {
+    final key = goalId != null ? 'g:$goalId' : 'a:$accountId';
+    return _pointing[key] ?? const [];
+  }
+
+  late final Map<String, List<String>> _pointing = () {
+    final out = <String, List<String>>{};
+    final byAge = [...liveRules]..sort((a, b) => _accountOrderOf(a.createdMicros, a.id, b.createdMicros, b.id));
+    for (final r in byAge) {
+      (out[_destinationKey(r.goalId, r.accountId)] ??= []).add(r.id);
+    }
+    return out;
+  }();
+
+  // ---- allocation rules and plans (allocation.dart) ----
+
+  final List<FinRule> _allRules;
+  final List<FinPlan> _allPlans;
+
+  /// Your allocation rules that aren't deleted, active or not, in the API's order (priority, then
+  /// oldest first).
+  late final List<FinRule> liveRules = List.unmodifiable([
+    for (final r in _allRules)
+      if (!r.deleted) r,
+  ]);
+
+  late final Map<String, FinRule> _ruleById = {for (final r in _allRules) r.id: r};
+  late final Map<String, FinPlan> _planById = {for (final p in _allPlans) p.id: p};
+
+  /// Rule [id], deleted or not, or null.
+  FinRule? ruleById(String id) => _ruleById[id];
+
+  /// Plan [id], deleted or not, or null.
+  FinPlan? planById(String id) => _planById[id];
+
+  /// Every plan of income [incomeId] as synced, deleted ones too, in no set order.
+  List<FinPlan> rawPlansOf(String incomeId) => _plansByIncome[incomeId] ?? const [];
+
+  late final Map<String, List<FinPlan>> _plansByIncome = () {
+    final out = <String, List<FinPlan>>{};
+    for (final p in _allPlans) {
+      (out[p.sourceTransactionId] ??= []).add(p);
+    }
+    return out;
+  }();
+
+  /// Whether account [id] is live (closed or not).
+  bool _accountLive(String id) => _liveById.containsKey(id);
+
+  /// Whether rule [r]'s destination takes new plans: a live goal counting contributions that's
+  /// active (a paused or completed one gets none while it is), or a live open account.
+  bool ruleDestinationValid(FinRule r) {
+    if (r.goalId case final g?) {
+      final goal = _goalById[g];
+      return goal != null && !goal.deleted && goal.mode == GoalMode.contribution && goal.status == GoalStatus.active;
+    }
+    final a = r.accountId == null ? null : _liveById[r.accountId];
+    return a != null && !a.closed;
+  }
+
+  /// The plans [income] would get now ([allocation.plansForIncome]): what an income's create
+  /// sends with it.
+  List<PlanDraft> plansForIncome(FinEntry income) => allocation.plansForIncome(
+    income,
+    currency: currency,
+    rules: liveRules,
+    destinationValid: ruleDestinationValid,
+    accountLive: _accountLive,
+  );
+
+  /// What a create or an edit of an income from [before] to [after] does to its plans
+  /// ([allocation.reconcilePlans]), from the plans and rules this engine has. Give [plans] when
+  /// the write has changed the income's plans already (deleted ones too).
+  PlanDiff reconcilePlans({required FinEntry? before, required FinEntry? after, List<FinPlan>? plans}) {
+    final id = (after ?? before)?.id;
+    return allocation.reconcilePlans(
+      before: before,
+      after: after,
+      currency: currency,
+      plans: plans ?? (id == null ? const [] : rawPlansOf(id)),
+      rules: liveRules,
+      ruleById: ruleById,
+      destinationValid: ruleDestinationValid,
+      accountLive: _accountLive,
+    );
+  }
+
+  /// Every plan, deleted ones too, with its status, by id ([PlanView]): filled oldest first per
+  /// destination.
+  Map<String, PlanView> get planViews => _planState.views;
+
+  /// The plans of income [incomeId], cancelled ones too, in the API's order (oldest first).
+  List<PlanView> plansOfIncome(String incomeId) => [
+    for (final p in [...rawPlansOf(incomeId)]..sort(_planOrder))
+      if (planViews[p.id] case final v?) v,
+  ];
+
+  /// The plans for goal [goalId] or account [accountId] that aren't cancelled, oldest income
+  /// first (the order they fill in); with [outstanding], only those still planned or partial.
+  List<PlanView> plansTo({String? goalId, String? accountId, bool outstanding = false}) {
+    final all = _viewsTo[_destinationKey(goalId, accountId)] ?? const <PlanView>[];
+    return outstanding ? [for (final v in all) if (v.outstanding) v] : all;
+  }
+
+  /// What's still to set aside for goal [goalId] or account [accountId]: the remaining amounts of
+  /// its outstanding plans, added up.
+  int outstandingTo({String? goalId, String? accountId}) {
+    var sum = 0;
+    for (final v in plansTo(goalId: goalId, accountId: accountId)) {
+      sum += v.remainingMinor;
+    }
+    return sum;
+  }
+
+  /// The plans that aren't cancelled, by destination, oldest income first.
+  Map<String, List<PlanView>> get _viewsTo => _planState.byDestination;
+
+  /// Every plan's view by id, and those that aren't cancelled by destination: worked out together,
+  /// the first time one is asked for.
+  late final ({Map<String, PlanView> views, Map<String, List<PlanView>> byDestination}) _planState =
+      _buildPlanViews();
+
+  ({Map<String, PlanView> views, Map<String, List<PlanView>> byDestination}) _buildPlanViews() {
+    final views = <String, PlanView>{};
+    final taking = <String, List<(FinPlan, FinEntry)>>{};
+    for (final p in _allPlans) {
+      final income = _entryById[p.sourceTransactionId];
+      final reason = income == null || income.deleted
+          ? CancelReason.incomeDeleted
+          : p.deleted || income.txnType != TxnType.income
+          ? CancelReason.noLongerApplies
+          : null;
+      if (reason != null) {
+        views[p.id] = PlanView(
+          plan: p,
+          status: PlanStatus.cancelled,
+          filledMinor: 0,
+          incomeDay: income?.day ?? 0,
+          income: income,
+          cancelReason: reason,
+        );
+      } else {
+        (taking[_destinationKey(p.goalId, p.accountId)] ??= []).add((p, income!));
+      }
+    }
+    final byDestination = <String, List<PlanView>>{};
+    for (final MapEntry(key: destination, value: plans) in taking.entries) {
+      plans.sort((a, b) {
+        final d = a.$2.day.compareTo(b.$2.day);
+        if (d != 0) return d;
+        final at = a.$2.atMicros.compareTo(b.$2.atMicros);
+        return at != 0 ? at : _planOrder(a.$1, b.$1);
+      });
+      final money = destination.startsWith('g:')
+          ? _goalFills(destination.substring(2))
+          : _transferIns[destination.substring(2)] ?? const <FillMoney>[];
+      final filled = fillOldestFirst([
+        for (final (p, income) in plans) (incomeDay: income.day, plannedMinor: p.plannedMinor),
+      ], money);
+      byDestination[destination] = List.unmodifiable([
+        for (final (i, (p, income)) in plans.indexed)
+          views[p.id] = PlanView(
+            plan: p,
+            status: statusOf(p.plannedMinor, filled[i]),
+            filledMinor: filled[i],
+            incomeDay: income.day,
+            income: income,
+          ),
+      ]);
+    }
+    return (views: Map.unmodifiable(views), byDestination: byDestination);
+  }
+
+  /// Goal [goalId]'s live contributions as money reaching it, oldest first.
+  List<FillMoney> _goalFills(String goalId) => [
+    for (final c in contributionsOf(goalId).reversed) (day: c.day, amountMinor: c.amountMinor),
+  ];
+
+  /// For each account, the live transfers into it from another of your accounts, in your
+  /// currency, oldest first: what fills an account's plans.
+  late final Map<String, List<FillMoney>> _transferIns = () {
+    final out = <String, List<FillMoney>>{};
+    for (final e in _live) {
+      if (e.txnType != TxnType.transfer || e.flow != MoneyFlow.inflow || e.currency != currency) continue;
+      final account = e.accountId, partner = _partners[e.id];
+      if (account == null || partner == null || partner.accountId == account) continue;
+      (out[account] ??= []).add((day: e.day, amountMinor: e.amount));
+    }
+    return out;
+  }();
+
+  /// The plans made from incomes in [period] against what has been set aside for them
+  /// ([PlannedVsActual]). Remembered for the last periods asked.
+  PlannedVsActual plannedVsActual(DayRange period) {
+    final key = (period.start, period.end);
+    if (_plannedVsActual.remove(key) case final hit?) return _plannedVsActual[key] = hit;
+    final rows = <String, (int, int, int)>{};
+    var planned = 0, actual = 0;
+    for (final MapEntry(key: destination, value: views) in _viewsTo.entries) {
+      for (final v in views) {
+        if (!period.contains(v.incomeDay)) continue;
+        final (p, a, n) = rows[destination] ?? (0, 0, 0);
+        rows[destination] = (p + v.plan.plannedMinor, a + v.filledMinor, n + 1);
+        planned += v.plan.plannedMinor;
+        actual += v.filledMinor;
+      }
+    }
+    final list = [
+      for (final MapEntry(key: destination, value: (p, a, n)) in rows.entries)
+        DestinationPlan(
+          goalId: destination.startsWith('g:') ? destination.substring(2) : null,
+          accountId: destination.startsWith('a:') ? destination.substring(2) : null,
+          plannedMinor: p,
+          actualMinor: a,
+          planCount: n,
+        ),
+    ]..sort((a, b) {
+        final p = b.plannedMinor.compareTo(a.plannedMinor);
+        return p != 0 ? p : (a.goalId ?? '~${a.accountId}').compareTo(b.goalId ?? '~${b.accountId}');
+      });
+    final made = PlannedVsActual(
+      period: period,
+      plannedMinor: planned,
+      actualMinor: actual,
+      rows: List.unmodifiable(list),
+      hasRules: liveRules.isNotEmpty,
+    );
+    _plannedVsActual[key] = made;
+    if (_plannedVsActual.length > _remembered) _plannedVsActual.remove(_plannedVsActual.keys.first);
+    return made;
+  }
+
+  final _plannedVsActual = <(int, int), PlannedVsActual>{};
+
+  /// How much your active rules set aside from one income at worst ([AllocationLoad]); with
+  /// [draft] (a rule being added or edited: it replaces the rule with its id), as it would be, so
+  /// the editor warns as you type.
+  AllocationLoad allocationLoad({FinRule? draft}) {
+    if (draft == null) return _load;
+    return allocationLoadOf([
+      for (final r in liveRules)
+        if (r.id != draft.id) r,
+      draft,
+    ], accountLive: _accountLive);
+  }
+
+  late final AllocationLoad _load = allocationLoadOf(liveRules, accountLive: _accountLive);
+
+  /// Each live rule with its plan count and warnings, in the API's order: the Rules list.
+  late final List<RuleView> ruleViews = List.unmodifiable([
+    for (final r in liveRules)
+      RuleView(
+        rule: r,
+        planCount: _livePlanCounts[r.id] ?? 0,
+        sourceAccountGone: r.sourceAccountId != null && !_accountLive(r.sourceAccountId!),
+        destinationValid: ruleDestinationValid(r),
+      ),
+  ]);
+
+  late final Map<String, int> _livePlanCounts = () {
+    final out = <String, int>{};
+    for (final p in _allPlans) {
+      if (!p.deleted) out[p.ruleId] = (out[p.ruleId] ?? 0) + 1;
+    }
+    return out;
+  }();
 
   /// What stands in the way of changing goal [goalId]: the rules that point at it, the accounts
   /// other goals follow, and the accounts other goals' contributions move.
@@ -558,6 +831,12 @@ int _accountOrderOf(int aMicros, String aId, int bMicros, String bId) {
   final c = aMicros.compareTo(bMicros);
   return c != 0 ? c : aId.compareTo(bId);
 }
+
+/// A plan's or rule's destination as one key: `g:$goalId` or `a:$accountId`.
+String _destinationKey(String? goalId, String? accountId) => goalId != null ? 'g:$goalId' : 'a:$accountId';
+
+/// The API's order for plans: created_at, then id (allocation_plans.py list_plans).
+int _planOrder(FinPlan a, FinPlan b) => _accountOrderOf(a.createdMicros, a.id, b.createdMicros, b.id);
 
 /// The API's order for accounts: created_at, then id.
 int _accountOrder(FinAccount a, FinAccount b) {

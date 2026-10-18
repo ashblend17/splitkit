@@ -66,6 +66,16 @@ class FakeBackend {
   /// Screens read from the local store, which syncs from these.
   late final Map<String, dynamic> snapshots = syncFixture('john');
 
+  /// The seed without its allocation rules (its plans stay), for tests of writes that a rule
+  /// pointing at the seed's Ladakh trip or Emergency savings would refuse (rule_points_here), or
+  /// whose incomes would otherwise get plans.
+  FakeBackend withoutAllocationRules() {
+    for (final s in snapshots.values) {
+      ((s as Map)['entities'] as List).removeWhere((e) => (e as Map)['entity'] == 'personal_allocation_rule');
+    }
+    return this;
+  }
+
   /// Other users' streams, by bearer token (view-as tests serve Rahul's to the view-as token).
   final snapshotsByToken = <String, Map<String, dynamic>>{};
 
