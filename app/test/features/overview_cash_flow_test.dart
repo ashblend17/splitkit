@@ -258,7 +258,13 @@ void main() {
     final suggestion = find.ancestor(of: find.text('Looks like a transfer'), matching: find.byType(SkCard));
 
     testWidgets('This was a transfer makes them its two halves', (tester) async {
-      final be = await pumpApp(tester, location: '/personal', size: tall);
+      // Without the seed's rules: the income's plan deletes would go first.
+      final be = await pumpApp(
+        tester,
+        location: '/personal',
+        size: tall,
+        backend: FakeBackend().withoutAllocationRules(),
+      );
       be.offline = true;
       final (out, into) = await pair(tester);
       expect(find.text('Just in'), findsOneWidget);

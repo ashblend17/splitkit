@@ -126,7 +126,8 @@ void main() {
   });
 
   testWidgets('From a friend: a UPI payment in becomes a settle-up, linked to the entry', (tester) async {
-    final be = await pumpApp(tester, location: '/personal');
+    // Without the seed's rules: an income linked to Split would send its plan deletes too.
+    final be = await pumpApp(tester, location: '/personal', backend: FakeBackend().withoutAllocationRules());
     be.offline = true;
     final id = await _entry(
       tester,

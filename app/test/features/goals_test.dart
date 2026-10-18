@@ -217,7 +217,13 @@ void main() {
     });
 
     testWidgets('delete, with Undo', (tester) async {
-      final be = await pumpApp(tester, location: '/personal/goals/$ladakh', size: tall);
+      // The seed's rule points at Ladakh, which would refuse the delete (tested below).
+      final be = await pumpApp(
+        tester,
+        location: '/personal/goals/$ladakh',
+        size: tall,
+        backend: FakeBackend().withoutAllocationRules(),
+      );
       be.offline = true;
       await _menu(tester, 'Delete');
       await _tap(tester, find.widgetWithText(InkWell, 'Delete').last);
@@ -308,7 +314,12 @@ void main() {
     });
 
     testWidgets('switching to by hand starts from today\'s progress', (tester) async {
-      final be = await pumpApp(tester, location: '/personal/goals/$ladakh', size: tall);
+      final be = await pumpApp(
+        tester,
+        location: '/personal/goals/$ladakh',
+        size: tall,
+        backend: FakeBackend().withoutAllocationRules(),
+      );
       be.offline = true;
       await _menu(tester, 'Edit');
       await _tap(tester, find.widgetWithText(SkButton, 'Change'));
@@ -322,6 +333,16 @@ void main() {
       expect((body!['tracking_mode'], body['manual_progress_minor']), ('manual', 1700000));
       expect(find.text('Ladakh trip is now tracked by hand'), findsOneWidget);
       expect(find.byType(AddSplitFab), findsNothing);
+    });
+
+    testWidgets('a rule pointing at the goal blocks switching away from contributions', (tester) async {
+      final be = await pumpApp(tester, location: '/personal/goals/$ladakh', size: tall);
+      be.offline = true;
+      await _menu(tester, 'Edit');
+      await _tap(tester, find.widgetWithText(SkButton, 'Change'));
+      expect(find.textContaining('An allocation rule sends money to this goal'), findsOneWidget);
+      expect(find.text('See rules'), findsOneWidget);
+      expect(_queued(tester), isEmpty);
     });
 
     testWidgets('switching to contributions records a starting amount, in one batch', (tester) async {

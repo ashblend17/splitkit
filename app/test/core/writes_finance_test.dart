@@ -71,8 +71,10 @@ PersonalTxnIn _sms(String description, int amount, {String type = 'expense', Str
       reviewed: false,
     );
 
+/// The seed without its allocation rules: these incomes get no plans, and Emergency savings can be
+/// closed (plan_writes_test.dart covers both with the rules).
 Future<FakeBackend> _offline(WidgetTester tester) async {
-  final be = await pumpApp(tester);
+  final be = await pumpApp(tester, backend: FakeBackend().withoutAllocationRules());
   be.offline = true;
   return be;
 }

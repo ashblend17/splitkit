@@ -1,0 +1,36 @@
+[
+  {
+    "id": "e7bfefb8-de25-5bfc-96ae-6ae5be55ec2c",
+    "source_transaction_id": "2676dd92-8311-501e-8c3c-c03c47f029bd",
+    "rule_id": "5a2df56a-ab91-51c5-904b-246d07b01e36",
+    "snapshot_kind": "percentage",
+    "snapshot_percent_bp": 1000,
+    "snapshot_amount_minor": null,
+    "planned_minor": 850000,
+    "currency": "INR",
+    "goal_id": "79002d77-7486-552b-a16c-d73921823dca",
+    "account_id": null,
+    "acting_admin_id": null,
+    "created_at": "2026-09-01T03:30:00Z",
+    "updated_at": "2026-09-01T03:30:00Z",
+    "deleted_at": null,
+    "version": 1
+  },
+  {
+    "id": "fa8d792c-fc3e-570b-8a6d-30b41d8b4529",
+    "source_transaction_id": "2676dd92-8311-501e-8c3c-c03c47f029bd",
+    "rule_id": "9b9e5ffd-587d-58fd-9fb0-e78be078afe6",
+    "snapshot_kind": "fixed",
+    "snapshot_percent_bp": null,
+    "snapshot_amount_minor": 500000,
+    "planned_minor": 500000,
+    "currency": "INR",
+    "goal_id": null,
+    "account_id": "137b07e8-c67b-5bb2-a5a7-4f58aa342755",
+    "acting_admin_id": null,
+    "created_at": "2026-09-01T03:30:00Z",
+    "updated_at": "2026-09-01T03:30:00Z",
+    "deleted_at": null,
+    "version": 1
+  }
+]

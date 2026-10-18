@@ -5,7 +5,8 @@ part of 'writes.dart';
 // SMS importer queues what it read with.
 
 /// One item of `POST /personal/batch` (personal/schemas.py PersonalBatchItem): an account made or
-/// changed; an entry, a goal or a goal contribution made, changed or deleted.
+/// changed; an entry, a goal, a goal contribution, a holding, an allocation rule or plan made,
+/// changed or deleted.
 ///
 /// Payloads are the full state the account, entry, goal or contribution is left in. The server
 /// keeps a field only when its key is left out, and the generated client sends every key (null
@@ -22,7 +23,32 @@ final class BatchItem {
     this.goal,
     this.goalContribution,
     this.holding,
+    this.allocationRule,
+    this.allocationPlan,
   });
+
+  /// An allocation rule (writes_plans.dart). Rule writes go to their own endpoints; these are for
+  /// a batch that needs one.
+  const BatchItem.createRule(String id, PersonalAllocationRuleIn rule)
+    : this._(PersonalBatchItemKindEnum.allocationRule, PersonalBatchItemOpEnum.create, id, allocationRule: rule);
+
+  const BatchItem.updateRule(String id, PersonalAllocationRuleIn rule)
+    : this._(PersonalBatchItemKindEnum.allocationRule, PersonalBatchItemOpEnum.update, id, allocationRule: rule);
+
+  /// Its plans stay as they are.
+  const BatchItem.deleteRule(String id)
+    : this._(PersonalBatchItemKindEnum.allocationRule, PersonalBatchItemOpEnum.delete, id);
+
+  /// A plan a rule makes for an income (writes_plans.dart): [id] is planId(income, rule).
+  const BatchItem.createPlan(String id, PersonalAllocationPlanIn plan)
+    : this._(PersonalBatchItemKindEnum.allocationPlan, PersonalBatchItemOpEnum.create, id, allocationPlan: plan);
+
+  /// A plan worked out again (its snapshot and amount; nothing else changes).
+  const BatchItem.updatePlan(String id, PersonalAllocationPlanIn plan)
+    : this._(PersonalBatchItemKindEnum.allocationPlan, PersonalBatchItemOpEnum.update, id, allocationPlan: plan);
+
+  const BatchItem.deletePlan(String id)
+    : this._(PersonalBatchItemKindEnum.allocationPlan, PersonalBatchItemOpEnum.delete, id);
 
   const BatchItem.createAccount(String id, PersonalAccountIn account)
     : this._(PersonalBatchItemKindEnum.account, PersonalBatchItemOpEnum.create, id, account: account);
@@ -89,6 +115,8 @@ final class BatchItem {
   final PersonalGoalIn? goal;
   final PersonalGoalContributionIn? goalContribution;
   final PersonalHoldingIn? holding;
+  final PersonalAllocationRuleIn? allocationRule;
+  final PersonalAllocationPlanIn? allocationPlan;
 
   bool get isAccountCreate => kind == PersonalBatchItemKindEnum.account && op == PersonalBatchItemOpEnum.create;
 
@@ -150,6 +178,10 @@ class _Draft {
 
   /// Every entry an account in this write claimed, and the account.
   final _claimedBy = <String, String>{};
+
+  /// Deleted plans this request's entry edits bring back, with what each comes to: a restore
+  /// can't go in a batch, so each is sent after it ([ops]; writes_plans.dart).
+  var _restores = <PlanAmount>[];
 
   /// While [addUnit] adds a unit: how to take back each change it made (oldest first), and the
   /// transfer groups it touched.
@@ -222,6 +254,8 @@ class _Draft {
         PersonalBatchItemKindEnum.goal => (goal(item.id), 'Goal'),
         PersonalBatchItemKindEnum.goalContribution => (contribution(item.id), 'Contribution'),
         PersonalBatchItemKindEnum.holding => (holding(item.id), 'Holding'),
+        PersonalBatchItemKindEnum.allocationRule => (rule(item.id), 'Rule'),
+        PersonalBatchItemKindEnum.allocationPlan => (plan(item.id), 'Plan'),
         _ => (entry(item.id), 'Transaction'),
       };
       version = (before ?? (throw LocalNotFound(what)))['version'] as int;
@@ -250,6 +284,18 @@ class _Draft {
         _updateHolding(item.id, item.holding!);
       case ('holding', _):
         _setHoldingDeleted(item.id, true);
+      case ('allocation_rule', 'create'):
+        _createRule(item.id, item.allocationRule!);
+      case ('allocation_rule', 'update'):
+        _updateRule(item.id, item.allocationRule!);
+      case ('allocation_rule', _):
+        _setRuleDeleted(item.id, true);
+      case ('allocation_plan', 'create'):
+        _createPlan(item.id, item.allocationPlan!);
+      case ('allocation_plan', 'update'):
+        _updatePlan(item.id, item.allocationPlan!);
+      case ('allocation_plan', _):
+        _setPlanDeleted(item.id, true);
       case (_, 'create'):
         _createEntry(item.id, item.transaction!);
       case (_, 'update'):
@@ -259,8 +305,9 @@ class _Draft {
     }
     // personal/batch.py run: after each entry, goal or contribution that isn't a delete.
     if (!delete &&
-        item.kind != PersonalBatchItemKindEnum.account &&
-        item.kind != PersonalBatchItemKindEnum.holding) {
+        (item.kind == PersonalBatchItemKindEnum.transaction ||
+            item.kind == PersonalBatchItemKindEnum.goal ||
+            item.kind == PersonalBatchItemKindEnum.goalContribution)) {
       _checkCountedOnce(goalChanged: item.kind == PersonalBatchItemKindEnum.goal);
     }
     final json = _json(
@@ -274,10 +321,20 @@ class _Draft {
         goal: item.goal,
         goalContribution: item.goalContribution,
         holding: item.holding,
+        allocationRule: item.allocationRule,
+        allocationPlan: item.allocationPlan,
       ).toJson(),
     );
     // The item carries the id and the version; the payload leaves them out.
-    for (final payload in [json['account'], json['transaction'], json['goal'], json['goal_contribution'], json['holding']]) {
+    for (final payload in [
+      json['account'],
+      json['transaction'],
+      json['goal'],
+      json['goal_contribution'],
+      json['holding'],
+      json['allocation_rule'],
+      json['allocation_plan'],
+    ]) {
       if (payload is Map) {
         payload['id'] = null;
         payload['version'] = null;
@@ -368,6 +425,9 @@ class _Draft {
     _checkEntry(data, before);
     final amount = data['amount_minor'] as int;
     if (amount < (before['amount_minor'] as int)) _checkEntryAmount(id, amount);
+    if (before['type'] == 'income' && data['type'] != 'income' && _livePlansOf(id).isNotEmpty) {
+      _refuse('income_has_plans', 'Your allocation rules made plans from this income. Delete them first');
+    }
     _set(_entry, data);
     for (final group in {before['transfer_group_id'], data['transfer_group_id']}) {
       if (group is String) _touch(group);
@@ -403,6 +463,7 @@ class _Draft {
         'version': (leg['version'] as int) + 1,
       });
       _followEntry(leg['id'] as String, deleted, at);
+      _followIncome(leg['id'] as String, deleted, at);
     }
     if (group != null) _touch(group);
     if (!deleted) _checkCountedOnce(goalChanged: false);
@@ -535,6 +596,9 @@ class _Draft {
       _refuse('account_in_use', 'This account has holdings, so it stays an investment account', status: 409);
     }
     if (data['sms_label'] != before['sms_label']) _checkLabel(data['sms_label'] as String?, id);
+    if (data['status'] == 'closed' && before['status'] != 'closed') {
+      _refuseIfPointedAt(_l.finance, 'account', accountId: id);
+    }
     final changed = {
       for (final k in const ['name', 'type', 'opening_balance_minor', 'sms_label', 'status'])
         if (data[k] != before[k]) k,
@@ -807,6 +871,7 @@ extension FinanceWrites on LocalWrites {
     if (deleted && (l.personalList(accountId: id, limit: 0)['count'] as int) > 0) {
       _refuse('account_in_use', "This account has entries, so it can't be deleted. Close it instead", status: 409);
     }
+    if (deleted) _refuseIfPointedAt(l.finance, 'account', accountId: id);
     if (deleted && l.finance.holdings.any((h) => h.accountId == id)) {
       _refuse('account_in_use', "This account has holdings, so it can't be deleted", status: 409);
     }
@@ -926,7 +991,7 @@ extension FinanceWrites on LocalWrites {
     final group = _convert(draft, entryId, otherAccountId);
     final legs = draft._legsOf(group);
     final (out, into) = legs[0]['direction'] == 'out' ? (legs[0], legs[1]) : (legs[1], legs[0]);
-    await _queue(draft.op('Made a transfer: ${_transferLabel(draft, out, into)}'));
+    await _queueAll(draft.ops('Made a transfer: ${_transferLabel(draft, out, into)}'));
     return group;
   }
 
@@ -940,8 +1005,9 @@ extension FinanceWrites on LocalWrites {
       group = transferGroupIdFor(entryId, legId);
     }
     final flow = PersonalRow(t).flow;
+    // An income's plans are deleted before it becomes a leg (income_has_plans).
     d
-      ..add(BatchItem.updateEntry(entryId, _asLeg(t, flow, group)))
+      ..addEntryUpdate(entryId, _asLeg(t, flow, group))
       ..add(
         BatchItem.createEntry(
           legId,
@@ -990,10 +1056,14 @@ extension FinanceWrites on LocalWrites {
       ..transferGroupId = null;
     final otherId = other['id'] as String;
     final appMade = other['source'] != 'sms' || otherId == pairedLegId(keepId);
-    draft
-      ..add(BatchItem.updateEntry(keepId, back(keep)))
-      ..add(appMade ? BatchItem.deleteEntry(otherId) : BatchItem.updateEntry(otherId, back(other)));
-    await _queue(draft.op('Unpaired ${_transferLabel(draft, out, into)}'));
+    // A leg that's an income again gets the plans its rules make (and those it had back).
+    draft.addEntryUpdate(keepId, back(keep));
+    if (appMade) {
+      draft.add(BatchItem.deleteEntry(otherId));
+    } else {
+      draft.addEntryUpdate(otherId, back(other));
+    }
+    await _queueAll(draft.ops('Unpaired ${_transferLabel(draft, out, into)}'));
   }
 
   /// "This was a transfer" (ISS-046): spend [outId] and income [inId], in two of your accounts,
@@ -1012,9 +1082,9 @@ extension FinanceWrites on LocalWrites {
       legs.add(t);
     }
     for (final (t, flow) in [(legs[0], MoneyFlow.outflow), (legs[1], MoneyFlow.inflow)]) {
-      draft.add(BatchItem.updateEntry(t['id'] as String, _asLeg(t, flow, group)..reviewed = true));
+      draft.addEntryUpdate(t['id'] as String, _asLeg(t, flow, group)..reviewed = true);
     }
-    await _queue(draft.op('Marked as a transfer: ${_transferLabel(draft, legs[0], legs[1])}'));
+    await _queueAll(draft.ops('Marked as a transfer: ${_transferLabel(draft, legs[0], legs[1])}'));
     return group;
   }
 
@@ -1124,7 +1194,9 @@ extension FinanceWrites on LocalWrites {
     }
     final group = _convert(draft, atmEntryId, cash);
     final t = draft.entry(atmEntryId)!;
-    await _queue(draft.op('Moved ${formatMinor(t['amount_minor'] as int, currency: t['currency'] as String)} to Cash'));
+    await _queueAll(
+      draft.ops('Moved ${formatMinor(t['amount_minor'] as int, currency: t['currency'] as String)} to Cash'),
+    );
     return group;
   }
 

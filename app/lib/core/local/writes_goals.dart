@@ -220,17 +220,9 @@ extension _GoalDraft on _Draft {
     }
   }
 
-  /// allocation_rules.refuse_if_pointed_at for goal [goalId]: refused while a live rule sends
-  /// money there. The device doesn't read rules yet, so this finds none until it does.
-  void _refuseIfRulePoints(String goalId) {
-    if (_l.finance.rulesPointingAt(goalId: goalId).isNotEmpty) {
-      _refuse(
-        'rule_points_here',
-        'An allocation rule sends money to this goal. Change or delete it first',
-        status: 409,
-      );
-    }
-  }
+  /// allocation_rules.refuse_if_pointed_at for goal [goalId]: refused while a live rule, active
+  /// or not, sends money there (writes_plans.dart).
+  void _refuseIfRulePoints(String goalId) => _refuseIfPointedAt(_l.finance, 'goal', goalId: goalId);
 
   /// The goal as the server stores it (personal_goals, as the sync log sends it).
   Json _goalData(

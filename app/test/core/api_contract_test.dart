@@ -81,6 +81,21 @@ void main() {
     );
   });
 
+  test('allocation rules (a percentage to a goal, a fixed amount to an account) and their plans', () {
+    final rules = PersonalAllocationRuleOut.listFromJson(fixture('allocation_rules'));
+    expect(
+      [for (final r in rules) (r.name, r.kind.value, r.percentBp, r.amountMinor, r.goalId != null, r.priority)],
+      [(null, 'percentage', 1000, null, true, 0), ('Emergency top-up', 'fixed', null, 500000, false, 1)],
+    );
+    expect(rules.first.trigger.value, 'income_recorded');
+    final plans = PersonalAllocationPlanOut.listFromJson(fixture('allocation_plans'));
+    expect(
+      [for (final p in plans) (p.ruleId, p.snapshotKind.value, p.plannedMinor)],
+      [(rules[0].id, 'percentage', 850000), (rules[1].id, 'fixed', 500000)],
+    );
+    expect(plans.map((p) => p.sourceTransactionId).toSet(), hasLength(1));
+  });
+
   test('error bodies surface the human message', () {
     final error = ApiException(422, jsonEncode(fixture('error_split_invalid')));
     expect(apiErrorMessage(error), '₹100 still needs to be allocated');

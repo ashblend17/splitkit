@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/finance/finance.dart' show pairedLegId, smsAccountId, transferGroupIdFor;
+import 'package:splitkit/core/finance/finance.dart' show PlanStatus, pairedLegId, smsAccountId, transferGroupIdFor;
 import 'package:splitkit/core/integrations.dart';
 import 'package:splitkit/core/local/ledger.dart';
 import 'package:splitkit/core/local/outbox.dart';
@@ -275,12 +275,27 @@ void main() {
     await _setUp(tester, sms);
     await _tap(tester, find.text('Allow and read my bank SMS'));
     expect(_ledger(tester).rawPersonal(_idOf(income))!['type'], 'income');
+    // The seed's two allocation rules planned from the income, in its unit.
+    final plans = _ledger(tester).finance.plansOfIncome(_idOf(income));
+    expect([for (final p in plans) p.plan.plannedMinor], unorderedEquals([50000, 500000]));
     final before = appContainer(tester).read(outboxProvider).length;
 
     sms.messages.add(debit);
     await runWrite(tester, appContainer(tester).read(smsImporterProvider).scan());
     final ops = appContainer(tester).read(outboxProvider).skip(before).toList();
-    final [changed, made] = _items(ops);
+    // An income becoming a transfer half: its plans are deleted first (income_has_plans), in the
+    // same unit as the half.
+    expect([for (final i in _items(ops)) (i['kind'], i['op'])], [
+      ('allocation_plan', 'delete'),
+      ('allocation_plan', 'delete'),
+      ('transaction', 'update'),
+      ('transaction', 'create'),
+    ]);
+    expect(_ledger(tester).finance.plansOfIncome(_idOf(income)).map((p) => p.status), everyElement(PlanStatus.cancelled));
+    final [changed, made] = [
+      for (final i in _items(ops))
+        if (i['kind'] == 'transaction') i,
+    ];
     final group = transferGroupIdFor(_idOf(debit), _idOf(income));
     final leg = _txn(changed);
     expect(

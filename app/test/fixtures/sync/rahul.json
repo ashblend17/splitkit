@@ -4741,6 +4741,10 @@
   "personal_goals": [],
   "personal_goals_deleted": [],
   "goal_contributions": [],
-  "goal_contributions_deleted": []
+  "goal_contributions_deleted": [],
+  "allocation_rules": [],
+  "allocation_rules_deleted": [],
+  "allocation_plans": [],
+  "allocation_plans_deleted": []
  }
 }

@@ -340,7 +340,13 @@ void main() {
     });
 
     testWidgets('This was a transfer, when a suggested pair has the entry', (tester) async {
-      final be = await pumpApp(tester, location: '/personal', size: tall);
+      // Without the seed's rules: the income's plan deletes would go first.
+      final be = await pumpApp(
+        tester,
+        location: '/personal',
+        size: tall,
+        backend: FakeBackend().withoutAllocationRules(),
+      );
       be.offline = true;
       Future<String> sms(PersonalTxnInTypeEnum type, String account, DateTime at) => runWrite(
         tester,

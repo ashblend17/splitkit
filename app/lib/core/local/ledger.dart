@@ -17,7 +17,17 @@ import 'package:intl/intl.dart';
 import '../categorise/category_rules.dart';
 import '../clock.dart';
 import '../finance/finance.dart'
-    show DayRange, DayRangeContains, FinAccount, FinContribution, FinGoal, FinHolding, FinanceEngine, monthRange;
+    show
+        DayRange,
+        DayRangeContains,
+        FinAccount,
+        FinContribution,
+        FinGoal,
+        FinHolding,
+        FinPlan,
+        FinRule,
+        FinanceEngine,
+        monthRange;
 import 'balance_engine.dart';
 import 'personal_index.dart';
 import 'revisions.dart';
@@ -123,6 +133,10 @@ class Ledger {
           _rules.add(d);
         case 'personal_holding':
           _holdings[e.entityId] = d;
+        case 'personal_allocation_rule':
+          _allocationRules[e.entityId] = d;
+        case 'personal_allocation_plan':
+          _plans[e.entityId] = d;
       }
     }
     profile = me;
@@ -160,6 +174,10 @@ class Ledger {
   final _layouts = <String, Json>{};
   final _rules = <Json>[];
   final _holdings = <String, Json>{};
+
+  /// Allocation rules (personal_allocation_rule); [_rules] are the learned category rules.
+  final _allocationRules = <String, Json>{};
+  final _plans = <String, Json>{};
 
   String get me => profile?['id'] as String? ?? (throw const LocalNotFound('Profile'));
 
@@ -796,6 +814,14 @@ class Ledger {
         for (final h in _holdings.values)
           if (FinHolding.read(h) case final holding?) holding,
       ],
+      rules: [
+        for (final r in _allocationRules.values)
+          if (FinRule.read(r) case final rule?) rule,
+      ],
+      plans: [
+        for (final p in _plans.values)
+          if (FinPlan.read(p) case final plan?) plan,
+      ],
     ),
   );
 
@@ -1025,6 +1051,98 @@ class Ledger {
     'created_at': c['created_at'],
     'deleted_at': c['deleted_at'],
     'version': c['version'],
+  };
+
+  // ---- allocation rules and plans (personal/allocation_rules.py, allocation_plans.py) ----
+
+  /// GET /personal/allocation-rules (allocation_rules.py list_rules): by priority, then oldest
+  /// first; with [deleted], only the deleted ones. As synced: what each plans is the finance
+  /// engine's ([FinanceEngine.ruleViews]).
+  List<Json> allocationRuleList({bool deleted = false}) {
+    final rows = [
+      for (final r in _allocationRules.values)
+        if ((r['deleted_at'] != null) == deleted) (r, isoMicros(r['created_at'])),
+    ];
+    rows.sort((a, b) {
+      final p = (a.$1['priority'] as int).compareTo(b.$1['priority'] as int);
+      if (p != 0) return p;
+      final t = a.$2.compareTo(b.$2);
+      return t != 0 ? t : (a.$1['id'] as String).compareTo(b.$1['id'] as String);
+    });
+    return [for (final (r, _) in rows) _allocationRuleOut(r)];
+  }
+
+  /// GET /personal/allocation-rules/{id}, deleted ones too.
+  Json allocationRule(String id) => _allocationRuleOut(_allocationRules[id] ?? (throw const LocalNotFound('Rule')));
+
+  /// personal/schemas.py PersonalAllocationRuleOut.
+  Json _allocationRuleOut(Json r) => {
+    'id': r['id'],
+    'name': r['name'],
+    'trigger': r['trigger'],
+    'source_category_id': r['source_category_id'],
+    'source_account_id': r['source_account_id'],
+    'kind': r['kind'],
+    'percent_bp': r['percent_bp'],
+    'amount_minor': r['amount_minor'],
+    'currency': r['currency'],
+    'goal_id': r['goal_id'],
+    'account_id': r['account_id'],
+    'active': r['active'],
+    'priority': r['priority'],
+    'acting_admin_id': r['acting_admin_id'],
+    'created_at': r['created_at'],
+    'updated_at': r['updated_at'],
+    'deleted_at': r['deleted_at'],
+    'version': r['version'],
+  };
+
+  /// GET /personal/allocation-plans (allocation_plans.py list_plans): oldest first, filtered by
+  /// income, rule, goal or account when given; with [deleted], only the deleted ones. No status:
+  /// that's the finance engine's ([FinanceEngine.planViews]).
+  List<Json> allocationPlanList({
+    String? sourceTransactionId,
+    String? ruleId,
+    String? goalId,
+    String? accountId,
+    bool deleted = false,
+  }) {
+    final rows = [
+      for (final p in _plans.values)
+        if ((p['deleted_at'] != null) == deleted &&
+            (sourceTransactionId == null || p['source_transaction_id'] == sourceTransactionId) &&
+            (ruleId == null || p['rule_id'] == ruleId) &&
+            (goalId == null || p['goal_id'] == goalId) &&
+            (accountId == null || p['account_id'] == accountId))
+          (p, isoMicros(p['created_at'])),
+    ];
+    rows.sort((a, b) {
+      final t = a.$2.compareTo(b.$2);
+      return t != 0 ? t : (a.$1['id'] as String).compareTo(b.$1['id'] as String);
+    });
+    return [for (final (p, _) in rows) _planOut(p)];
+  }
+
+  /// GET /personal/allocation-plans/{id}, deleted ones too.
+  Json allocationPlan(String id) => _planOut(_plans[id] ?? (throw const LocalNotFound('Plan')));
+
+  /// personal/schemas.py PersonalAllocationPlanOut.
+  Json _planOut(Json p) => {
+    'id': p['id'],
+    'source_transaction_id': p['source_transaction_id'],
+    'rule_id': p['rule_id'],
+    'snapshot_kind': p['snapshot_kind'],
+    'snapshot_percent_bp': p['snapshot_percent_bp'],
+    'snapshot_amount_minor': p['snapshot_amount_minor'],
+    'planned_minor': p['planned_minor'],
+    'currency': p['currency'],
+    'goal_id': p['goal_id'],
+    'account_id': p['account_id'],
+    'acting_admin_id': p['acting_admin_id'],
+    'created_at': p['created_at'],
+    'updated_at': p['updated_at'],
+    'deleted_at': p['deleted_at'],
+    'version': p['version'],
   };
 
   /// GET /personal/accounts/reported: each account label your entries carry, most recently
@@ -1291,6 +1409,27 @@ class Ledger {
   }();
 
   Json? rawHolding(String id) => _holdings[id];
+
+  /// Allocation rule [id] as synced, deleted or not.
+  Json? rawRule(String id) => _allocationRules[id];
+
+  /// Allocation plan [id] as synced, deleted or not.
+  Json? rawPlan(String id) => _plans[id];
+
+  /// Every allocation rule as synced, deleted ones too. Shared: callers only read it.
+  Iterable<Json> get rawRules => _allocationRules.values;
+
+  /// The plans (deleted ones too) made from income [incomeId], as synced.
+  List<Json> rawPlansOf(String incomeId) => _plansByIncome[incomeId] ?? const [];
+
+  late final Map<String, List<Json>> _plansByIncome = () {
+    final out = <String, List<Json>>{};
+    for (final p in _plans.values) {
+      (out[p['source_transaction_id'] as String] ??= []).add(p);
+    }
+    return out;
+  }();
+
   List<Json> rawMembers(String groupId) => _members[groupId] ?? const [];
   Json brief(String userId) => _brief(userId);
 }
