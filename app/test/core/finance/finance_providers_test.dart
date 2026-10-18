@@ -88,8 +88,9 @@ void main() {
         final balances = await c.get(accountBalancesProvider.future);
         expect((worth.splitMinor, worth.splitCounted), (splitNet, countSplit));
         var accounts = 0;
+        // Each at its value: Zerodha by its holdings (holdings_test.dart).
         for (final b in balances) {
-          accounts += b.netWorthMinor;
+          accounts += worth.values[b.account.id]!.netWorthMinor;
         }
         expect(worth.assetsMinor - worth.liabilitiesMinor, accounts);
         expect(worth.totalMinor, accounts + (countSplit ? splitNet : 0));

@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../clock.dart';
 import '../data/providers.dart';
 import '../integrations.dart';
 import '../local/ledger.dart';
@@ -51,15 +52,31 @@ final cashFlowProvider = FutureProvider.family<CashFlow, DateTime>((ref, month) 
 });
 
 /// Your net worth in your currency, with what friends owe you in Split, net, counted while
-/// splitInNetWorth is on (and given either way).
+/// splitInNetWorth is on (and given either way). An investment account with holdings counts at
+/// its value by them while the holdings feature is on.
 final netWorthProvider = FutureProvider<NetWorth>((ref) {
   final countSplit = ref.watch(integrationsProvider).splitInNetWorth;
+  final features = ref.watch(featuresProvider);
+  final today = _today();
   return localOn(
     ref,
     personalLinkViews,
-    (l) => l.finance.netWorth(splitNetMinor: l.splitNet(l.finance.currency), countSplit: countSplit),
+    (l) => l.finance.netWorth(
+      splitNetMinor: l.splitNet(l.finance.currency),
+      countSplit: countSplit,
+      today: today,
+      holdings: features.holdings,
+      staleDays: features.staleValuationDays,
+    ),
   );
 });
+
+/// Today as a day key (20260925).
+// TODO(merge): use todayProvider (core/finance/today.dart), watched, so a stale value shows at midnight.
+int _today() {
+  final now = appClock.now();
+  return now.year * 10000 + now.month * 100 + now.day;
+}
 
 /// Spends and incomes read from bank SMS that look like one transfer between two of your
 /// accounts, newest first, without the pairs you said aren't one ([notTransferProvider]). None

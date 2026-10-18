@@ -205,7 +205,7 @@ void main() {
   });
 
   test('net worth from the balances', () {
-    final w = engine.netWorth(splitNetMinor: -1000, countSplit: true);
+    final w = engine.netWorth(splitNetMinor: -1000, countSplit: true, today: 20260925);
     final assets = engine.balances.where((b) => !b.account.type.isLiability).fold(0, (s, b) => s + b.balanceMinor);
     expect(w.assetsMinor, assets);
     expect(w.liabilitiesMinor, -210000);

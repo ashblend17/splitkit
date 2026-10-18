@@ -9,7 +9,15 @@ import '../api/api.dart';
 import '../categorise/category_rules.dart';
 import '../clock.dart';
 import '../finance/finance.dart'
-    show AccountType, MoneyFlow, impliedFlow, pairedLegId, reconcileDelta, transferGroupIdFor, txnTypeFromWire;
+    show
+        AccountType,
+        HoldingType,
+        MoneyFlow,
+        impliedFlow,
+        pairedLegId,
+        reconcileDelta,
+        transferGroupIdFor,
+        txnTypeFromWire;
 import '../integrations.dart';
 import '../money/money.dart';
 import '../session/session.dart';
@@ -21,6 +29,7 @@ import 'personal_index.dart';
 import 'providers.dart';
 
 part 'writes_finance.dart';
+part 'writes_holdings.dart';
 
 /// Writes that work offline: each one is queued in the outbox with the full state it leaves
 /// behind, shows on every screen straight away, and is sent by the next sync (which starts

@@ -324,7 +324,7 @@ void main() {
     String label(String? id) => id ?? 'Uncategorised';
     void overview(FinanceEngine f) {
       f.cashFlow(sep, notCounted: notCounted, groupShareMinor: 0, countGroupShare: true, label: label);
-      f.netWorth(splitNetMinor: 0, countSplit: true);
+      f.netWorth(splitNetMinor: 0, countSplit: true, today: 20260925);
     }
 
     _under(
@@ -371,7 +371,8 @@ void main() {
       countGroupShare: true,
       label: l.categoryLabel,
     );
-    NetWorth netWorth(Ledger l) => l.finance.netWorth(splitNetMinor: l.splitNet(l.finance.currency), countSplit: true);
+    NetWorth netWorth(Ledger l) =>
+        l.finance.netWorth(splitNetMinor: l.splitNet(l.finance.currency), countSplit: true, today: 20260925);
     List<TransferSuggestion> suggestions(Ledger l, Set<String> dismissed) =>
         l.finance.transferSuggestions(notCounted: l.notCounted, dismissed: dismissed, window: window);
 
@@ -469,6 +470,79 @@ void main() {
           note: 'a new engine',
         ),
         120,
+      );
+    });
+
+    test('holdings: 100 in 3 investment accounts, valued, and net worth with them', () {
+      final user = entities.firstWhere((e) => e.entity == 'profile').stream;
+      final bank = smsAccountId(data.me, heavyAccounts.first);
+      String id(int kind, int i) => 'a0000000-0000-4000-8000-$kind${'$i'.padLeft(11, '0')}';
+      String day(DateTime d) => d.toIso8601String().substring(0, 10);
+      final made = DateTime.utc(2021, 2, 1).toIso8601String();
+      final withHoldings = [
+        ...entities,
+        for (var a = 0; a < 3; a++)
+          LocalEntity(user, 'personal_account', id(1, a), 1, {
+            'id': id(1, a),
+            'name': 'Broker $a',
+            'type': 'investment',
+            'currency': 'INR',
+            'opening_balance_minor': 0,
+            'status': 'active',
+            'created_at': made,
+            'deleted_at': null,
+            'version': 1,
+          }),
+        // Valued 0 to 120 days before the test day, half with a cost basis.
+        for (var h = 0; h < 100; h++)
+          LocalEntity(user, 'personal_holding', id(2, h), 1, {
+            'id': id(2, h),
+            'account_id': id(1, h % 3),
+            'name': 'Holding $h',
+            'asset_type': 'mutual_fund',
+            'quantity': '10',
+            'cost_basis_minor': h.isEven ? 1000000 : null,
+            'market_value_minor': 1200000 + h,
+            'valuation_at': day(DateTime.utc(2026, 9, 25 - h * 120 ~/ 99)),
+            'valuation_source': 'manual',
+            'currency': 'INR',
+            'created_at': made,
+            'deleted_at': null,
+            'version': 1,
+          }),
+        // A monthly SIP from the bank into each, for a year.
+        for (var h = 0; h < 100; h++)
+          for (var m = 0; m < 12; m++)
+            LocalEntity(user, 'personal_transaction', id(3, h * 12 + m), 1, {
+              'id': id(3, h * 12 + m),
+              'type': 'investment_contribution',
+              'direction': 'out',
+              'amount_minor': 500000,
+              'currency': 'INR',
+              'date': day(DateTime.utc(2025, 10 + m, 5)),
+              'description': 'SIP',
+              'account_id': bank,
+              'holding_id': id(2, h),
+              'source': 'manual',
+              'created_at': made,
+              'deleted_at': null,
+              'version': 1,
+            }),
+      ];
+      const today = 20260925;
+      final f = Ledger(withHoldings).finance;
+      expect((f.investments(today: today).holdingCount, f.accountValue(id(1, 0), today: today)!.holdings.length), (
+        100,
+        34,
+      ));
+      _under(
+        _benchPrepared(
+          'Ledger.finance: netWorth with 100 holdings (account values first asked)',
+          () => Ledger(withHoldings)..finance.balances,
+          (l) => l.finance.netWorth(splitNetMinor: 0, countSplit: true, today: today),
+          note: '1,200 SIPs name them',
+        ),
+        5,
       );
     });
   });

@@ -81,6 +81,8 @@ class Features {
     this.atmToCash = true,
     this.pairCardBills = true,
     this.refundMatchDays = 60,
+    this.holdings = true,
+    this.staleValuationDays = 30,
   });
 
   /// How many unchecked bank SMS entries Overview's "Just in" shows at once.
@@ -154,6 +156,14 @@ class Features {
   /// A refund read from bank SMS is matched to a spend from the same merchant up to this many
   /// days before it.
   final int refundMatchDays;
+
+  /// Investment accounts keep holdings (a fund, shares, gold) with the value you last typed, and
+  /// one with holdings counts in net worth at their value. Off: every account counts at its
+  /// balance, and no holdings are shown.
+  final bool holdings;
+
+  /// A holding's value older than this many days is stale: it's marked, and Overview says so.
+  final int staleValuationDays;
 }
 
 final integrationsProvider = Provider<Integrations>((_) => const Integrations());

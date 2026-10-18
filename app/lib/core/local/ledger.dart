@@ -16,7 +16,7 @@ import 'package:intl/intl.dart';
 
 import '../categorise/category_rules.dart';
 import '../clock.dart';
-import '../finance/finance.dart' show DayRange, DayRangeContains, FinAccount, FinanceEngine, monthRange;
+import '../finance/finance.dart' show DayRange, DayRangeContains, FinAccount, FinanceEngine, FinHolding, monthRange;
 import 'balance_engine.dart';
 import 'personal_index.dart';
 import 'revisions.dart';
@@ -116,6 +116,8 @@ class Ledger {
           _layouts[e.entityId] = d;
         case 'category_rule':
           _rules.add(d);
+        case 'personal_holding':
+          _holdings[e.entityId] = d;
       }
     }
     profile = me;
@@ -150,6 +152,7 @@ class Ledger {
   final _categories = <String, Json>{};
   final _layouts = <String, Json>{};
   final _rules = <Json>[];
+  final _holdings = <String, Json>{};
 
   String get me => profile?['id'] as String? ?? (throw const LocalNotFound('Profile'));
 
@@ -777,6 +780,10 @@ class Ledger {
       // Every entry of a type this build knows; the engine skips deleted ones where they don't count.
       entries: _index.rows,
       currency: userOut()['currency'] as String,
+      holdings: [
+        for (final h in _holdings.values)
+          if (FinHolding.read(h) case final holding?) holding,
+      ],
     ),
   );
 
@@ -1174,6 +1181,7 @@ class Ledger {
   Json? rawPersonal(String id) => _index.byId[id]?.raw;
   Json? rawCategory(String id) => _categories[id];
   Json? rawAccount(String id) => _accounts[id];
+  Json? rawHolding(String id) => _holdings[id];
   List<Json> rawMembers(String groupId) => _members[groupId] ?? const [];
   Json brief(String userId) => _brief(userId);
 }

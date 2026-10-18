@@ -39,6 +39,26 @@ final class BatchItem {
       account = null,
       transaction = null;
 
+  /// A holding, in an open investment account of yours (writes_holdings.dart).
+  BatchItem.createHolding(this.id, PersonalHoldingIn this.holding)
+    : kind = PersonalBatchItemKindEnum.holding,
+      op = PersonalBatchItemOpEnum.create,
+      account = null,
+      transaction = null;
+
+  BatchItem.updateHolding(this.id, PersonalHoldingIn this.holding)
+    : kind = PersonalBatchItemKindEnum.holding,
+      op = PersonalBatchItemOpEnum.update,
+      account = null,
+      transaction = null;
+
+  /// Refused while a live entry names it.
+  BatchItem.deleteHolding(this.id)
+    : kind = PersonalBatchItemKindEnum.holding,
+      op = PersonalBatchItemOpEnum.delete,
+      account = null,
+      transaction = null;
+
   final PersonalBatchItemKindEnum kind;
   final PersonalBatchItemOpEnum op;
 
@@ -46,6 +66,10 @@ final class BatchItem {
   final String id;
   final PersonalAccountIn? account;
   final PersonalTxnIn? transaction;
+
+  /// A holding item's details; set only by its constructors (not final, so the other kinds'
+  /// constructors needn't name it).
+  PersonalHoldingIn? holding;
 
   bool get isAccountCreate => kind == PersonalBatchItemKindEnum.account && op == PersonalBatchItemOpEnum.create;
 
@@ -156,14 +180,23 @@ class _Draft {
       if (_claimed.contains(item.id)) {
         throw StateError('$item changes an entry an account claimed earlier in this request: send it in a later one');
       }
-      final before = isAccount ? account(item.id) : entry(item.id);
-      version = (before ?? (throw LocalNotFound(isAccount ? 'Account' : 'Transaction')))['version'] as int;
+      final (before, what) = switch (item.kind) {
+        PersonalBatchItemKindEnum.holding => (holding(item.id), 'Holding'),
+        _ => isAccount ? (account(item.id), 'Account') : (entry(item.id), 'Transaction'),
+      };
+      version = (before ?? (throw LocalNotFound(what)))['version'] as int;
     }
     switch ((item.kind.value, item.op.value)) {
       case ('account', 'create'):
         _createAccount(item.id, item.account!);
       case ('account', _):
         _updateAccount(item.id, item.account!);
+      case ('holding', 'create'):
+        _createHolding(item.id, item.holding!);
+      case ('holding', 'update'):
+        _updateHolding(item.id, item.holding!);
+      case ('holding', _):
+        _setHoldingDeleted(item.id, true);
       case (_, 'create'):
         _createEntry(item.id, item.transaction!);
       case (_, 'update'):
@@ -179,10 +212,11 @@ class _Draft {
         version: version,
         account: item.account,
         transaction: item.transaction,
+        holding: item.holding,
       ).toJson(),
     );
     // The item carries the id and the version; the payload leaves them out.
-    for (final payload in [json['account'], json['transaction']]) {
+    for (final payload in [json['account'], json['transaction'], json['holding']]) {
       if (payload is Map) {
         payload['id'] = null;
         payload['version'] = null;
@@ -429,6 +463,9 @@ class _Draft {
     final before = account(id) ?? (throw const LocalNotFound('Account'));
     if (before['deleted_at'] != null) _refuse('deleted', 'Restore this account before editing it', status: 409);
     final data = _accountData(id, body, before);
+    if (before['type'] == 'investment' && data['type'] != 'investment' && _holds(id)) {
+      _refuse('account_in_use', 'This account has holdings, so it stays an investment account', status: 409);
+    }
     if (data['sms_label'] != before['sms_label']) _checkLabel(data['sms_label'] as String?, id);
     final changed = {
       for (final k in const ['name', 'type', 'opening_balance_minor', 'sms_label', 'status'])
@@ -688,8 +725,8 @@ extension FinanceWrites on LocalWrites {
     );
   }
 
-  /// Deletes account [id] (`DELETE /personal/accounts/{id}`). Refused while a live entry is in it:
-  /// close it instead.
+  /// Deletes account [id] (`DELETE /personal/accounts/{id}`). Refused while a live entry is in it
+  /// (close it instead), or a live holding.
   Future<void> deleteAccount(String id) => _setAccountDeleted(id, true);
 
   /// Brings deleted account [id] back (its label stayed its own).
@@ -701,6 +738,9 @@ extension FinanceWrites on LocalWrites {
     if ((before['deleted_at'] != null) == deleted) return;
     if (deleted && (l.personalList(accountId: id, limit: 0)['count'] as int) > 0) {
       _refuse('account_in_use', "This account has entries, so it can't be deleted. Close it instead", status: 409);
+    }
+    if (deleted && l.finance.holdings.any((h) => h.accountId == id)) {
+      _refuse('account_in_use', "This account has holdings, so it can't be deleted", status: 409);
     }
     final version = before['version'] as int;
     final now = _now();
