@@ -17,6 +17,7 @@ import '../common/common.dart';
 import '../../core/sms/sms.dart';
 import '../sms/sms_importer.dart';
 import 'account_sheet.dart';
+import 'holdings_section.dart';
 import 'txn_actions.dart';
 
 /// Add a personal entry, or open one ([existing]) to edit or delete it. [type] is what a new one
@@ -97,6 +98,9 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
 
   /// The spend a refund gives money back for, if any.
   late String? _refundOfId = widget.existing?.refundOfId ?? widget.refundOf?.id;
+
+  /// The holding an investment or a withdrawal is into or out of, if any.
+  late String? _holdingId = widget.existing?.holdingId;
   bool _busy = false;
 
   /// What names accounts and pairs transfer halves, as of the last build.
@@ -112,6 +116,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
   bool get _readOnly => widget.existing?.type == PersonalTxnOutTypeEnum.adjustment;
 
   bool get _transfer => _type == 'transfer';
+  bool get _investment => _moreTypes.containsKey(_type);
   bool get _comesIn => const {'income', 'refund', 'investment_withdrawal'}.contains(_type);
   bool get _suggests => const {'expense', 'income', 'refund'}.contains(_type);
   String? get _notesText => _notes.text.trim().isEmpty ? null : _notes.text.trim();
@@ -294,6 +299,11 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                       },
                     ),
                     if (_type == 'refund' && features.refunds) ...[const SizedBox(height: 16), _refundOf(me.currency)],
+                    if (_investment && features.holdings)
+                      if (_holdingPicker(widget.existing?.currency ?? me.currency) case final picker?) ...[
+                        const SizedBox(height: 16),
+                        picker,
+                      ],
                     if (!_transfer) ...[
                       const SizedBox(height: 16),
                       Text('Category', style: SkText.body(14, 600)),
@@ -780,6 +790,84 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
     ),
   );
 
+  /// The holdings an investment or a withdrawal can name: any of your live ones in [currency]
+  /// (the entry is on the account the money moved from or to, the holding in an investment
+  /// account; service.py _check_holding), those in the account picked first, and the one it
+  /// names already, even deleted (an edit keeps it).
+  List<FinHolding> _holdingChoices(String currency) {
+    final f = _finance;
+    if (f == null) return const [];
+    final live = [
+      for (final h in f.holdings)
+        if (h.currency == currency) h,
+    ];
+    final current = _holdingId == null ? null : f.holding(_holdingId!);
+    return [
+      if (current != null && !live.contains(current)) current,
+      ...live.where((h) => h.accountId == _accountId),
+      ...live.where((h) => h.accountId != _accountId),
+    ];
+  }
+
+  /// "Holding": optionally, the holding the money went into or came out of. Nothing when you have
+  /// none.
+  Widget? _holdingPicker(String currency) {
+    final choices = _holdingChoices(currency);
+    if (choices.isEmpty) return null;
+    final picked = choices.where((h) => h.id == _holdingId).firstOrNull;
+    String detail(FinHolding h) => [
+      _finance?.account(h.accountId)?.name ?? 'An account',
+      if (h.deleted) 'Deleted' else holdingTypeLabel(h.type),
+    ].join(' · ');
+    Widget option(String? id, String title, String? about) => Builder(
+      builder: (sheet) => InkWell(
+        onTap: () => Navigator.of(sheet).pop((id,)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(title, style: SkText.body(15, 600)),
+                    if (about != null) Text(about, style: SkText.body(13, 400, color: SkColors.ink2)),
+                  ],
+                ),
+              ),
+              if (id == _holdingId) SkIcon('check', size: 20, color: SkColors.personal),
+            ],
+          ),
+        ),
+      ),
+    );
+    return Column(
+      key: const ValueKey('holding-picker'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Holding', style: SkText.body(14, 600)),
+        const SizedBox(height: 8),
+        _pickerButton(
+          glyph: 'chart',
+          text: picked?.name ?? 'A holding (optional)',
+          detail: picked == null ? null : detail(picked),
+          onTap: () async {
+            final id = await showAppBottomSheet<(String?,)>(
+              context,
+              title: 'Holding',
+              child: _scrolling([
+                option(null, 'No particular holding', null),
+                for (final h in choices) option(h.id, h.name, detail(h)),
+              ]),
+            );
+            if (id != null && mounted) setState(() => _holdingId = id.$1);
+          },
+        ),
+      ],
+    );
+  }
+
   /// A balance correction, read-only: what it did, and Delete (below).
   List<Widget> _correction(PersonalTxnOut t) {
     final v = personalView(t, finance: _finance);
@@ -886,6 +974,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
       ..channel = PersonalTxnInChannelEnum.fromJson(_channel)
       ..accountId = features.accounts ? _accountId : base.accountId
       ..refundOfId = _type == 'refund' ? _refundOfId : null
+      ..holdingId = _investment ? _holdingId : null
       ..transferGroupId = null
       ..reviewed = true;
   }

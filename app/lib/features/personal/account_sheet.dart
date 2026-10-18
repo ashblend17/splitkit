@@ -8,6 +8,7 @@ import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/finance/finance.dart';
 import '../../core/finance/finance_providers.dart';
+import '../../core/finance/holding_providers.dart';
 import '../../core/integrations.dart';
 import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
@@ -15,6 +16,7 @@ import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import 'holdings_section.dart';
 
 /// Add one of your accounts, or open one ([existing]): edit it, set it to what the bank says,
 /// see its entries, close or reopen it, or delete it while nothing is in it. Resolves to the new
@@ -48,19 +50,19 @@ String accountGlyph(AccountType t) => switch (t) {
 };
 
 /// An account's balance in words: "₹96,135" (less than zero when overdrawn), or for a card or
-/// loan, what you owe: "₹340 owed", or "₹200 in credit" when it's been overpaid.
-String accountBalanceLabel(AccountBalance b) {
-  final a = b.account;
-  if (!a.type.isLiability) return money(b.balanceMinor, a.currency);
-  return b.balanceMinor < 0
-      ? '${money(-b.balanceMinor, a.currency)} in credit'
-      : '${money(b.balanceMinor, a.currency)} owed';
+/// loan, what you owe: "₹340 owed", or "₹200 in credit" when it's been overpaid. [minor], when
+/// given, is what it's worth instead (NetWorth.valueOf: an investment account by its holdings).
+String accountBalanceLabel(AccountBalance b, {int? minor}) {
+  final a = b.account, m = minor ?? b.balanceMinor;
+  if (!a.type.isLiability) return money(m, a.currency);
+  return m < 0 ? '${money(-m, a.currency)} in credit' : '${money(m, a.currency)} owed';
 }
 
 /// The colour [accountBalanceLabel] is shown in: what you owe, or an overdrawn account, in the
 /// owe colour; the rest in ink.
-Color accountBalanceColor(AccountBalance b) {
-  final owing = b.account.type.isLiability ? b.balanceMinor > 0 : b.balanceMinor < 0;
+Color accountBalanceColor(AccountBalance b, {int? minor}) {
+  final m = minor ?? b.balanceMinor;
+  final owing = b.account.type.isLiability ? m > 0 : m < 0;
   return owing ? SkColors.owe : SkColors.ink;
 }
 
@@ -162,6 +164,12 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
     };
     // As it is now (closed or not), once its balance is known.
     final account = balance?.account ?? widget.existing;
+    // An investment account with holdings is worth what they are (holdings_section.dart).
+    final value = switch (widget.existing) {
+      final a? => ref.watch(accountValuesProvider).value?.where((v) => v.account.id == a.id).firstOrNull,
+      null => null,
+    };
+    final byHoldings = value?.byHoldings ?? false;
     final opening = _opening.text.trim().isEmpty ? 0 : parseMinor(_opening.text, currency: currency);
     final canSave = !_busy && _name.text.trim().isNotEmpty && opening != null;
     final liability = _type.isLiability;
@@ -223,12 +231,21 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
                   ],
                   if (balance != null) ...[
                     const SizedBox(height: 14),
-                    Text('Balance', style: SkText.body(13, 600, color: SkColors.ink2)),
+                    Text(byHoldings ? 'Value' : 'Balance', style: SkText.body(13, 600, color: SkColors.ink2)),
                     const SizedBox(height: 2),
                     Text(
-                      accountBalanceLabel(balance),
-                      style: SkText.display(30, 800, color: accountBalanceColor(balance), height: 1.1),
+                      accountBalanceLabel(balance, minor: value?.valueMinor),
+                      style: SkText.display(
+                        30,
+                        800,
+                        color: accountBalanceColor(balance, minor: value?.valueMinor),
+                        height: 1.1,
+                      ),
                     ),
+                    if (byHoldings) ...[
+                      const SizedBox(height: 4),
+                      Text(holdingsLine(value!), style: SkText.body(13, 400, color: SkColors.ink2)),
+                    ],
                   ],
                   const SizedBox(height: 18),
                   Text('Type', style: SkText.body(14, 600)),
@@ -278,7 +295,7 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
                     expand: true,
                     onPressed: canSave ? () => _save(opening) : null,
                   ),
-                  if (account != null) ..._manage(account, balance, features),
+                  if (account != null) ..._manage(account, balance, features, byHoldings: byHoldings),
                 ],
               ),
             ),
@@ -288,11 +305,13 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
     );
   }
 
-  /// What can be done with an account that exists.
-  List<Widget> _manage(FinAccount a, AccountBalance? b, Features features) {
+  /// What can be done with an account that exists. One valued by its holdings isn't matched to
+  /// what a bank says: a correction would count at cost on top of its holdings' values.
+  List<Widget> _manage(FinAccount a, AccountBalance? b, Features features, {required bool byHoldings}) {
     final says = parseMinor(_bankSays.text, currency: a.currency);
+    final cantDelete = _cantDelete(a);
     return [
-      if (b != null && !a.closed && features.accountBalances) ...[
+      if (b != null && !a.closed && features.accountBalances && !byHoldings) ...[
         const SizedBox(height: 24),
         Text('The bank says…', style: SkText.body(14, 600)),
         const SizedBox(height: 4),
@@ -346,18 +365,41 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
           ),
         ],
       ),
-      // Only while nothing is in it: an account with entries is closed instead.
-      if (b != null && b.entryCount == 0) ...[
-        const SizedBox(height: 8),
-        SkButton(
-          'Delete',
-          icon: 'trash',
-          variant: SkButtonVariant.danger,
-          expand: true,
-          onPressed: _busy ? null : () => _delete(a),
-        ),
-      ],
+      // Only while nothing is in it: an account with entries is closed instead. One a goal follows
+      // or with holdings can't be deleted (ISS-107), so it says why instead.
+      if (b != null && b.entryCount == 0)
+        if (cantDelete != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            cantDelete,
+            key: const ValueKey('account:cant-delete'),
+            style: SkText.body(13, 400, color: SkColors.ink2),
+            textAlign: TextAlign.center,
+          ),
+        ] else ...[
+          const SizedBox(height: 8),
+          SkButton(
+            'Delete',
+            icon: 'trash',
+            variant: SkButtonVariant.danger,
+            expand: true,
+            onPressed: _busy ? null : () => _delete(a),
+          ),
+        ],
     ];
+  }
+
+  /// Why [a] can't be deleted, as the server would refuse it (accounts.py change_deleted), or
+  /// null: a goal that isn't deleted follows it (archived ones too), or it has live holdings.
+  String? _cantDelete(FinAccount a) {
+    final finance = ref.watch(financeEngineProvider).value;
+    if (finance == null) return null;
+    final goal = finance.liveGoals.where((g) => g.linkedAccountId == a.id).firstOrNull;
+    if (goal != null) return "${goal.name} follows this account's balance, so it can't be deleted.";
+    if (finance.holdings.any((h) => h.accountId == a.id)) {
+      return "It has holdings, so it can't be deleted. Delete them first.";
+    }
+    return null;
   }
 
   Future<void> _save(int? opening) async {

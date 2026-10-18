@@ -23,6 +23,7 @@ import '../helpers.dart';
 const hdfc = '21aa8dac-2761-5677-ad69-c1b5e7fe9543'; // bank, ₹96,135 from its entries; the bank said ₹39,936
 const cash = '6b3de561-066a-5f99-9fba-efd3ea940df7'; // ₹500 opening + the ₹2,000 withdrawal
 const savings = '137b07e8-c67b-5bb2-a5a7-4f58aa342755'; // Emergency savings, ₹1,20,000, no entries
+const zerodha = '3ba3ab40-68eb-5169-bd41-e06f44ea0e71'; // investment, ₹0 balance, ₹85,750 in holdings
 
 const tall = Size(390, 1400);
 const desktop = Size(1440, 900);
@@ -269,6 +270,24 @@ void main() {
     await _tap(tester, find.text('Undo'));
     expect(_queued(tester).last.$2, '/api/v1/personal/accounts/$savings/restore');
     expect(find.text('Emergency savings'), findsOneWidget);
+  });
+
+  testWidgets("an account a goal follows, or with holdings, offers no Delete: it says why", (tester) async {
+    await pumpApp(tester, location: '/personal/accounts', size: tall);
+    await _open(tester, savings);
+    expect(find.text('Bank account · 0 entries'), findsOneWidget);
+    expect(find.widgetWithText(SkButton, 'Delete'), findsNothing);
+    expect(find.text("Emergency fund follows this account's balance, so it can't be deleted."), findsOneWidget);
+    Navigator.of(tester.element(find.text('See entries'))).pop();
+    await tester.pumpAndSettle();
+
+    // Zerodha: worth its holdings, not matched to a bank, and kept while it has them.
+    await _open(tester, zerodha);
+    expect(find.text('Value'), findsOneWidget);
+    expect(find.text('Holdings ₹85,750 · incl. ₹5,000 added since 15 Aug'), findsWidgets);
+    expect(find.text('The bank says…'), findsNothing);
+    expect(find.widgetWithText(SkButton, 'Delete'), findsNothing);
+    expect(find.text("It has holdings, so it can't be deleted. Delete them first."), findsOneWidget);
   });
 
   testWidgets('"The bank says…" sets the balance as of today', (tester) async {
