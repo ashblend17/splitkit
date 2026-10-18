@@ -11,8 +11,9 @@ import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import 'account_sheet.dart';
 
-/// Overview's accounts: net worth, your three biggest balances (a tap shows that account's
-/// entries), how many disagree with what the bank last said, and All accounts
+/// Overview's accounts: net worth (with your investments and how many of their values are stale,
+/// once you have holdings), your three biggest accounts at what they're worth (a tap shows that
+/// account's entries), how many disagree with what the bank last said, and All accounts
 /// (/personal/accounts). With no accounts yet, an offer to add one. Nothing while
 /// Features.accounts is off.
 class AccountsCard extends ConsumerWidget {
@@ -33,8 +34,15 @@ class AccountsCard extends ConsumerWidget {
         if (!b.account.closed) b,
     ];
     final none = worth.accounts.isEmpty && worth.otherCurrency.isEmpty;
-    final top = [...open.indexed]..sort(_biggestFirst);
-    final toCheck = features.accountBalances ? open.where((b) => (b.lastReported?.gapMinor ?? 0) != 0).length : 0;
+    final top = [...open.indexed]..sort((x, y) => _biggestFirst(worth, x, y));
+    // "Investments ₹85,750 · as of 15 Aug" and "1 value is stale", once there are holdings.
+    final investments = features.holdings ? worth.asOfDay : null;
+    // One valued by its holdings isn't checked against its bank (accounts_page.dart).
+    final toCheck = features.accountBalances
+        ? open
+              .where((b) => (b.lastReported?.gapMinor ?? 0) != 0 && !(worth.values[b.account.id]?.byHoldings ?? false))
+              .length
+        : 0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -109,6 +117,18 @@ class AccountsCard extends ConsumerWidget {
                                     style: SkText.display(24, 800),
                                   ),
                                 ),
+                                if (investments != null) ...[
+                                  Text(
+                                    'Investments ${money(worth.investmentsMinor, currency)} · '
+                                    'as of ${dayKeyLabel(investments)}',
+                                    style: SkText.body(13, 400, color: SkColors.ink2),
+                                  ),
+                                  if (worth.staleCount > 0)
+                                    Text(
+                                      worth.staleCount == 1 ? '1 value is stale' : '${worth.staleCount} values are stale',
+                                      style: SkText.body(13, 600, color: SkPalette.pendingInk),
+                                    ),
+                                ],
                               ],
                             ),
                           ),
@@ -117,7 +137,7 @@ class AccountsCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  for (final (_, b) in top.take(shown)) _row(context, b),
+                  for (final (_, b) in top.take(shown)) _row(context, b, worth.valueOf(b)),
                 ],
               ),
             ),
@@ -126,14 +146,14 @@ class AccountsCard extends ConsumerWidget {
     );
   }
 
-  /// The biggest balance first, whichever way it counts (what you owe too), then in the API's
-  /// order (the index each came at).
-  static int _biggestFirst((int, AccountBalance) x, (int, AccountBalance) y) {
-    final c = y.$2.balanceMinor.abs().compareTo(x.$2.balanceMinor.abs());
+  /// The biggest value first ([NetWorth.valueOf]), whichever way it counts (what you owe too), then
+  /// in the API's order (the index each came at).
+  static int _biggestFirst(NetWorth worth, (int, AccountBalance) x, (int, AccountBalance) y) {
+    final c = worth.valueOf(y.$2).abs().compareTo(worth.valueOf(x.$2).abs());
     return c != 0 ? c : x.$1.compareTo(y.$1);
   }
 
-  Widget _row(BuildContext context, AccountBalance b) => Semantics(
+  Widget _row(BuildContext context, AccountBalance b, int value) => Semantics(
     button: true,
     child: InkWell(
       onTap: () => context.go('/personal/transactions?account_id=${b.account.id}'),
@@ -164,7 +184,10 @@ class AccountsCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text(accountBalanceLabel(b), style: SkText.display(16, 700, color: accountBalanceColor(b))),
+            Text(
+              accountBalanceLabel(b, minor: value),
+              style: SkText.display(16, 700, color: accountBalanceColor(b, minor: value)),
+            ),
           ],
         ),
       ),

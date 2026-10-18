@@ -186,9 +186,13 @@ void main() {
         expect(inCard('Emergency savings'), findsOneWidget);
         expect(inCard('₹1,20,000'), findsOneWidget);
         expect(inCard('HDFC ··4821'), findsOneWidget);
-        expect(inCard('Cash'), findsWidgets);
-        expect(inCard('Zerodha'), findsNothing);
+        // Zerodha at its holdings' ₹85,750, not its ₹0 balance, so bigger than Cash.
+        expect(inCard('Zerodha'), findsOneWidget);
+        expect(inCard('₹85,750'), findsOneWidget);
+        expect(inCard('Cash'), findsNothing);
         expect(inCard('ICICI Credit card ··9012'), findsNothing);
+        expect(inCard('Investments ₹85,750 · as of 15 Aug'), findsOneWidget);
+        expect(inCard('1 value is stale'), findsOneWidget); // the Nifty fund's, from 15 Aug
         expect(tester.takeException(), isNull);
         await _tap(tester, inCard('1 to check'));
         expect(find.byType(AccountsPage), findsOneWidget);
@@ -200,6 +204,7 @@ void main() {
       await pumpApp(tester, location: '/personal', size: tall, overrides: [featuresProvider.overrideWithValue(narrow)]);
       expect(find.text('Net worth'), findsOneWidget);
       expect(find.text('1 to check'), findsNothing);
+      expect(find.text('Investments ₹85,750 · as of 15 Aug'), findsOneWidget);
       await _tap(tester, find.text('All accounts'));
       expect(find.textContaining('Bank said'), findsNothing);
       expect(find.text('Reconcile'), findsNothing);

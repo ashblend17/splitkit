@@ -14,6 +14,7 @@ import '../common/common.dart';
 import '../sms/sms_setup_page.dart';
 import '../sms/sms_source.dart';
 import 'account_sheet.dart';
+import 'holdings_section.dart';
 
 /// How the Accounts page groups accounts.
 enum _Group {
@@ -31,8 +32,10 @@ enum _Group {
   };
 }
 
-/// Personal → Accounts (/personal/accounts, from Overview): your net worth, then each account's
-/// balance worked out from its entries, grouped, with closed accounts folded away at the end.
+/// Personal → Accounts (/personal/accounts, from Overview): your net worth, then each account at
+/// what it's worth (its balance worked out from its entries, or for an investment account with
+/// holdings, by them, listed under it: [HoldingsSection]), grouped, with closed accounts folded
+/// away at the end.
 /// Where the bank's last reported balance isn't what the entries add up to, it says so and
 /// offers Reconcile. A tap opens the account ([showAccountSheet]).
 class AccountsPage extends ConsumerStatefulWidget {
@@ -130,7 +133,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
             const SizedBox(height: 20),
             Overline(group.label),
             const SizedBox(height: 8),
-            _list(shown),
+            _list(shown, worth),
           ],
         if (closed.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -150,7 +153,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
               ),
             ),
           ),
-          if (_showClosed) ...[const SizedBox(height: 4), _list(closed)],
+          if (_showClosed) ...[const SizedBox(height: 4), _list(closed, worth)],
         ],
       ],
     );
@@ -211,14 +214,27 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
     );
   }
 
-  Widget _list(List<AccountBalance> accounts) => SkCard(
+  Widget _list(List<AccountBalance> accounts, NetWorth worth) => SkCard(
     padding: EdgeInsets.zero,
-    child: Column(children: [for (final (i, b) in accounts.indexed) _row(b, last: i == accounts.length - 1)]),
+    child: Column(
+      children: [
+        for (final (i, b) in accounts.indexed)
+          _row(
+            b,
+            worth.valueOf(b),
+            byHoldings: worth.values[b.account.id]?.byHoldings ?? false,
+            last: i == accounts.length - 1,
+          ),
+      ],
+    ),
   );
 
-  Widget _row(AccountBalance b, {required bool last}) {
+  /// Account [b] at what it's worth ([value]: an investment account by its holdings, listed
+  /// under it), with what its bank last said when that isn't its balance. One valued by its
+  /// holdings isn't reconciled: a correction would count at cost on top of their values.
+  Widget _row(AccountBalance b, int value, {required bool byHoldings, required bool last}) {
     final a = b.account;
-    final check = ref.watch(featuresProvider).accountBalances && !a.closed ? b.lastReported : null;
+    final check = ref.watch(featuresProvider).accountBalances && !a.closed && !byHoldings ? b.lastReported : null;
     final gap = check != null && check.gapMinor != 0 ? check : null;
     return Container(
       key: ValueKey('account:${a.id}'),
@@ -262,11 +278,15 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(accountBalanceLabel(b), style: SkText.display(16, 700, color: accountBalanceColor(b))),
+                  Text(
+                    accountBalanceLabel(b, minor: value),
+                    style: SkText.display(16, 700, color: accountBalanceColor(b, minor: value)),
+                  ),
                 ],
               ),
             ),
           ),
+          if (a.type == AccountType.investment) HoldingsSection(a.id),
           if (gap != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
