@@ -64,6 +64,23 @@ void main() {
     expect((reported.first.account, reported.first.balanceMinor), ('HDFC ··4821', 3993600));
   });
 
+  test('goals, one per tracking mode, and the Ladakh trip\'s contributions', () {
+    final goals = PersonalGoalOut.listFromJson(fixture('personal_goals'));
+    expect(
+      [for (final g in goals) (g.name, g.trackingMode.value, g.priority)],
+      [('Emergency fund', 'linked_balance', 0), ('Ladakh trip', 'contribution', 1), ('Gold coins', 'manual', 2)],
+    );
+    expect(goals[0].linkedAccountId, isNotNull);
+    expect(goals[2].manualProgressMinor, 6800000);
+    final date = goals[1].targetDate!;
+    expect((date.year, date.month, date.day), (2027, 5, 31));
+    final contributions = PersonalGoalContributionOut.listFromJson(fixture('goal_contributions'));
+    expect(
+      [for (final c in contributions) (c.amountMinor, c.note, c.transactionId != null, c.goalId == goals[1].id)],
+      [(200000, 'Trip jar', true, true), (1500000, 'Saved before I started tracking', false, true)],
+    );
+  });
+
   test('error bodies surface the human message', () {
     final error = ApiException(422, jsonEncode(fixture('error_split_invalid')));
     expect(apiErrorMessage(error), '₹100 still needs to be allocated');

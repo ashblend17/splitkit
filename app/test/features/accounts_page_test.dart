@@ -7,6 +7,7 @@ import 'package:splitkit/core/api/api.dart';
 import 'package:splitkit/core/finance/finance.dart';
 import 'package:splitkit/core/finance/finance_providers.dart';
 import 'package:splitkit/core/local/providers.dart';
+import 'package:splitkit/core/local/writes.dart';
 import 'package:splitkit/core/router/router.dart';
 import 'package:splitkit/design_system/design_system.dart';
 import 'package:splitkit/features/personal/account_sheet.dart';
@@ -255,10 +256,14 @@ void main() {
     Navigator.of(tester.element(find.text('See entries'))).pop();
     await tester.pumpAndSettle();
 
+    // The Emergency fund follows Emergency savings, which can't be deleted while it does.
+    const fund = '44810de1-2cb6-5600-bbda-885df88b8d98';
+    await runWrite(tester, appContainer(tester).read(writesProvider).deleteGoal(fund));
+    await tester.pumpAndSettle();
     await _open(tester, savings);
     await _tap(tester, find.text('Delete'));
-    expect(_queued(tester).single.$1, 'DELETE');
-    expect(_queued(tester).single.$2, '/api/v1/personal/accounts/$savings');
+    expect(_queued(tester).last.$1, 'DELETE');
+    expect(_queued(tester).last.$2, '/api/v1/personal/accounts/$savings');
     expect(find.text('Deleted Emergency savings'), findsOneWidget);
     expect(find.text('Emergency savings'), findsNothing);
     await _tap(tester, find.text('Undo'));

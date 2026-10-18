@@ -351,6 +351,76 @@ void main() {
       ),
       2,
     );
+
+    // Goals (Phase 2): 50 goals (25 counting contributions, 5 following an account, 20 by hand;
+    // 40 active, 4 paused, 4 completed, 2 archived; dates from 6 months ago to 3 years ahead, a
+    // third with none) and 5,000 contributions, 30% with an entry.
+    const statuses = [GoalStatus.paused, GoalStatus.completed];
+    final goals = [
+      for (var i = 0; i < 50; i++)
+        FinGoal(
+          id: 'goal-$i',
+          name: 'Goal $i',
+          currency: 'INR',
+          targetMinor: 10000000 + i * 100000,
+          targetDay: i % 3 == 0 ? null : addDays(20260925, -180 + i * 25),
+          mode: i < 25
+              ? GoalMode.contribution
+              : i < 30
+              ? GoalMode.linkedBalance
+              : GoalMode.manual,
+          linkedAccountId: i >= 25 && i < 30 ? accounts[(i - 25) % accounts.length].id : null,
+          manualProgressMinor: i >= 30 ? i * 50000 : null,
+          status: i >= 48
+              ? GoalStatus.archived
+              : i >= 40
+              ? statuses[i % 2]
+              : GoalStatus.active,
+          startDay: 20260101,
+          createdMicros: i,
+        ),
+    ];
+    final live = [
+      for (final e in entries)
+        if (!e.deleted) e,
+    ];
+    final contributions = [
+      for (var i = 0; i < 5000; i++)
+        FinContribution(
+          id: 'contribution-$i',
+          goalId: 'goal-${i % 25}',
+          amountMinor: 1000 + i,
+          currency: 'INR',
+          day: addDays(20260925, -(i % 600)),
+          transactionId: i % 10 < 3 ? live[i * 7 % live.length].id : null,
+          createdMicros: i,
+        ),
+    ];
+    FinanceEngine withGoals() {
+      final f = FinanceEngine(
+        accounts: accounts,
+        entries: entries,
+        currency: 'INR',
+        goals: goals,
+        contributions: contributions,
+      );
+      f.balances; // as on Overview, built before Goals asks
+      return f;
+    }
+
+    _under(
+      _benchPrepared(
+        'FinanceEngine goals(today), first call (balances built)',
+        withGoals,
+        (FinanceEngine f) => f.goals(today: 20260925),
+        note: '${goals.length} goals, ${contributions.length} contributions',
+      ),
+      // ~5 ms when added, most of it indexing the 20,000 entries by id the first time.
+      20,
+    );
+    final goalsEngine = withGoals();
+    final first = goalsEngine.goals(today: 20260925);
+    expect(goalsEngine.goals(today: 20260925), same(first), reason: 'remembered for the day');
   });
 
   group("Ledger.finance: what the finance providers read (the heavy data with migration 0013's accounts)", () {

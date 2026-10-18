@@ -5,39 +5,59 @@ part of 'writes.dart';
 // SMS importer queues what it read with.
 
 /// One item of `POST /personal/batch` (personal/schemas.py PersonalBatchItem): an account made or
-/// changed, or an entry made, changed or deleted.
+/// changed; an entry, a goal or a goal contribution made, changed or deleted.
 ///
-/// Payloads are the full state the account or entry is left in. The server keeps a field only
-/// when its key is left out, and the generated client sends every key (null too), so an edit
-/// starts from the entry as it is ([personalBody]) and changes only what it means to. The version
-/// an update or a delete sends is filled in from what the device has when it's queued.
+/// Payloads are the full state the account, entry, goal or contribution is left in. The server
+/// keeps a field only when its key is left out, and the generated client sends every key (null
+/// too), so an edit starts from the row as it is ([personalBody], goalBody) and changes only
+/// what it means to. The version an update or a delete sends is filled in from what the device
+/// has when it's queued.
 final class BatchItem {
-  BatchItem.createAccount(this.id, PersonalAccountIn this.account)
-    : kind = PersonalBatchItemKindEnum.account,
-      op = PersonalBatchItemOpEnum.create,
-      transaction = null;
+  const BatchItem._(this.kind, this.op, this.id, {this.account, this.transaction, this.goal, this.goalContribution});
 
-  BatchItem.updateAccount(this.id, PersonalAccountIn this.account)
-    : kind = PersonalBatchItemKindEnum.account,
-      op = PersonalBatchItemOpEnum.update,
-      transaction = null;
+  const BatchItem.createAccount(String id, PersonalAccountIn account)
+    : this._(PersonalBatchItemKindEnum.account, PersonalBatchItemOpEnum.create, id, account: account);
 
-  BatchItem.createEntry(this.id, PersonalTxnIn this.transaction)
-    : kind = PersonalBatchItemKindEnum.transaction,
-      op = PersonalBatchItemOpEnum.create,
-      account = null;
+  const BatchItem.updateAccount(String id, PersonalAccountIn account)
+    : this._(PersonalBatchItemKindEnum.account, PersonalBatchItemOpEnum.update, id, account: account);
 
-  BatchItem.updateEntry(this.id, PersonalTxnIn this.transaction)
-    : kind = PersonalBatchItemKindEnum.transaction,
-      op = PersonalBatchItemOpEnum.update,
-      account = null;
+  const BatchItem.createEntry(String id, PersonalTxnIn transaction)
+    : this._(PersonalBatchItemKindEnum.transaction, PersonalBatchItemOpEnum.create, id, transaction: transaction);
 
-  /// As DELETE does: a transfer leg takes its partner with it.
-  BatchItem.deleteEntry(this.id)
-    : kind = PersonalBatchItemKindEnum.transaction,
-      op = PersonalBatchItemOpEnum.delete,
-      account = null,
-      transaction = null;
+  const BatchItem.updateEntry(String id, PersonalTxnIn transaction)
+    : this._(PersonalBatchItemKindEnum.transaction, PersonalBatchItemOpEnum.update, id, transaction: transaction);
+
+  /// As DELETE does: a transfer leg takes its partner with it, and each its contributions.
+  const BatchItem.deleteEntry(String id)
+    : this._(PersonalBatchItemKindEnum.transaction, PersonalBatchItemOpEnum.delete, id);
+
+  const BatchItem.createGoal(String id, PersonalGoalIn goal)
+    : this._(PersonalBatchItemKindEnum.goal, PersonalBatchItemOpEnum.create, id, goal: goal);
+
+  const BatchItem.updateGoal(String id, PersonalGoalIn goal)
+    : this._(PersonalBatchItemKindEnum.goal, PersonalBatchItemOpEnum.update, id, goal: goal);
+
+  /// As DELETE does: the goal's live contributions go with it.
+  const BatchItem.deleteGoal(String id) : this._(PersonalBatchItemKindEnum.goal, PersonalBatchItemOpEnum.delete, id);
+
+  const BatchItem.createContribution(String id, PersonalGoalContributionIn contribution)
+    : this._(
+        PersonalBatchItemKindEnum.goalContribution,
+        PersonalBatchItemOpEnum.create,
+        id,
+        goalContribution: contribution,
+      );
+
+  const BatchItem.updateContribution(String id, PersonalGoalContributionIn contribution)
+    : this._(
+        PersonalBatchItemKindEnum.goalContribution,
+        PersonalBatchItemOpEnum.update,
+        id,
+        goalContribution: contribution,
+      );
+
+  const BatchItem.deleteContribution(String id)
+    : this._(PersonalBatchItemKindEnum.goalContribution, PersonalBatchItemOpEnum.delete, id);
 
   final PersonalBatchItemKindEnum kind;
   final PersonalBatchItemOpEnum op;
@@ -46,6 +66,8 @@ final class BatchItem {
   final String id;
   final PersonalAccountIn? account;
   final PersonalTxnIn? transaction;
+  final PersonalGoalIn? goal;
+  final PersonalGoalContributionIn? goalContribution;
 
   bool get isAccountCreate => kind == PersonalBatchItemKindEnum.account && op == PersonalBatchItemOpEnum.create;
 
@@ -64,9 +86,12 @@ Never _refuse(String code, String message, {int status = 422}) =>
 /// made offline isn't refused only once it's sent.
 ///
 /// Besides each item's own entity it mirrors what the server changes with it: a deleted or
-/// restored transfer leg's partner (service.change_deleted), the entries an account made,
-/// relabelled or reopened claims (accounts._claim), and the category rule a choice teaches. Every
-/// one goes in the write's entities, so the sync engine waits for all of them.
+/// restored transfer leg's partner (service.change_deleted), the contributions that go and come
+/// back with an entry or a goal (contributions.follow_entry, follow_goal), the entries an account
+/// made, relabelled or reopened claims (accounts._claim), and the category rule a choice teaches.
+/// Every one goes in the write's entities, so the sync engine waits for all of them. After each
+/// entry, goal or contribution it checks nothing is counted twice, as the server does
+/// (contributions.check_counted_once; the goal checks are in writes_goals.dart).
 class _Draft {
   _Draft(LocalWrites w, Ledger l)
     : _w = w,
@@ -85,6 +110,7 @@ class _Draft {
   final String? _adminId;
 
   static const _entry = 'personal_transaction', _account = 'personal_account';
+  static const _goal = 'personal_goal', _contribution = 'personal_goal_contribution';
 
   /// Every entity changed so far, by key: what later items start from.
   final _states = <String, LocalEntity>{};
@@ -140,15 +166,29 @@ class _Draft {
   /// Account [id] as the items so far leave it (deleted ones too), or null.
   Json? account(String id) => _states[LocalEntity.keyOf(_stream, _account, id)]?.data ?? _l.rawAccount(id);
 
+  /// Goal [id] as the items so far leave it (deleted ones too), or null.
+  Json? goal(String id) => _states[LocalEntity.keyOf(_stream, _goal, id)]?.data ?? _l.rawGoal(id);
+
+  /// Contribution [id] as the items so far leave it (deleted ones too), or null.
+  Json? contribution(String id) =>
+      _states[LocalEntity.keyOf(_stream, _contribution, id)]?.data ?? _l.rawContribution(id);
+
+  /// The ids of each kind of entity changed so far (an undone unit's may still be here).
+  final _draftedIds = <String, Set<String>>{};
+
+  /// What changed since nothing counted twice was last checked ([_checkCountedOnce]).
+  final _sinceCheck = <LocalEntity>[];
+
   void _set(String entity, Json data) {
     final e = LocalEntity(_stream, entity, data['id'] as String, data['version'] as int, data);
     _put(_states, e.key, e);
     _put(_changed, e.key, e);
+    (_draftedIds[entity] ??= {}).add(e.entityId);
+    _sinceCheck.add(e);
   }
 
   /// Applies [item] and keeps it to send.
   void add(BatchItem item) {
-    final isAccount = item.kind == PersonalBatchItemKindEnum.account;
     int? version;
     if (item.op != PersonalBatchItemOpEnum.create) {
       // The server sees a claimed entry's old version until its next flush, so the device can't
@@ -156,20 +196,42 @@ class _Draft {
       if (_claimed.contains(item.id)) {
         throw StateError('$item changes an entry an account claimed earlier in this request: send it in a later one');
       }
-      final before = isAccount ? account(item.id) : entry(item.id);
-      version = (before ?? (throw LocalNotFound(isAccount ? 'Account' : 'Transaction')))['version'] as int;
+      final (before, what) = switch (item.kind) {
+        PersonalBatchItemKindEnum.account => (account(item.id), 'Account'),
+        PersonalBatchItemKindEnum.goal => (goal(item.id), 'Goal'),
+        PersonalBatchItemKindEnum.goalContribution => (contribution(item.id), 'Contribution'),
+        _ => (entry(item.id), 'Transaction'),
+      };
+      version = (before ?? (throw LocalNotFound(what)))['version'] as int;
     }
+    final delete = item.op == PersonalBatchItemOpEnum.delete;
     switch ((item.kind.value, item.op.value)) {
       case ('account', 'create'):
         _createAccount(item.id, item.account!);
       case ('account', _):
         _updateAccount(item.id, item.account!);
+      case ('goal', 'create'):
+        _createGoal(item.id, item.goal!);
+      case ('goal', 'update'):
+        _updateGoal(item.id, item.goal!);
+      case ('goal', _):
+        _setGoalDeleted(item.id, true);
+      case ('goal_contribution', 'create'):
+        _createContribution(item.id, item.goalContribution!);
+      case ('goal_contribution', 'update'):
+        _updateContribution(item.id, item.goalContribution!);
+      case ('goal_contribution', _):
+        _setContributionDeleted(item.id, true);
       case (_, 'create'):
         _createEntry(item.id, item.transaction!);
       case (_, 'update'):
         _updateEntry(item.id, item.transaction!);
       case _:
         _setDeleted(item.id, true);
+    }
+    // personal/batch.py run: after each entry, goal or contribution that isn't a delete.
+    if (!delete && item.kind != PersonalBatchItemKindEnum.account) {
+      _checkCountedOnce(goalChanged: item.kind == PersonalBatchItemKindEnum.goal);
     }
     final json = _json(
       PersonalBatchItem(
@@ -179,10 +241,12 @@ class _Draft {
         version: version,
         account: item.account,
         transaction: item.transaction,
+        goal: item.goal,
+        goalContribution: item.goalContribution,
       ).toJson(),
     );
     // The item carries the id and the version; the payload leaves them out.
-    for (final payload in [json['account'], json['transaction']]) {
+    for (final payload in [json['account'], json['transaction'], json['goal'], json['goal_contribution']]) {
       if (payload is Map) {
         payload['id'] = null;
         payload['version'] = null;
@@ -271,6 +335,8 @@ class _Draft {
     }
     final data = _w._personalData(_l, id, body, before);
     _checkEntry(data, before);
+    final amount = data['amount_minor'] as int;
+    if (amount < (before['amount_minor'] as int)) _checkEntryAmount(id, amount);
     _set(_entry, data);
     for (final group in {before['transfer_group_id'], data['transfer_group_id']}) {
       if (group is String) _touch(group);
@@ -278,7 +344,9 @@ class _Draft {
     if (before['category_id'] != data['category_id']) _learn(data);
   }
 
-  /// Deletes or restores entry [id], and a transfer leg's partner in the same state with it.
+  /// Deletes or restores entry [id], and a transfer leg's partner in the same state with it, each
+  /// with its contributions (contributions.follow_entry). A restore is then checked for money
+  /// counted twice, as POST /personal/transactions/{id}/restore checks it.
   void _setDeleted(String id, bool deleted) {
     final t = entry(id) ?? (throw const LocalNotFound('Transaction'));
     if ((t['deleted_at'] != null) == deleted) return;
@@ -296,14 +364,17 @@ class _Draft {
           _refuse('unknown_account', "This entry's account was deleted. Restore the account first");
         }
       }
+      final at = deleted ? _now : leg['deleted_at'] as String;
       _set(_entry, {
         ...leg,
         'deleted_at': deleted ? _now : null,
         'acting_admin_id': _adminId,
         'version': (leg['version'] as int) + 1,
       });
+      _followEntry(leg['id'] as String, deleted, at);
     }
     if (group != null) _touch(group);
+    if (!deleted) _checkCountedOnce(goalChanged: false);
   }
 
   void _learn(Json data) {
@@ -688,8 +759,8 @@ extension FinanceWrites on LocalWrites {
     );
   }
 
-  /// Deletes account [id] (`DELETE /personal/accounts/{id}`). Refused while a live entry is in it:
-  /// close it instead.
+  /// Deletes account [id] (`DELETE /personal/accounts/{id}`). Refused while a live entry is in it
+  /// (close it instead), or while a goal follows it.
   Future<void> deleteAccount(String id) => _setAccountDeleted(id, true);
 
   /// Brings deleted account [id] back (its label stayed its own).
@@ -701,6 +772,9 @@ extension FinanceWrites on LocalWrites {
     if ((before['deleted_at'] != null) == deleted) return;
     if (deleted && (l.personalList(accountId: id, limit: 0)['count'] as int) > 0) {
       _refuse('account_in_use', "This account has entries, so it can't be deleted. Close it instead", status: 409);
+    }
+    if (deleted && l.rawGoals.any((g) => g['deleted_at'] == null && g['linked_account_id'] == id)) {
+      _refuse('account_in_use', "A goal follows this account's balance, so it can't be deleted", status: 409);
     }
     final version = before['version'] as int;
     final now = _now();

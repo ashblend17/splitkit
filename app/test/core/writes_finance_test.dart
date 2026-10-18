@@ -303,12 +303,15 @@ void main() {
     final (out, into) = _legs(_ledger(tester), 'Cash withdrawal');
     final w = _writes(tester);
 
+    // The cash leg went into the Ladakh trip's jar: that contribution goes and comes back with it.
+    final jar = _ledger(tester).rawContributionsOf(entryId: into['id']).single['id'];
     await runWrite(tester, w.deleteTransfer(out['transfer_group_id']));
     var op = _ops(tester).single;
     expect((op.method, op.path, op.query['version']), ('DELETE', '/api/v1/personal/transactions/${out['id']}', '1'));
-    expect([for (final e in op.entities) (e.entityId, e.version)], [(out['id'], 2), (into['id'], 2)]);
+    expect([for (final e in op.entities) (e.entityId, e.version)], [(out['id'], 2), (into['id'], 2), (jar, 2)]);
     expect(op.entities[0].data['deleted_at'], isNotNull);
     expect(op.entities[1].data['deleted_at'], op.entities[0].data['deleted_at']);
+    expect(op.entities[2].data['deleted_at'], op.entities[0].data['deleted_at']);
     var l = _ledger(tester);
     expect([
       l.rawPersonal(out['id'])!['deleted_at'],
@@ -324,7 +327,7 @@ void main() {
     );
     expect(
       [for (final e in op.entities) (e.entityId, e.version, e.data['deleted_at'])],
-      [(into['id'], 3, null), (out['id'], 3, null)],
+      [(into['id'], 3, null), (jar, 3, null), (out['id'], 3, null)],
     );
     l = _ledger(tester);
     expect(l.finance.partnerLeg(out['id'])?.id, into['id']);
@@ -397,7 +400,12 @@ void main() {
     expect(_items(op)[1]['transaction'], isNull);
     expect(
       [for (final e in op.entities) (e.entityId, e.version, e.data['type'], e.data['deleted_at'] != null)],
-      [(out['id'], 2, 'expense', false), (into['id'], 2, 'transfer', true)],
+      [
+        (out['id'], 2, 'expense', false),
+        (into['id'], 2, 'transfer', true),
+        // The Ladakh trip's jar contribution goes with the deleted leg.
+        (l.rawContributionsOf(entryId: into['id']).single['id'], 2, null, true),
+      ],
     );
 
     // Read from an SMS, with the cash half the app made for it (pairedLegId): that half goes.

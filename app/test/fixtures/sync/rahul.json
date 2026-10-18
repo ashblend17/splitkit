@@ -4737,6 +4737,10 @@
    "count": 0
   },
   "personal_accounts": [],
-  "personal_accounts_reported": []
+  "personal_accounts_reported": [],
+  "personal_goals": [],
+  "personal_goals_deleted": [],
+  "goal_contributions": [],
+  "goal_contributions_deleted": []
  }
 }

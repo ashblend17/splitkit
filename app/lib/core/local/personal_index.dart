@@ -42,6 +42,7 @@ class PersonalRow {
       type = raw['type'] as String,
       amount = raw['amount_minor'] as int,
       currency = raw['currency'] as String,
+      description = raw['description'] as String? ?? '',
       categoryId = raw['category_id'] as String?,
       account = raw['account'] as String?,
       merchant = raw['merchant'] as String?,
@@ -81,6 +82,9 @@ class PersonalRow {
   final String type;
   final int amount;
   final String currency;
+
+  /// What it was for, as you wrote it (or the bank SMS gave it).
+  final String description;
   final String? categoryId;
   final String? account;
   final String? merchant;
@@ -116,6 +120,9 @@ class PersonalRow {
   final bool deleted;
 
   bool get income => type == 'income';
+
+  /// Linked to a split or a payment in Split ([expenseId] or [settlementId]).
+  bool get linkedToSplit => expenseId != null || settlementId != null;
 
   /// Read from a bank SMS.
   bool get fromSms => source == 'sms';

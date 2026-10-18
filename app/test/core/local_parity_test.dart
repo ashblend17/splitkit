@@ -61,6 +61,14 @@ void main() {
             'personal_accounts_reported' => (ledger.personalReportedAccounts(), AccountOut.listFromJson),
             'personal_account' => (ledger.personalAccount(arg!), PersonalAccountOut.fromJson),
             'personal_deleted' => (ledger.personalList(deleted: true, limit: 500), PersonalListOut.fromJson),
+            'personal_goals' => (ledger.personalGoalList(), PersonalGoalOut.listFromJson),
+            'personal_goals_deleted' => (ledger.personalGoalList(deleted: true), PersonalGoalOut.listFromJson),
+            'personal_goal' => (ledger.personalGoal(arg!), PersonalGoalOut.fromJson),
+            'goal_contributions' => (ledger.goalContributionList(goalId: arg), PersonalGoalContributionOut.listFromJson),
+            'goal_contributions_deleted' => (
+              ledger.goalContributionList(deleted: true),
+              PersonalGoalContributionOut.listFromJson,
+            ),
             _ => throw StateError('No local view for ${entry.key}'),
           };
           final expected = _normal(parse(entry.value));

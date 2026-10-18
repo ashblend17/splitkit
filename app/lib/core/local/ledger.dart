@@ -16,7 +16,8 @@ import 'package:intl/intl.dart';
 
 import '../categorise/category_rules.dart';
 import '../clock.dart';
-import '../finance/finance.dart' show DayRange, DayRangeContains, FinAccount, FinanceEngine, monthRange;
+import '../finance/finance.dart'
+    show DayRange, DayRangeContains, FinAccount, FinContribution, FinGoal, FinanceEngine, monthRange;
 import 'balance_engine.dart';
 import 'personal_index.dart';
 import 'revisions.dart';
@@ -110,6 +111,10 @@ class Ledger {
           _personal.add(d);
         case 'personal_account':
           _accounts[e.entityId] = d;
+        case 'personal_goal':
+          _goals[e.entityId] = d;
+        case 'personal_goal_contribution':
+          _contributions[e.entityId] = d;
         case 'category':
           _categories[e.entityId] = d;
         case 'layout':
@@ -147,6 +152,8 @@ class Ledger {
   final _settlements = <String, Json>{};
   final _personal = <Json>[];
   final _accounts = <String, Json>{};
+  final _goals = <String, Json>{};
+  final _contributions = <String, Json>{};
   final _categories = <String, Json>{};
   final _layouts = <String, Json>{};
   final _rules = <Json>[];
@@ -777,6 +784,11 @@ class Ledger {
       // Every entry of a type this build knows; the engine skips deleted ones where they don't count.
       entries: _index.rows,
       currency: userOut()['currency'] as String,
+      goals: [
+        for (final g in _goals.values)
+          if (FinGoal.read(g) case final goal?) goal,
+      ],
+      contributions: [for (final c in _contributions.values) FinContribution.read(c)],
     ),
   );
 
@@ -933,6 +945,79 @@ class Ledger {
     'updated_at': a['updated_at'],
     'deleted_at': a['deleted_at'],
     'version': a['version'],
+  };
+
+  // ---- goals (personal/goals.py, personal/contributions.py) ----
+
+  /// GET /personal/goals (goals.py list_goals): your goals by priority, then oldest first; with
+  /// [deleted], only the deleted ones. As synced: progress is the finance engine's
+  /// ([FinanceEngine.goals]).
+  List<Json> personalGoalList({bool deleted = false}) {
+    final rows = [
+      for (final g in _goals.values)
+        if ((g['deleted_at'] != null) == deleted) (g, isoMicros(g['created_at'])),
+    ];
+    rows.sort((a, b) {
+      final p = (a.$1['priority'] as int).compareTo(b.$1['priority'] as int);
+      if (p != 0) return p;
+      final t = a.$2.compareTo(b.$2);
+      return t != 0 ? t : (a.$1['id'] as String).compareTo(b.$1['id'] as String);
+    });
+    return [for (final (g, _) in rows) _goalOut(g)];
+  }
+
+  /// GET /personal/goals/{id}, deleted ones too.
+  Json personalGoal(String id) => _goalOut(_goals[id] ?? (throw const LocalNotFound('Goal')));
+
+  /// personal/schemas.py PersonalGoalOut.
+  Json _goalOut(Json g) => {
+    'id': g['id'],
+    'name': g['name'],
+    'target_minor': g['target_minor'],
+    'currency': g['currency'],
+    'target_date': g['target_date'],
+    'tracking_mode': g['tracking_mode'],
+    'linked_account_id': g['linked_account_id'],
+    'manual_progress_minor': g['manual_progress_minor'],
+    'expected_return_bp': g['expected_return_bp'],
+    'priority': g['priority'],
+    'status': g['status'],
+    'acting_admin_id': g['acting_admin_id'],
+    'created_at': g['created_at'],
+    'updated_at': g['updated_at'],
+    'deleted_at': g['deleted_at'],
+    'version': g['version'],
+  };
+
+  /// GET /personal/goal-contributions (contributions.py list_contributions): of goal [goalId] or
+  /// of every goal, newest first (by date, then made, then id); with [deleted], only the deleted
+  /// ones.
+  List<Json> goalContributionList({String? goalId, bool deleted = false}) {
+    final rows = [
+      for (final c in _contributions.values)
+        if ((c['deleted_at'] != null) == deleted && (goalId == null || c['goal_id'] == goalId)) c,
+    ];
+    rows.sort((a, b) => FinContribution.newestFirst(FinContribution.read(a), FinContribution.read(b)));
+    return [for (final c in rows) _contributionOut(c)];
+  }
+
+  /// GET /personal/goal-contributions/{id}, deleted ones too.
+  Json goalContribution(String id) =>
+      _contributionOut(_contributions[id] ?? (throw const LocalNotFound('Contribution')));
+
+  /// personal/schemas.py PersonalGoalContributionOut.
+  Json _contributionOut(Json c) => {
+    'id': c['id'],
+    'goal_id': c['goal_id'],
+    'transaction_id': c['transaction_id'],
+    'amount_minor': c['amount_minor'],
+    'currency': c['currency'],
+    'date': c['date'],
+    'note': c['note'],
+    'acting_admin_id': c['acting_admin_id'],
+    'created_at': c['created_at'],
+    'deleted_at': c['deleted_at'],
+    'version': c['version'],
   };
 
   /// GET /personal/accounts/reported: each account label your entries carry, most recently
@@ -1174,6 +1259,29 @@ class Ledger {
   Json? rawPersonal(String id) => _index.byId[id]?.raw;
   Json? rawCategory(String id) => _categories[id];
   Json? rawAccount(String id) => _accounts[id];
+  Json? rawGoal(String id) => _goals[id];
+  Json? rawContribution(String id) => _contributions[id];
+
+  /// Every goal as synced, deleted ones too. Shared: callers only read it.
+  Iterable<Json> get rawGoals => _goals.values;
+
+  /// Every contribution as synced, deleted ones too. Shared: callers only read it.
+  Iterable<Json> get rawContributions => _contributions.values;
+
+  /// The contributions (deleted ones too) made with entry [entryId], or to goal [goalId].
+  List<Json> rawContributionsOf({String? entryId, String? goalId}) => [
+    if (entryId != null) ...?_contributionsBy.entry[entryId],
+    if (goalId != null) ...?_contributionsBy.goal[goalId],
+  ];
+
+  late final ({Map<String, List<Json>> entry, Map<String, List<Json>> goal}) _contributionsBy = () {
+    final entry = <String, List<Json>>{}, goal = <String, List<Json>>{};
+    for (final c in _contributions.values) {
+      if (c['transaction_id'] case final String t) (entry[t] ??= []).add(c);
+      (goal[c['goal_id'] as String] ??= []).add(c);
+    }
+    return (entry: entry, goal: goal);
+  }();
   List<Json> rawMembers(String groupId) => _members[groupId] ?? const [];
   Json brief(String userId) => _brief(userId);
 }

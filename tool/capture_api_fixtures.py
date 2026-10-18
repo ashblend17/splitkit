@@ -66,6 +66,8 @@ def main():
         "personal_categories": call("/categories?scope=personal", token=token),
         "personal_accounts": call("/personal/accounts", token=token),
         "personal_accounts_reported": call("/personal/accounts/reported", token=token),
+        "personal_goals": call("/personal/goals", token=token),
+        "goal_contributions": call("/personal/goal-contributions", token=token),
         "analytics_personal": call("/analytics/personal?period=month&on=2026-09-23", token=token),
         "analytics_group": call(f"/analytics/groups/{goa['id']}?on=2026-09-23", token=token),
         "analytics_layout": call("/analytics/layout/personal", token=token),
@@ -146,6 +148,18 @@ def capture_sync():
         if hdfc_account:
             answers["personal_list:hdfc_account"] = call(
                 f"/personal/transactions?account_id={hdfc_account['id']}&limit=500", token=token
+            )
+        # Goals and their contributions (finance revamp Phase 2): the lists, each goal, each
+        # goal's contributions, and the deleted ones.
+        goals = call("/personal/goals", token=token)
+        answers["personal_goals"] = goals
+        answers["personal_goals_deleted"] = call("/personal/goals?deleted=true", token=token)
+        answers["goal_contributions"] = call("/personal/goal-contributions", token=token)
+        answers["goal_contributions_deleted"] = call("/personal/goal-contributions?deleted=true", token=token)
+        for g in goals:
+            answers[f"personal_goal:{g['id']}"] = call(f"/personal/goals/{g['id']}", token=token)
+            answers[f"goal_contributions:{g['id']}"] = call(
+                f"/personal/goal-contributions?goal_id={g['id']}", token=token
             )
         out = {"user": key, "email": email, "snapshots": snapshots, "answers": answers}
         (SYNC_OUT / f"{key}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")

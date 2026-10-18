@@ -81,6 +81,12 @@ class Features {
     this.atmToCash = true,
     this.pairCardBills = true,
     this.refundMatchDays = 60,
+    this.goals = true,
+    this.allocationRules = true,
+    this.holdings = true,
+    this.deadlineNearDays = 30,
+    this.behindGraceDays = 7,
+    this.staleValuationDays = 30,
   });
 
   /// How many unchecked bank SMS entries Overview's "Just in" shows at once.
@@ -154,6 +160,28 @@ class Features {
   /// A refund read from bank SMS is matched to a spend from the same merchant up to this many
   /// days before it.
   final int refundMatchDays;
+
+  /// Personal has goals: what you're saving towards, with progress from contributions, an
+  /// account's balance or a figure you type, what's needed each month and whether you're behind.
+  final bool goals;
+
+  /// Allocation rules: a share of each income planned for a goal or an account, with what's been
+  /// set aside against what was planned.
+  final bool allocationRules;
+
+  /// Investment accounts keep their holdings (funds, shares, gold) with the value you last gave
+  /// each, and net worth counts them.
+  final bool holdings;
+
+  /// A goal whose target date is at most this many days away is due soon.
+  final int deadlineNearDays;
+
+  /// A goal can be behind only once it's this many days old, so a new one isn't behind on its
+  /// second day.
+  final int behindGraceDays;
+
+  /// A holding's value is out of date once it's this many days old.
+  final int staleValuationDays;
 }
 
 final integrationsProvider = Provider<Integrations>((_) => const Integrations());
