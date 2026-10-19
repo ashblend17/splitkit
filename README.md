@@ -395,6 +395,21 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   `appClock` (`lib/core/clock.dart`), which `test/flutter_test_config.dart` pins.
 - On a machine with little free memory, run `flutter test --concurrency=1`.
 
+### An Android beta next to the normal app
+
+To try a build on a phone without updating the installed app, give it another application id:
+
+```sh
+cd app && SPLITKIT_APP_ID_SUFFIX=.beta flutter build apk --release \
+  --dart-define=API_ORIGIN=http://<laptop's LAN IP>:8000 --dart-define=DEV_TOOLS=true
+```
+
+It installs as "Splitkit Beta" (`com.splitkit.splitkit.beta`), with its own data and login, and
+it may use plain HTTP, so it can talk to the compose stack on a laptop on the same Wi-Fi
+(`DEV_TOOLS` keeps the login screen's Server link, should the laptop's address change). Without
+`SPLITKIT_APP_ID_SUFFIX` the build is the normal app, which refuses plain HTTP. Both apps read
+bank SMS, so turn notifications off in one of them.
+
 ### iOS
 
 iOS builds need macOS and Xcode. On a Mac: `cd app && flutter build ios --release

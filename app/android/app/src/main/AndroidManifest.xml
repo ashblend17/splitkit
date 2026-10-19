@@ -10,10 +10,13 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Tablets without a SIM can still install the app; they just have no SMS to read. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false"/>
+    <!-- The label and plain-HTTP setting come from build.gradle.kts: a beta build is
+         "Splitkit Beta" and may talk to a laptop over http. -->
     <application
-        android:label="splitkit"
+        android:label="${appLabel}"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="${usesCleartextTraffic}">
         <activity
             android:name=".MainActivity"
             android:exported="true"
