@@ -7,3 +7,6 @@ splitkit-design/*
 CLAUDE.md
 ISSUES.md
 .claude/worktrees/
+
+# tool/build.sh output
+/dist/

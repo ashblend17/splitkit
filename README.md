@@ -31,6 +31,33 @@ The API container runs `alembic upgrade head` on start. Seeding never runs autom
 The system categories and default dashboards are reference data, added by migration 0009 to
 every database (the seed has the same rows; `tests/api/test_reference_data.py` keeps them equal).
 
+## Building
+
+`tool/build.sh` builds any part, or all of it, in one go (`tool/build.sh --help` lists every
+option):
+
+```sh
+tool/build.sh apk --api-origin https://splitkit.example.com     # Android APK to install
+tool/build.sh aab --api-origin https://splitkit.example.com     # App Bundle for Google Play
+tool/build.sh web                                               # static web bundle
+tool/build.sh images                                            # api, tricount and web images
+tool/build.sh ios --api-origin https://…                        # on a Mac
+tool/build.sh all --api-origin https://splitkit.example.com --check
+```
+
+- Files land in `dist/` (gitignored) as `splitkit-<version>-<build>-<commit>-<mode>.<ext>`, with
+  `dist/SHA256SUMS`. A build with uncommitted changes in `app/` or `api/` is marked `-dirty`.
+- The build number is the number of commits, so every build is newer than the one before
+  (Android won't install an "update" with a lower one). `--build-name` / `--build-number`
+  override it.
+- Images are tagged `:latest` (what `docker compose up -d --no-build` runs) and
+  `:<version>-<build>-<commit>`. The image `:latest` pointed at before keeps a tag of its own,
+  so going back is `docker tag splitkit-api:<old tag> splitkit-api:latest` (and the same for
+  `tricount` and `web`). `--push <user>/<repo>` also pushes them as the `split-*` tags
+  `docker-compose.prod.yml` pulls, plus one tag per version.
+- Phone builds need `--api-origin` (or `--dev-tools`, to type the server on the phone). `--check`
+  runs analyze and the tests first.
+
 ## API development
 
 ```sh
@@ -400,9 +427,11 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
 To try a build on a phone without updating the installed app, give it another application id:
 
 ```sh
-cd app && SPLITKIT_APP_ID_SUFFIX=.beta flutter build apk --release \
-  --dart-define=API_ORIGIN=http://<laptop's LAN IP>:8000 --dart-define=DEV_TOOLS=true
+tool/build.sh apk --beta --api-origin http://<laptop's LAN IP>:8000 --dev-tools
 ```
+
+(`--beta` sets `SPLITKIT_APP_ID_SUFFIX=.beta` for Gradle; `flutter build apk` with that variable
+does the same.)
 
 It installs as "Splitkit Beta" (`com.splitkit.splitkit.beta`), with its own data and login, and
 it may use plain HTTP, so it can talk to the compose stack on a laptop on the same Wi-Fi
