@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/copy/copy.dart';
@@ -6,6 +7,7 @@ import '../../core/copy/finance_copy.dart';
 import '../../core/finance/finance.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
+import 'plans.dart';
 
 /// The colour of a goal's state chip.
 StatusTone goalStateTone(GoalState s) => switch (s) {
@@ -17,9 +19,10 @@ StatusTone goalStateTone(GoalState s) => switch (s) {
 };
 
 /// One goal in a list (the Goals tab, Overview's top goals): its name and state, what's saved as
-/// a bar, "₹17,000 of ₹60,000 · 28%" and its timeline ("₹4,777.78/month to May 2027"). A tap
-/// opens it (/personal/goals/:goalId).
-class GoalCard extends StatelessWidget {
+/// a bar (with what your rules planned and isn't saved yet outlined after it), "₹17,000 of
+/// ₹60,000 · 28%" and its timeline ("₹4,777.78/month to May 2027"). A tap opens it
+/// (/personal/goals/:goalId).
+class GoalCard extends ConsumerWidget {
   const GoalCard(this.progress, {super.key, this.compact = false});
 
   final GoalProgress progress;
@@ -28,9 +31,10 @@ class GoalCard extends StatelessWidget {
   final bool compact;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final p = progress;
     final timeline = goalTimeline(p);
+    final planned = outstandingOf(goalOutstandingPlans(ref, p.goal).value ?? const []);
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -44,7 +48,12 @@ class GoalCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 10),
-        ActualPlannedBar(actual: p.barFraction, actualLabel: money(p.progressMinor, p.goal.currency)),
+        ActualPlannedBar(
+          actual: p.barFraction,
+          planned: planned / p.goal.targetMinor,
+          actualLabel: money(p.progressMinor, p.goal.currency),
+          plannedLabel: planned > 0 ? money(planned, p.goal.currency) : null,
+        ),
         const SizedBox(height: 8),
         Text(goalAmountLine(p), style: SkText.body(13, 600)),
         if (timeline != null) ...[

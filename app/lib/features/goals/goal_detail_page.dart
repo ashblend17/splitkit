@@ -17,12 +17,14 @@ import 'contribution_sheet.dart';
 import 'goal_card.dart';
 import 'goal_editor_sheet.dart';
 import 'goal_sheet.dart';
+import 'plans.dart';
 
 /// One goal (/personal/goals/:goalId): its progress (the % shown, the true % when it's over, what's
 /// left, the months left and what's needed each month, or that it's overdue or has no date; for a
 /// goal that's behind, where it should be by now), the estimate with returns, the account it
-/// follows or "Update progress", and its contributions, newest first. The menu edits, pauses or
-/// resumes, completes, archives or deletes it (with Undo).
+/// follows or "Update progress", what your allocation rules planned for it and isn't saved yet
+/// (each with "Record"), and its contributions, newest first. The menu edits, pauses or resumes,
+/// completes, archives or deletes it (with Undo).
 class GoalDetailPage extends ConsumerWidget {
   const GoalDetailPage({super.key, required this.goalId});
 
@@ -216,6 +218,7 @@ class _GoalBody extends ConsumerWidget {
       children: [
         _progressCard(context, ref),
         if (g.mode == GoalMode.linkedBalance) ...[const SizedBox(height: 12), _followsCard(context, ref)],
+        PlannedList(p),
         if (goalEstimateSentence(p) case final estimate?) ...[
           const SizedBox(height: 12),
           SkCard(
@@ -270,6 +273,8 @@ class _GoalBody extends ConsumerWidget {
     final over = goalOverLine(p);
     final expected = goalExpectedLine(p);
     final takes = g.mode == GoalMode.contribution && g.status != GoalStatus.archived;
+    // Planned by your rules and not saved yet: outlined on the bar, never in the progress or %.
+    final planned = outstandingOf(goalOutstandingPlans(ref, g).value ?? const []);
     Widget line(String label, String value, {Color? color}) => Semantics(
       container: true,
       label: '$label: $value',
@@ -312,10 +317,17 @@ class _GoalBody extends ConsumerWidget {
             Text(over, style: SkText.body(13, 600, color: SkColors.personalInk)),
           ],
           const SizedBox(height: 12),
-          ActualPlannedBar(actual: p.barFraction, actualLabel: money(p.progressMinor, c), height: 12),
+          ActualPlannedBar(
+            actual: p.barFraction,
+            planned: planned / g.targetMinor,
+            actualLabel: money(p.progressMinor, c),
+            plannedLabel: planned > 0 ? money(planned, c) : null,
+            height: 12,
+          ),
           const SizedBox(height: 8),
           Text('${money(p.progressMinor, c)} of ${money(g.targetMinor, c)}', style: SkText.body(14, 600)),
           if (!p.reached) line('Left to save', money(p.remainingMinor, c)),
+          if (planned > 0) line('Planned, not yet saved', money(planned, c), color: SkColors.personalInk),
           if (g.targetDay case final day?) line('Target date', goalMonthLabel(day)),
           if (p.monthsLeft case final months? when !p.reached) line('Time left', monthsLeftLabel(months)),
           if (p.requiredMonthlyMinor case final monthly?) line('Needed each month', money(monthly, c)),
@@ -383,7 +395,7 @@ class _GoalBody extends ConsumerWidget {
                   'Move money to ${account.name}',
                   size: SkButtonSize.small,
                   variant: SkButtonVariant.strong,
-                  onPressed: () => showPersonalTxnSheet(context, type: 'transfer'),
+                  onPressed: () => showPersonalTxnSheet(context, type: 'transfer', toAccountId: account.id),
                 ),
               if (account != null)
                 SkButton(

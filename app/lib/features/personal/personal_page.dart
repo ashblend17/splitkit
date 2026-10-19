@@ -20,10 +20,11 @@ import '../sms/sms_prompt.dart';
 import 'accounts_card.dart';
 import 'just_in.dart';
 import 'personal_txn_sheet.dart';
+import 'planned_actual_card.dart';
 
 /// Personal's Overview tab: your own income and spending, kept apart from groups (screen 11).
-/// In the design's order (finance revamp §2.4): net worth, this month's cash flow, your top
-/// goals, bank SMS, then Recent. Entries are added with the floating "Add entry" (or the rail
+/// In the design's order (finance revamp §2.4): net worth, this month's cash flow and what was
+/// planned from its income, your top goals, bank SMS, then Recent. Entries are added with the floating "Add entry" (or the rail
 /// and sidebar).
 class PersonalPage extends ConsumerStatefulWidget {
   const PersonalPage({super.key});
@@ -121,7 +122,8 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
     );
   }
 
-  /// Your accounts and net worth, then this month's cash flow.
+  /// Your accounts and net worth, this month's cash flow, then what your rules planned from its
+  /// income against what's set aside.
   Widget _thisMonth(AsyncValue<CashFlow> flow, bool groupShare) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -133,7 +135,7 @@ class _PersonalPageState extends ConsumerState<PersonalPage> {
         builder: (f) => _summaryCard(f, groupShare: groupShare),
       ),
       const SizedBox(height: 20),
-      // Planned against actual (allocation rules, Phase 3) goes here, under cash flow.
+      PlannedActualCard(month: _month),
     ],
   );
 

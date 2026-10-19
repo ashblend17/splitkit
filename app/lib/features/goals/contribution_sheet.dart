@@ -16,14 +16,20 @@ import '../personal/personal_txn_sheet.dart';
 import 'goal_sheet.dart';
 
 /// "Add money" to goal [p], as its mode allows: a contribution for a goal that counts them
-/// ([ContributionSheet]); for one that follows an account, the transfer sheet, to move money
-/// there; for one tracked by hand, "Update progress".
-Future<void> showAddMoney(BuildContext context, GoalProgress p) async {
+/// ([ContributionSheet]); for one that follows an account, the transfer sheet into that account,
+/// to move money there; for one tracked by hand, "Update progress". [amountMinor] fills the amount
+/// (a plan's "Record": what's left of it).
+Future<void> showAddMoney(BuildContext context, GoalProgress p, {int? amountMinor}) async {
   switch (p.goal.mode) {
     case GoalMode.contribution:
-      await showGoalSheet<bool>(context, ContributionSheet(goal: p));
+      await showGoalSheet<bool>(context, ContributionSheet(goal: p, amountMinor: amountMinor));
     case GoalMode.linkedBalance:
-      await showPersonalTxnSheet(context, type: 'transfer');
+      await showPersonalTxnSheet(
+        context,
+        type: 'transfer',
+        toAccountId: p.goal.linkedAccountId,
+        amountMinor: amountMinor,
+      );
     case GoalMode.manual:
       await showUpdateProgressSheet(context, p);
   }
@@ -52,12 +58,13 @@ enum _How {
 /// and note, and for a new one how the money moved: not recorded anywhere, between two of your
 /// accounts (a transfer, made with it), invested (an investment entry, made with it), or an
 /// entry already there (a transfer in or an investment that counts toward no goal yet, of at
-/// least this much).
+/// least this much). [amountMinor] fills a new one's amount.
 class ContributionSheet extends ConsumerStatefulWidget {
-  const ContributionSheet({super.key, required this.goal, this.existing});
+  const ContributionSheet({super.key, required this.goal, this.existing, this.amountMinor});
 
   final GoalProgress goal;
   final ContributionView? existing;
+  final int? amountMinor;
 
   @override
   ConsumerState<ContributionSheet> createState() => _ContributionSheetState();
@@ -67,7 +74,10 @@ class _ContributionSheetState extends ConsumerState<ContributionSheet> {
   ContributionView? get _existing => widget.existing;
   String get _currency => widget.goal.goal.currency;
   late final _amount = TextEditingController(
-    text: _existing == null ? '' : amountFieldText(_existing!.contribution.amountMinor, _currency),
+    text: switch (_existing?.contribution.amountMinor ?? widget.amountMinor) {
+      final minor? => amountFieldText(minor, _currency),
+      null => '',
+    },
   );
   late final _note = TextEditingController(text: _existing?.contribution.note ?? '');
   late DateTime _date = _existing == null ? _today() : localDay(_existing!.contribution.day);

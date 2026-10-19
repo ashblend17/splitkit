@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api.dart';
 import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
+import '../../core/copy/finance_copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/finance/allocation_providers.dart';
 import '../../core/finance/finance.dart';
 import '../../core/finance/finance_providers.dart';
 import '../../core/integrations.dart';
+import '../../core/local/providers.dart' show localStoreProvider;
 import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
@@ -15,6 +18,7 @@ import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import '../../core/sms/sms.dart';
+import '../goals/plans.dart';
 import '../sms/sms_importer.dart';
 import 'account_sheet.dart';
 import 'holdings_section.dart';
@@ -23,12 +27,17 @@ import 'txn_actions.dart';
 /// Add a personal entry, or open one ([existing]) to edit or delete it. [type] is what a new one
 /// starts as, the API's type ('expense', 'income', 'transfer', 'refund'…); [refundOf] starts a
 /// refund of that spend. Half of a transfer opens the whole transfer; a balance correction opens
-/// read-only.
+/// read-only. A new entry can start with [amountMinor], and a new transfer with its sides picked
+/// ([fromAccountId], [toAccountId]; one that isn't an open account is left to pick): "Move money
+/// to Emergency savings", or "Record" for a plan to an account.
 Future<void> showPersonalTxnSheet(
   BuildContext context, {
   String type = 'expense',
   PersonalTxnOut? existing,
   PersonalTxnOut? refundOf,
+  String? fromAccountId,
+  String? toAccountId,
+  int? amountMinor,
 }) => showModalBottomSheet<void>(
   context: context,
   useRootNavigator: true,
@@ -38,6 +47,9 @@ Future<void> showPersonalTxnSheet(
     type: existing?.type.value ?? (refundOf == null ? type : 'refund'),
     existing: existing,
     refundOf: refundOf,
+    fromAccountId: existing == null ? fromAccountId : null,
+    toAccountId: existing == null ? toAccountId : null,
+    amountMinor: existing == null ? amountMinor : null,
   ),
 );
 
@@ -58,10 +70,21 @@ const _moreTypes = {'investment_contribution': 'Invested', 'investment_withdrawa
 const _maxAccountChips = 6;
 
 class _PersonalTxnSheet extends ConsumerStatefulWidget {
-  const _PersonalTxnSheet({required this.type, this.existing, this.refundOf});
+  const _PersonalTxnSheet({
+    required this.type,
+    this.existing,
+    this.refundOf,
+    this.fromAccountId,
+    this.toAccountId,
+    this.amountMinor,
+  });
   final String type;
   final PersonalTxnOut? existing;
   final PersonalTxnOut? refundOf;
+
+  /// A new transfer's sides and a new entry's amount, to start with.
+  final String? fromAccountId, toAccountId;
+  final int? amountMinor;
 
   @override
   ConsumerState<_PersonalTxnSheet> createState() => _PersonalTxnSheetState();
@@ -70,18 +93,17 @@ class _PersonalTxnSheet extends ConsumerStatefulWidget {
 class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
   late String _type = widget.type;
   late final _amountText = TextEditingController(
-    text: widget.existing == null
-        ? ''
-        : money(
-            widget.existing!.amountMinor,
-            widget.existing!.currency,
-          ).substring(currencySymbol(widget.existing!.currency).length),
+    text: switch ((widget.existing, widget.amountMinor)) {
+      (final t?, _) => money(t.amountMinor, t.currency).substring(currencySymbol(t.currency).length),
+      (null, final minor?) => money(minor, _currency).substring(currencySymbol(_currency).length),
+      _ => '',
+    },
   );
   late final _description = TextEditingController(
     text: widget.existing?.description ?? widget.refundOf?.description ?? '',
   );
   late final _notes = TextEditingController(text: widget.existing?.notes ?? '');
-  late int? _amount = widget.existing?.amountMinor;
+  late int? _amount = widget.existing?.amountMinor ?? widget.amountMinor;
   late String? _categoryId = widget.existing?.category?.id ?? widget.refundOf?.category?.id;
 
   /// Once you pick (or when editing, or refunding a spend), the category stops following what
@@ -93,8 +115,13 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
   /// The account of anything but a transfer (null: no account).
   late String? _accountId = widget.existing?.accountId ?? widget.refundOf?.accountId;
 
-  /// A transfer's accounts as picked; until then, as [_sides] has them.
-  String? _pickedFrom, _pickedTo;
+  /// A transfer's accounts as picked (or as the sheet was opened with); until then, as [_sides]
+  /// has them.
+  late String? _pickedFrom = widget.fromAccountId, _pickedTo = widget.toAccountId;
+
+  /// Whether the sides the sheet was opened with have been checked against your accounts (one
+  /// that isn't open is left to pick), once they're loaded.
+  late bool _startChecked = widget.fromAccountId == null && widget.toAccountId == null;
 
   /// The spend a refund gives money back for, if any.
   late String? _refundOfId = widget.existing?.refundOfId ?? widget.refundOf?.id;
@@ -107,6 +134,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
   FinanceEngine? _finance;
 
   bool get _editing => widget.existing != null;
+  String get _currency => ref.read(meProvider).currency;
 
   /// The entry opened is half of a transfer.
   bool get _wasTransfer =>
@@ -193,6 +221,12 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
         ? ref.watch(accountsProvider).value ?? const <FinAccount>[]
         : const <FinAccount>[];
     final active = accounts.where((a) => !a.closed).length;
+    if (!_startChecked && accounts.isNotEmpty) {
+      _startChecked = true;
+      bool open(String? id) => accounts.any((a) => a.id == id && !a.closed);
+      if (!open(_pickedFrom)) _pickedFrom = null;
+      if (!open(_pickedTo)) _pickedTo = null;
+    }
     final noun = _nouns[_type] ?? 'entry';
     final canSave =
         !_busy &&
@@ -366,6 +400,9 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
                         Expanded(child: _notesField()),
                       ],
                     ),
+                    if (features.allocationRules)
+                      if (widget.existing case final t? when t.type == PersonalTxnOutTypeEnum.income)
+                        _IncomePlans(incomeId: t.id),
                     // What it can become, for the entry as it is (not once another type is picked).
                     if (widget.existing case final t? when unchangedType) ...[
                       const SizedBox(height: 18),
@@ -999,10 +1036,12 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
       }
     }
     setState(() => _busy = true);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final writes = ref.read(writesProvider);
+      String? planned;
       if (existing == null) {
-        await _create(writes);
+        planned = _plannedLine(await _create(writes));
       } else if (_wasTransfer) {
         await _saveTransfer(writes, existing);
       } else if (_transfer) {
@@ -1014,6 +1053,11 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
       }
       refreshPersonal(ref.invalidate);
       if (mounted) Navigator.of(context).pop();
+      if (planned != null) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(planned)));
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
@@ -1022,7 +1066,8 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
     }
   }
 
-  Future<void> _create(LocalWrites writes) async {
+  /// Saves the new entry; resolves to its id when it's an income (which the rules may plan from).
+  Future<String?> _create(LocalWrites writes) async {
     final description = _description.text.trim();
     switch (_type) {
       case 'transfer':
@@ -1047,7 +1092,7 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
           channel: _channel,
         );
       default:
-        await writes.createPersonal(
+        final id = await writes.createPersonal(
           _body(
             PersonalTxnIn(
               type: PersonalTxnInTypeEnum.expense,
@@ -1058,7 +1103,30 @@ class _PersonalTxnSheetState extends ConsumerState<_PersonalTxnSheet> {
             ),
           ),
         );
+        return _type == 'income' ? id : null;
     }
+    return null;
+  }
+
+  /// "Planned: ₹8,500 → Ladakh trip, ₹5,000 → Emergency savings": what the allocation rules
+  /// planned from new income [id] (the write made the plans with it), or null for none.
+  String? _plannedLine(String? id) {
+    if (id == null || !ref.read(featuresProvider).allocationRules) return null;
+    final f = ref.read(localStoreProvider).value?.ledger.finance;
+    final plans = [
+      for (final v in f?.plansOfIncome(id) ?? const <PlanView>[])
+        if (v.status != PlanStatus.cancelled) v,
+    ];
+    if (plans.isEmpty) return null;
+    // In the rules' order, as they were made.
+    final order = {for (final (i, r) in f!.liveRules.indexed) r.id: i};
+    plans.sort((a, b) => (order[a.plan.ruleId] ?? order.length).compareTo(order[b.plan.ruleId] ?? order.length));
+    final each = [
+      for (final v in plans)
+        '${money(v.plan.plannedMinor, v.plan.currency)} → '
+            '${destinationName(f, goalId: v.plan.goalId, accountId: v.plan.accountId)}',
+    ];
+    return 'Planned: ${each.join(', ')}';
   }
 
   /// Half of a transfer: both halves change together; as another type, the transfer is undone
@@ -1186,6 +1254,61 @@ class _SmsMessageState extends ConsumerState<_SmsMessage> {
           ),
         );
       },
+    );
+  }
+}
+
+/// "Plans from this income": what each allocation rule planned from it, where to, and how far it
+/// has got (cancelled ones say why). Nothing when it has none.
+class _IncomePlans extends ConsumerWidget {
+  const _IncomePlans({required this.incomeId});
+  final String incomeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plans = ref.watch(incomePlansProvider(incomeId)).value ?? const <PlanView>[];
+    if (plans.isEmpty) return const SizedBox.shrink();
+    final finance = ref.watch(financeEngineProvider).value;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 18),
+        Text('Plans from this income', style: SkText.body(14, 600)),
+        const SizedBox(height: 2),
+        for (final v in plans) _row(v, finance),
+      ],
+    );
+  }
+
+  Widget _row(PlanView v, FinanceEngine? f) {
+    final p = v.plan, c = p.currency;
+    final cancelled = v.status == PlanStatus.cancelled;
+    final note = switch (v.status) {
+      PlanStatus.partial => '${money(v.filledMinor, c)} saved so far',
+      PlanStatus.cancelled => v.cancelReason == null ? null : cancelReasonLabel(v.cancelReason!),
+      _ => null,
+    };
+    return Padding(
+      key: ValueKey('income-plan:${p.id}'),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${money(p.plannedMinor, c)} → ${destinationName(f, goalId: p.goalId, accountId: p.accountId)}',
+                  style: SkText.body(14, 600, color: cancelled ? SkColors.ink2 : SkColors.ink),
+                ),
+                if (note != null) Text(note, style: SkText.body(12, 400, color: SkColors.ink2)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          StatusChip(planStatusLabel(v.status), tone: planStatusTone(v.status)),
+        ],
+      ),
     );
   }
 }

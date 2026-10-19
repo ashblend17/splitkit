@@ -12,6 +12,7 @@ import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../goals/contribution_sheet.dart';
 import '../goals/goal_editor_sheet.dart';
+import '../goals/rule_editor_sheet.dart';
 import '../home/activity_filters.dart';
 import '../personal/personal_txn_sheet.dart';
 import '../sms/sms_watcher.dart';
@@ -24,7 +25,8 @@ import 'app_mode.dart';
 /// The Split | Personal switch sits above every tab on a phone, and in the rail and sidebar.
 /// Profile and Admin belong to both modes. The rail and sidebar carry the add button; on
 /// phones it floats on Home and a group's page (Split) and on Overview and Transactions
-/// (Personal); Goals floats "New goal" instead, and a goal that takes contributions "Add money".
+/// (Personal); Goals floats "New goal" instead, the rules page "Add rule", and a goal that takes
+/// contributions "Add money".
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell, required this.location});
 
@@ -94,6 +96,9 @@ class AppShell extends ConsumerWidget {
     }
     if (location == '/personal/goals') {
       return AddSplitFab(label: 'New goal', color: SkColors.personal, onPressed: () => showGoalEditor(context));
+    }
+    if (location == '/personal/goals/rules') {
+      return AddSplitFab(label: 'Add rule', color: SkColors.personal, onPressed: () => showRuleEditor(context));
     }
     if (_goalPage.firstMatch(location)?.group(1) case final goalId? when goalId != 'rules') {
       final goal = ref.watch(goalProvider(goalId)).value;

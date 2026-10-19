@@ -8,6 +8,7 @@ import 'package:splitkit/design_system/design_system.dart';
 import 'package:splitkit/features/common/common.dart';
 import 'package:splitkit/features/goals/goal_detail_page.dart';
 import 'package:splitkit/features/goals/goals_page.dart';
+import 'package:splitkit/features/goals/top_goals_card.dart';
 import 'package:splitkit/features/shell/app_mode.dart';
 
 import '../fake_backend.dart';
@@ -505,7 +506,8 @@ void main() {
         expect(find.text('All goals'), findsOneWidget);
         expect(find.text('₹17,000 of ₹60,000 · 28%'), findsOneWidget);
         expect(find.text('Gold coins'), findsOneWidget);
-        await _tap(tester, find.text('Ladakh trip'));
+        // Ladakh trip is also a row of "Planned from income".
+        await _tap(tester, find.descendant(of: find.byType(TopGoalsCard), matching: find.text('Ladakh trip')));
         expect(find.byType(GoalDetailPage), findsOneWidget);
         expect(tester.takeException(), isNull);
       });

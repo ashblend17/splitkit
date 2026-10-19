@@ -1,10 +1,11 @@
-/// Words for the finance revamp's goals (design §2.4): state labels, the timeline, what's needed
-/// each month and the estimate with returns. core/finance only counts; formatting stays here, at
-/// the UI boundary.
+/// Words for the finance revamp's goals and allocation rules (design §2.4, §3.4): state labels,
+/// the timeline, what's needed each month, the estimate with returns, what a rule sets aside and
+/// how far a plan has got. core/finance only counts; formatting stays here, at the UI boundary.
 library;
 
 import 'package:intl/intl.dart';
 
+import '../finance/allocation.dart';
 import '../finance/goals.dart';
 import '../finance/model.dart';
 import '../money/money.dart';
@@ -98,3 +99,48 @@ String goalIssueLabel(GoalIssue issue) => switch (issue) {
   GoalIssue.accountMissing => "The account it followed is gone. Pick another, or track it another way.",
   GoalIssue.followsLiability => 'It follows a card or a loan, whose balance is what you owe. Pick a savings account.',
 };
+
+/// What a rule sets aside, without its name: "10% of each income", "₹5,000 from each income".
+String ruleAmountLabel(FinRule r) => r.kind == AllocationKind.percentage
+    ? '${returnPercentLabel(r.percentBp ?? 0)} of each income'
+    : '${formatMinor(r.amountMinor ?? 0, currency: r.currency)} from each income';
+
+/// "1 plan made", "3 plans made", or "No plans yet".
+String planCountLabel(int n) => n == 0 ? 'No plans yet' : '$n ${n == 1 ? 'plan' : 'plans'} made';
+
+/// A plan's state on its chip.
+String planStatusLabel(PlanStatus s) => switch (s) {
+  PlanStatus.planned => 'Planned',
+  PlanStatus.partial => 'Partly saved',
+  PlanStatus.fulfilled => 'Saved',
+  PlanStatus.cancelled => 'Cancelled',
+};
+
+/// Why a plan was cancelled.
+String cancelReasonLabel(CancelReason r) => switch (r) {
+  CancelReason.incomeDeleted => 'Its income was deleted',
+  CancelReason.noLongerApplies => 'The rule no longer applies to this income',
+};
+
+/// The over-100% warning ([AllocationLoad.over100]): "Your rules set aside 110% of a salary into
+/// HDFC. That's allowed: the app won't change them." [category] and [account] name the filters of
+/// the worst case, when it has them; [would] is the editor's version, with the rule being edited.
+/// Fixed amounts, in [currency], are said apart.
+String overLoadSentence(
+  AllocationLoad load, {
+  String? category,
+  String? account,
+  bool would = false,
+  String currency = 'INR',
+}) {
+  final kind = category?.toLowerCase();
+  final income = kind == null || kind == 'income' ? 'an income' : '${_article(kind)} $kind';
+  final into = account == null ? '' : ' into $account';
+  final fixed = load.fixedMinor <= 0
+      ? ''
+      : ' Fixed amounts add up to ${formatMinor(load.fixedMinor, currency: currency)} more.';
+  return 'Your rules ${would ? 'would set' : 'set'} aside ${returnPercentLabel(load.worstBp)} of $income$into.$fixed '
+      "That's allowed: the app won't change them.";
+}
+
+String _article(String word) => 'aeiou'.contains(word.isEmpty ? 'x' : word[0]) ? 'an' : 'a';

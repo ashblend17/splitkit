@@ -4,15 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/data/providers.dart';
 import '../../core/finance/finance.dart';
 import '../../core/finance/goal_providers.dart';
+import '../../core/integrations.dart';
 import '../../core/layout/layout.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import 'goal_card.dart';
 import 'goal_editor_sheet.dart';
+import 'rules_page.dart';
 
-/// Personal → Goals (/personal/goals): what you're saving towards. Active goals first, then
-/// paused ones, then "Done and archived", folded away. On a phone the floating "New goal" adds
+/// Personal → Goals (/personal/goals): what you're saving towards. The way to your allocation
+/// rules on top, then active goals, then paused ones, then "Done and archived", folded away. On a phone the floating "New goal" adds
 /// one; beside the rail and sidebar, the button by the title does.
 class GoalsPage extends ConsumerStatefulWidget {
   const GoalsPage({super.key});
@@ -71,6 +73,12 @@ class _GoalsPageState extends ConsumerState<GoalsPage> {
                   ),
                 ),
               ),
+              if (list != null && ref.watch(featuresProvider).allocationRules)
+                const SliverToBoxAdapter(
+                  child: TabPageWidth(
+                    child: Padding(padding: EdgeInsets.only(bottom: 16), child: RulesCard()),
+                  ),
+                ),
               if (list == null)
                 SliverToBoxAdapter(
                   child: TabPageWidth(

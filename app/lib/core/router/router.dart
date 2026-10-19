@@ -12,6 +12,7 @@ import '../../features/expenses/add_expense_page.dart';
 import '../../features/expenses/expense_detail_page.dart';
 import '../../features/goals/goal_detail_page.dart';
 import '../../features/goals/goals_page.dart';
+import '../../features/goals/rules_page.dart';
 import '../../features/gallery/components_gallery_page.dart';
 import '../../features/groups/group_detail_page.dart';
 import '../../features/groups/group_list_page.dart';
@@ -162,9 +163,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 // No Goals tab while Features.goals is off.
                 redirect: (_, _) => ref.read(featuresProvider).goals ? null : '/personal',
                 builder: (_, _) => const GoalsPage(),
-                // The allocation rules page (Phase 3) goes first here, as 'rules', so it isn't
-                // taken for a goal's id.
+                // The allocation rules page goes first here, so 'rules' isn't taken for a goal's id.
                 routes: [
+                  GoRoute(
+                    path: 'rules',
+                    // No rules page while Features.allocationRules is off.
+                    redirect: (_, _) => ref.read(featuresProvider).allocationRules ? null : '/personal/goals',
+                    builder: (_, _) => const RulesPage(),
+                  ),
                   GoRoute(path: ':goalId', builder: (_, s) => GoalDetailPage(goalId: s.pathParameters['goalId']!)),
                 ],
               ),
