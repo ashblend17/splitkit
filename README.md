@@ -145,7 +145,8 @@ file, and confirm with `uv run alembic check`.
     `shared/ledger_vectors.json`), so every device writes the same row. Pending and shown stay
     on the device. `/personal/reminder-schedules` are monthly SIP reminders (day 1–28, an
     optional amount) for a goal or a holding; they never record an entry, and they're deleted
-    and restored with their goal or holding.
+    and restored with their goal or holding. The app doesn't use either yet: reminders on the
+    device were cut from the finance revamp (ISS-104).
   - `POST /personal/batch` applies up to 100 creates, updates and deletes (not of accounts) of
     accounts, entries, goals, contributions, allocation rules and plans, holdings, reminder
     decisions and schedules, in order, all or none. An item can use what an earlier one made,
@@ -169,12 +170,13 @@ file, and confirm with `uv run alembic check`.
     are never income or spending. A refund of a split spend isn't counted, like the spend.
   - `GET /personal/transactions` also filters by `type`, `account` (label), `account_id`,
     `channel`, `source` and `reviewed`. `GET /personal/accounts/reported` lists the account
-    labels with the latest balance their bank reported (kept while the app still uses
-    `/personal/summary`).
+    labels with the latest balance their bank reported (kept for older builds, like
+    `/personal/summary`: the app now works both out itself).
   - Personal's default dashboard also has By account, By payment mode and Top merchants
     (`personal_by_account`, `personal_by_channel` and `personal_top_merchants`, migration 0011).
-    In the app, Overview lists accounts with a reported balance, and Transactions filter by
-    account and by how an entry was paid (`Features.accountBalances`, `breakdownFilters`).
+    In the app, Transactions filter by account and by how an entry was paid
+    (`Features.breakdownFilters`); what the app works out is in
+    [Personal finance on the device](#personal-finance-on-the-device).
 - Analytics is config-driven: `GET /analytics/personal` and `GET /analytics/groups/{id}` loop over
   `analytics_configuration` rows (yours if you saved a layout, else the defaults). Each row's
   `source` maps to one function in `app/modules/analytics/sources.py`; each `type` maps to one
@@ -189,8 +191,9 @@ file, and confirm with `uv run alembic check`.
     from zero, "—" without income) and Needs and wants (`personal_need_want`, by category `kind`,
     with "Not sorted" when there is some) are default cards from migration 0018. Run
     `python -m app.recover reset-stream global` when it deploys.
-  - These rules are the contract for Insights on the device (finance revamp, Phase 6), which a
-    parity test holds equal to `/analytics/personal`; the endpoint stays for older builds.
+  - Personal Insights still come from this endpoint: moving them onto the device was cut from
+    the finance revamp. So they leave out the group share that Overview's cash flow counts
+    (ISS-105).
 - Deletes are soft: `DELETE /expenses/{id}` then `POST /expenses/{id}/restore` (same for settlements).
 - Every write is recorded in `audit_logs`, and group writes in `activity_events`, with
   `acting_admin_id` ready for admin impersonation. Every write also lands in the sync change log
@@ -230,9 +233,10 @@ its stream, in the same transaction as the write.
   one gets 409 `version_conflict`. Creates may send their own `id`, so a retry returns the row it
   already made.
 - Rows written outside `record()` (the seed, migrations) have no log entries. Clients get them
-  from snapshots. Migration 0013 made accounts from entry labels this way: after running it,
-  `python -m app.recover reset-stream` every user stream and `global`, so devices that loaded a
-  snapshot before it reload.
+  from snapshots. Migration 0013 made accounts from entry labels this way, and 0018 added two
+  Insights cards to `global`: after running them, `python -m app.recover reset-stream` every
+  user stream and `global`, so devices that loaded a snapshot before them reload
+  ([Deploying the finance revamp](#deploying-the-finance-revamp)).
 - Group entries carry `last_activity_at`; clients move it forward with the `at` of later
   group-stream changes (except `user.*`, which only re-sends member names). Expense entries embed
   their category with `scope` and `owner_id`.
@@ -241,17 +245,22 @@ its stream, in the same transaction as the write.
 
 The app keeps every stream it can see in a local database (`app/lib/core/local/`, sembast: a
 file on Android/iOS, IndexedDB on web; one database per user) and reads every screen from it.
+Its schema is version 2 (`LocalStore.schemaVersion`): a copy from an older build is reloaded
+from snapshots, so it gets what migration 0013 backfilled.
 
 - `SyncEngine` runs on sign-in, every 45 s while the app is open, on resume and after every write
   (`refreshLedger`). A batch and its cursor are stored in one transaction. The router opens the
   store and starts the sync the moment the session has a user (`runLocalDataWhileSignedIn`), not
   when a screen first asks, which in a browser tab that isn't showing waits for a frame.
 - `Ledger` rebuilds each API answer (groups, balances, feed, expense detail, settle-up plan,
-  personal list and summary, categories) from the entities, following the server code line by
-  line; `balance_engine.dart` ports the balance engine and settle-up planner (both pass
-  `shared/balance_vectors.json`, like the split engine). Analytics, layouts and expense history
-  still come from the network. A `Ledger` never changes (the store builds a new one on every
-  change), so what its views share is worked out once, when first asked for: personal entries
+  personal list and summary, accounts, goals, contributions, allocation rules and plans,
+  categories) from the entities, following the server code line by line; `balance_engine.dart`
+  ports the balance engine and settle-up planner (both pass `shared/balance_vectors.json`, like
+  the split engine). The finance numbers the server never computes come from the finance
+  engine ([Personal finance on the device](#personal-finance-on-the-device)). Analytics,
+  layouts and expense history still come from the network. A `Ledger` never changes (the store
+  builds a new one on every change), so what its views share is worked out once, when first
+  asked for: personal entries
   indexed and sorted (`personal_index.dart`), each group's flows, the feed's order and the
   category-suggestion lookups. `test/perf/` times the views on a heavy synthetic dataset, and
   `integration_test/perf_test.dart` times a cold start, scrolling and an SMS read on a phone
@@ -269,11 +278,18 @@ file on Android/iOS, IndexedDB on web; one database per user) and reads every sc
   groups and archiving. Each is queued in the outbox with its client id or base `version` and the
   full state it leaves behind, which every screen shows at once. The next sync sends the queue in
   order before pulling. A queued write stops being shown once the server's copy arrives.
+  - Personal's other writes work offline too: accounts, transfers, refunds, Reconcile, goals
+    and contributions, allocation rules and plans, holdings (`writes_finance.dart`,
+    `writes_goals.dart`, `writes_plans.dart`, `writes_holdings.dart`, parts of `writes.dart`).
+    What has to change together (a transfer's two legs, an income and its plans) goes as one
+    `POST /personal/batch`. A `_Draft` checks each item as the server would and lays the
+    server's cascades over the device copy, so a write made offline isn't refused later.
   Refusals (409 conflicts, checks only the server can make) move to "Needs your attention" in the
   shell: Keep mine re-sends on top of the other change, Keep theirs / Discard drops it. Adding
   members, profile, categories and analytics layouts still need a connection.
 - Checks: `app/test/core/local_parity_test.dart` compares every local answer with the API's for
-  two seeded users (`app/test/fixtures/sync/`), and `app/test/live/` does the same against a
+  two seeded users (`app/test/fixtures/sync/`; holdings aren't in it yet), and the finance
+  engine's cash flow with the API's summary. `app/test/live/` does the same against a
   running server after real writes (see the file for how to point it at a throwaway database).
 
 ## App development
@@ -301,10 +317,11 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
 - The app has two modes, **Split** and **Personal** (`features/shell/app_mode.dart`), switched
   with `ModeSwitch` at the top of every tab on a phone and in the rail and sidebar. Each has its
   own tabs (Split: Home, Groups; Personal: Overview `/personal`, Transactions
-  `/personal/transactions`, Insights `/personal/insights`), add button ("Add split" in brand,
-  "Add entry" in the personal accent) and accent. Profile and Admin belong to both; the app
-  reopens in the mode it was left in. The old `/personal/history`, `/profile/history` and
-  `/profile/analytics` redirect to Personal's tabs.
+  `/personal/transactions`, Goals `/personal/goals` while `Features.goals` is on, Insights
+  `/personal/insights`), add button ("Add split" in brand, "Add entry" in the personal accent)
+  and accent. Overview's accounts card opens Accounts (`/personal/accounts`). Profile and Admin
+  belong to both; the app reopens in the mode it was left in. The old `/personal/history`,
+  `/profile/history` and `/profile/analytics` redirect to Personal's tabs.
 - A group is settled by its fewest payments (`suggested`, read through
   `features/groups/settle_plan.dart`): Settle up, the group summary (You pay, You get, Net), the
   desktop side panel and the Balances tab follow it, and so do Home's friend totals and
@@ -334,11 +351,12 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
     and "zomato.payu@axisbank" are one merchant. The newest matching rule wins; income and
     spending are learned apart. A category not offered in the other mode gives its namesake there.
 - Bank SMS are read by `lib/core/sms/sms_parser.dart`, which is pure Dart and runs on the phone
-  only. It returns a payment (direction, amount, account label, mode, merchant, reference,
-  balance, date) or why it skipped the message: OTPs, things still to come, failures, refunds,
-  card bills, statements, own transfers, foreign currency, promotional and non-bank senders.
-  `test/fixtures/sms/corpus.json` is the bank formats it's checked against. `sms_ids.dart`
-  gives each SMS a fixed entry id.
+  only. It returns a payment (kind, direction, amount, account label, mode, merchant,
+  reference, balance, date) or why it skipped the message: OTPs, things still to come,
+  failures, statements, foreign currency, promotional and non-bank senders, and refunds, card
+  bills or own transfers it couldn't read. The kind (`SmsKind`) is a payment, a refund, a card
+  bill or an own transfer. `test/fixtures/sms/corpus.json` is the bank formats it's checked
+  against. `sms_ids.dart` gives each SMS a fixed entry id.
 - A personal entry can become something in Split (`features/personal/txn_actions.dart`):
   - **Split it:** `/expenses/new?from_txn=<id>` opens Add split filled in from the entry, paid
     by you. Saving queues the expense and the entry's link together
@@ -348,7 +366,8 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   - **Paid a friend / From a friend:** a settle-up with someone you owe (or who owes you),
     started from the entry and linked to its first payment.
   - Overview's **Just in** (`just_in.dart`) lists SMS entries not looked at yet, with Split
-    it, Looks right and Not mine (a delete; the SMS's fixed id keeps it deleted).
+    it, Looks right and Not mine (a delete; the SMS's fixed id keeps it deleted), and the
+    transfers the finance engine suggests.
   - A linked entry says what it became and can be unlinked. The split shows its owner, and only
     its owner, which account paid.
 - The API client in `app/packages/splitkit_api` is generated: after API changes run
@@ -358,9 +377,20 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   button calls `viewAsLauncherProvider` (`features/admin/view_as.dart`); the view-as switch,
   banner and frame (screen 18) plug in there.
 - Screen tests run against real API responses in `app/test/fixtures/api`, and screens read from a
-  local store synced from the snapshots in `app/test/fixtures/sync`. Refresh both with
-  `docker compose exec api python -m app.seed --reset && python3 tool/capture_api_fixtures.py`
-  (this resets the dev database; `API=http://localhost:8001` points it at another instance).
+  local store synced from the snapshots in `app/test/fixtures/sync`. Refresh both against a
+  throwaway database, never the compose one (seeding wipes it), as
+  `tool/capture_api_fixtures.py`'s docstring says:
+
+  ```sh
+  docker compose exec db createdb -U splitkit splitkit_fixtures
+  cd api && export DATABASE_URL=postgresql+psycopg://splitkit:splitkit@localhost:5433/splitkit_fixtures
+  uv run alembic upgrade head && uv run python -m app.seed --reset
+  uv run uvicorn app.main:app --port 8001          # in another terminal, with the same DATABASE_URL
+  API=http://localhost:8001 python3 ../tool/capture_api_fixtures.py
+  docker compose exec db dropdb -U splitkit splitkit_fixtures   # after stopping uvicorn
+  ```
+
+  Revert the admin fixtures if only their random audit ids changed.
 - Tests run on 25 Sep 2026, the day the fixtures were captured: screens read the time from
   `appClock` (`lib/core/clock.dart`), which `test/flutter_test_config.dart` pins.
 - On a machine with little free memory, run `flutter test --concurrency=1`.
@@ -390,6 +420,96 @@ that hasn't been tried on a device yet.
   largest remainder, with ties going to the earlier input, so shares always add up to the total.
 - A deferred database trigger rejects any expense whose splits don't add up to its amount.
 
+## Personal finance on the device
+
+The server only stores and checks Personal's records. Every number derived from them is worked
+out on the device by a pure-Dart engine, `FinanceEngine` (`app/lib/core/finance/finance.dart`),
+and screens read typed answers from its providers (`finance_providers.dart`,
+`goal_providers.dart`, `allocation_providers.dart`, `holding_providers.dart`), never doing the
+maths themselves. A new `Ledger` takes the engine over while personal data and the profile are
+unchanged, so a groups-only sync doesn't rebuild it. "Today" is one provider (`today.dart`)
+that `TodayTicker` moves at midnight and on resume.
+
+- **Accounts and balances** (`balances.dart`, Accounts page). A balance is the opening balance
+  plus every live entry on the account, whatever its type (for a card or loan, what you owe).
+  It's never stored. Entries add up in ledger order: by day, a correction first in its day,
+  then the SMS time (else `created_at`), then id. The bank's latest reported balance is a
+  checkpoint: Accounts shows "Bank said ₹X on 21 Sep · ₹Y off", and **Reconcile** records a
+  balance correction (an `adjustment`) dated that day, which closes the gap there. Without a
+  checkpoint the correction is against today's balance. Cards and loans have none (their SMS
+  report a limit), and nor do accounts valued by holdings. Closing an account can zero it first
+  with a correction. An account made from bank SMS starts reconciled: its opening makes the
+  balance after the first reported one equal it (0013's backfill rule,
+  `shared/ledger_vectors.json`).
+- **Transfers** (`transfers.dart`): two legs, out and in, made, changed and deleted together.
+  An entry can become one ("This was a transfer"), two entries can be paired, and a transfer
+  can be unpaired (legs from SMS become spends and incomes again; legs the app made are
+  deleted). Just in suggests a spend and an income from bank SMS of the same amount, on two of
+  your accounts, at most `transferSuggestionMinutes` (30) apart; each entry joins one pair,
+  closest first, and "Not a transfer" is remembered on the device (`finance.not_transfer`).
+- **Refunds** (`refunds.dart`): money back for a spend, in its category and, by default, its
+  account. It comes off spending in the month it's dated. It finds its spend by the bank
+  reference, else the same merchant up to `refundMatchDays` (60) before, with enough left to
+  refund; of several, the same account first, then the exact amount, then the newest.
+- **Cash flow** (`cash_flow.dart`, Overview, the month picked). Income is counted income.
+  Spending is expenses less refunds, plus your share of the month's group expenses while
+  `groupShareInCashFlow` (and `groupShareInPersonal`) are on. Entries a group already covers are
+  left out, as in the summary. Left over = income − spending; Saved = left over ÷ income, a whole
+  percent rounded half away from zero, "—" with no income. Investments, and transfers into or
+  out of an investment account, show apart as invested and withdrawn, never as spending. Other
+  transfers and corrections aren't in it. Months follow each entry's local date (the profile
+  has no timezone).
+- **Net worth** (`net_worth.dart`, Accounts and Overview): asset accounts less what you owe on
+  cards and loans, closed accounts included, deleted ones not. What friends owe you in Split,
+  net, by the groups' fewest payments, is a line of its own (`splitInNetWorth`). Accounts in an
+  older currency are left out.
+- **Goals** (`goals.dart`, the Goals tab, goal detail, Overview's top 3). Progress comes from
+  the goal's contributions, the value of the account it follows, or a figure typed in. Left =
+  target − progress, never below 0. Months left counts calendar months to the target's, both
+  included; needed a month = left ÷ months, rounded up. The % is rounded down and never reads
+  100 before the goal is reached; the bar stops at full, the figure doesn't ("112% · ₹7,000
+  over"). States, the first that fits: archived, completed, paused, reached, overdue (date
+  passed), behind, on track, no date. Behind means, once the goal is `behindGraceDays` (7) old,
+  below a straight line from the day it was made to its date. A goal with an expected monthly
+  return also shows what's needed with returns, marked as an estimate.
+- **Allocation rules** (`allocation.dart`; rules screens: see the last commit). A rule plans a
+  percentage or a fixed amount of each income for a contribution goal or an open account. An
+  income gets one plan per rule that's active, whose filters (category, account) take it, whose
+  destination takes money, and that existed when the income was recorded, so old bank SMS get
+  none. The amount rounds half away from zero, and the plan snapshots the rule. Editing an
+  income recomputes its plans with each plan's own snapshot; deleting it cancels them. A plan is
+  planned, partial or fulfilled as contributions to its goal (or transfers into its account)
+  fill plans oldest first. Rules over 100% of an income (the worst case of category and
+  account) get a warning and are never changed. **Plans are intentions: they never move money,
+  nor count in a goal's progress or a balance.** The Goals tab's Rules card opens the rules
+  (`/personal/goals/rules`); Overview shows planned against actual for the month, goal detail
+  what's planned but not yet saved, and the entry sheet an income's plans.
+- **Holdings** (`holdings.dart`, Accounts). An investment account with holdings is worth their
+  values as last typed, plus what was put in (less taken out) since, at cost: investments and
+  withdrawals naming a holding after its valuation, and the account's own entries after its
+  latest one. Without holdings it's worth its balance. Gain = value − cost, only with a cost. A
+  value over `staleValuationDays` (30) old is stale ("Update value"). Only the latest is kept.
+- **Flags** (`core/integrations.dart`): `Integrations.groupShareInCashFlow` and
+  `splitInNetWorth` join the Split links; `Features` has `accounts`, `transfers`, `refunds`,
+  `investmentTypes`, `transferSuggestions`, `atmToCash`, `pairCardBills`, `goals`,
+  `allocationRules` and `holdings`, with the numbers above. `deadlineNearDays` waits for
+  reminders.
+- **Not built:** reminders on the device (the server keeps decisions and schedules, ISS-104)
+  and Insights on the device (they come from `/analytics/personal`, ISS-105).
+
+### Deploying the finance revamp
+
+Migrations 0013–0018 and this app build go out together:
+
+1. Ship the new APK with the server. Builds from before it fail to load Personal once a
+   transfer, refund or correction syncs to them (ISS-073).
+2. After the API has migrated, make every device reload:
+   `docker compose exec api python -m app.recover reset-stream --all` (or each `user:<id>` and
+   `global`), for 0013's backfilled accounts and 0018's Insights cards. The new build's local
+   schema 2 reloads from snapshots by itself.
+3. Downgrading below 0013 is refused while any transfer, refund, investment or correction
+   exists (0014–0017 likewise while goals, rules, holdings or reminder decisions do).
+
 ## Bank SMS (Android)
 
 Personal can read the SMS a bank sends to the phone and add the payments it finds. It's
@@ -409,19 +529,37 @@ messages.
     already seen, or an entry you made by hand, which gets the account and merchant instead.
     These decisions are a pure function (`core/sms/sms_scan.dart`) over an input taken from the
     device's data once; more than a few dozen messages are read on another isolate
-    (`Isolate.run`), so a first read of months of SMS doesn't freeze the screen. Everything a
-    read finds is queued in one `enqueueAll` (`LocalWrites.importSms`).
+    (`Isolate.run`), so a first read of months of SMS doesn't freeze the screen.
+  - Each new entry goes in an account: your open account with the message's label, none if
+    that account is closed or deleted, else a new one (`smsAccountId` of you and the label, the
+    id 0013's backfill uses), opened so it matches the bank's first reported balance. A label
+    that says "credit card" makes a card, any other a bank account.
+  - A refund goes back into the account for the spend it matches (the finance engine's refund
+    rules), in that spend's category. A cash withdrawal is a transfer into your oldest open
+    Cash account (`atmToCash`); with none, `countAtmAsSpending` decides whether it's spending.
+  - Once every message is read, a card bill pairs with the one payment of its amount out of a
+    bank or cash account within 3 days, and an own transfer with the nearest money the other
+    way, of its amount, in another account, within `transferSuggestionMinutes`: the two become
+    a transfer. One whose other half isn't found is skipped, and tried again by the next read.
+    Plain payments are never paired here; Just in suggests them.
+  - An income gets the plans your allocation rules make for it, in the same request.
+  - Everything a read finds is queued at once (`FinanceWrites.importUnits`) as
+    `POST /personal/batch` requests of up to `Features.importChunk` (50) items: accounts first,
+    and a unit (an entry, a transfer's two halves, an income and its plans) never split.
   - Backfilled entries arrive looked at, except those from the last
     `Features.justInBackfillDays`.
-  - Entries go up through `POST /personal/transactions/batch` in chunks.
 - **What stays on the phone.** The message text, OTPs, and a "Messages we skipped" list of
   bank messages that weren't added. They're kept in the store's device-only values, never
   synced, and gone on logout.
+  - A unit the device's checks refuse is left out (with the units that need it) and the rest
+    queued. Its messages go in a per-device retry list (`sms.retry`, with a try count), which
+    later reads read again whatever the cursor; after 3 refused reads a message moves to
+    "Messages we skipped".
 - **Never reads** in view-as, before the first sync, or when your currency isn't rupees.
 - **Notifications** (`SmsReceiver.kt`), when a bank SMS arrives with the app closed:
   - A short-lived Dart engine runs `smsBackgroundMain` (in `main.dart`) to describe the
     message with the same parser, e.g. "₹450 at Swiggy · HDFC ··4821 · UPI".
-  - The notification has Split (`Integrations.notificationSplitAction`). Opening from it
+  - A spend's notification has Split (`Integrations.notificationSplitAction`). Opening from it
     adds the payment and opens Add split, or Personal.
   - The phone only knows what `SmsImporter.configureNotifications` tells it: whether to notify
     (switch on the setup page), whether to offer Split, and the sender pattern.
