@@ -370,21 +370,27 @@ SmsScanInput smsScanInput(
 }) {
   final finance = ledger.finance;
   final currency = ledger.userOut()['currency'];
+  // An account linked to another counts as that one: its type, and open only while it is.
+  SmsAccount sms(Map<String, dynamic> a, {required bool deleted}) {
+    final type = accountTypeFromWire(a['type'] as String?);
+    final whole = deleted ? null : finance.wholeOf(a['id'] as String);
+    return (
+      id: a['id'] as String,
+      type: whole?.type ?? type ?? AccountType.otherAsset,
+      active:
+          !deleted && a['status'] == 'active' && a['currency'] == currency && type != null && !(whole?.closed ?? false),
+      deleted: deleted,
+    );
+  }
+
   // A live account wins over a deleted one with the same label.
   final accountsByLabel = <String, SmsAccount>{
     for (final deleted in const [true, false])
       for (final a in ledger.personalAccountList(deleted: deleted))
-        if (a['sms_label'] case final String label)
-          label: (
-            id: a['id'] as String,
-            type: accountTypeFromWire(a['type'] as String?) ?? AccountType.otherAsset,
-            active:
-                !deleted &&
-                a['status'] == 'active' &&
-                a['currency'] == currency &&
-                accountTypeFromWire(a['type'] as String?) != null,
-            deleted: deleted,
-          ),
+        if (a['sms_label'] case final String label) label: sms(a, deleted: deleted),
+  };
+  final accountsById = <String, SmsAccount>{
+    for (final a in ledger.personalAccountList()) a['id'] as String: sms(a, deleted: false),
   };
   final references = ledger.personalReferences();
   final refunds = <SmsRefundCandidate>[];
@@ -445,7 +451,7 @@ SmsScanInput smsScanInput(
               flow: t.flow,
               amount: t.amount,
               accountId: id,
-              accountType: a.type,
+              accountType: finance.wholeOf(id)?.type ?? a.type,
               day: t.day,
               atMicros: t.atMicros,
               version: t.raw['version'] as int,
@@ -481,6 +487,8 @@ SmsScanInput smsScanInput(
     now: appClock.now(),
     testSenders: SmsImporter._testSenders,
     accountsByLabel: accountsByLabel,
+    accounts: finance.accounts,
+    accountsById: accountsById,
     firstActiveCashId: switch (finance.firstActiveCash()) {
       final cash? when cash.currency == currency => cash.id,
       _ => null,

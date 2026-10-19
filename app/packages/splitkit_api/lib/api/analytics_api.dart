@@ -132,7 +132,7 @@ class AnalyticsApi {
 
   /// Personal Dashboard
   ///
-  /// One card per row of your analytics layout. `on` is today in your time zone.
+  /// One card per row of your analytics layout. `on` is today in your time zone. With `group_share` (the default), your share of group expenses counts as spending in the trend, categories, daily average, needs and wants and savings rate; the app sends false when its cash flow leaves the share out.
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -141,7 +141,9 @@ class AnalyticsApi {
   /// * [String] period:
   ///
   /// * [DateTime] on_:
-  Future<Response> personalDashboardWithHttpInfo({ String? period, DateTime? on_, }) async {
+  ///
+  /// * [bool] groupShare:
+  Future<Response> personalDashboardWithHttpInfo({ String? period, DateTime? on_, bool? groupShare, }) async {
     // ignore: prefer_const_declarations
     final path = r'/api/v1/analytics/personal';
 
@@ -157,6 +159,9 @@ class AnalyticsApi {
     }
     if (on_ != null) {
       queryParams.addAll(_queryParams('', 'on', on_));
+    }
+    if (groupShare != null) {
+      queryParams.addAll(_queryParams('', 'group_share', groupShare));
     }
 
     const contentTypes = <String>[];
@@ -175,15 +180,17 @@ class AnalyticsApi {
 
   /// Personal Dashboard
   ///
-  /// One card per row of your analytics layout. `on` is today in your time zone.
+  /// One card per row of your analytics layout. `on` is today in your time zone. With `group_share` (the default), your share of group expenses counts as spending in the trend, categories, daily average, needs and wants and savings rate; the app sends false when its cash flow leaves the share out.
   ///
   /// Parameters:
   ///
   /// * [String] period:
   ///
   /// * [DateTime] on_:
-  Future<DashboardOut?> personalDashboard({ String? period, DateTime? on_, }) async {
-    final response = await personalDashboardWithHttpInfo( period: period, on_: on_, );
+  ///
+  /// * [bool] groupShare:
+  Future<DashboardOut?> personalDashboard({ String? period, DateTime? on_, bool? groupShare, }) async {
+    final response = await personalDashboardWithHttpInfo( period: period, on_: on_, groupShare: groupShare, );
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

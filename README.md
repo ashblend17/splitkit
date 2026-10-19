@@ -14,6 +14,7 @@ Group expense splitting with a personal-finance area. The spec is in
 | `splitkit-design/` | Design handoff: mockups, tokens |
 
 Checking the data and recovering from problems (server, devices, backups): [validation.md](validation.md).
+Running it on a server: [deploy.md](deploy.md).
 
 ## Run everything
 
@@ -57,6 +58,12 @@ tool/build.sh all --api-origin https://splitkit.example.com --check
   `docker-compose.prod.yml` pulls, plus one tag per version.
 - Phone builds need `--api-origin` (or `--dev-tools`, to type the server on the phone). `--check`
   runs analyze and the tests first.
+
+## Deploy
+
+The server (EC2) pulls images instead of building them: `tool/push_images.sh <user>/<repo>`
+pushes them, and the server runs `docker-compose.prod.yml`. Setting up a server, shipping a
+version, passwords, backups and troubleshooting: [deploy.md](deploy.md).
 
 ## API development
 
@@ -120,6 +127,18 @@ file, and confirm with `uv run alembic check`.
     `account_in_use`). An account's `sms_label` ("HDFC ··4821") is unique per person, deleted
     accounts included. Making an account, labelling it or reopening it moves in your entries
     with that label and no account yet.
+  - An account can be linked to another of yours (`linked_account_id`): the same account under
+    a second label ("HDFC ··787778" and "HDFC ··7778"), or a debit card on a bank account.
+    Nothing moves: the app counts its entries in the other account's balance, as that
+    account's type, and leaves its own opening out. The other account must be open, in the same
+    currency and not linked itself; neither can be an investment account, nor can one a goal
+    follows or one others are linked to be linked. An account others are linked to can't be
+    deleted, no entry goes through a link to a closed account, a goal can't follow a linked
+    account, and one restored after its account was deleted comes back unlinked. Its entries
+    come with the other account's in `GET /personal/transactions?account_id=`.
+  - `account_number` is an account's (or card's) full number, 4–20 digits (spaces and dashes are
+    dropped). The app puts a bank SMS label whose digits end it in that account. An account a
+    live rule filters incomes on can't be deleted either (`rule_points_here`).
   - Entry types: income, expense, refund, investment_contribution and investment_withdrawal
     each imply their `direction` (in or out); transfer and adjustment say theirs. A transfer is
     two legs, one out and one in, of the same amount between two of your accounts, sharing a
@@ -211,9 +230,12 @@ file, and confirm with `uv run alembic check`.
   your own order; `DELETE` goes back to the defaults.
   - Personal cards count what the summary counts: expenses less refunds (off the refund's own
     category), in your currency, without the entries a group covers. Transfers, investments and
-    adjustments never count, and nor does your group share (Personal vs group shows it beside).
-    By account goes by the entry's account name, else its label. A bar or row never goes below
-    zero; the trend's headline shows the real total.
+    adjustments never count. With `group_share` (the default; the app sends what its cash flow
+    does, `groupShareInCashFlow`), your share of group expenses is spending too, in each
+    expense's category: in the trend, categories, daily average, needs and wants and savings
+    rate. By account, By payment mode and Top merchants stay your own entries, and Personal vs
+    group shows the two side by side. By account goes by the entry's account name, else its
+    label. A bar or row never goes below zero; the trend's headline shows the real total.
   - Savings rate (`personal_savings_rate`: income less spending, as a percent rounded half away
     from zero, "—" without income) and Needs and wants (`personal_need_want`, by category `kind`,
     with "Not sorted" when there is some) are default cards from migration 0018. Run
@@ -484,7 +506,18 @@ that `TodayTicker` moves at midnight and on resume.
   report a limit), and nor do accounts valued by holdings. Closing an account can zero it first
   with a correction. An account made from bank SMS starts reconciled: its opening makes the
   balance after the first reported one equal it (0013's backfill rule,
-  `shared/ledger_vectors.json`).
+  `shared/ledger_vectors.json`). A balance read from SMS that nothing ever checked (no reported
+  balance, no correction: every card, and banks whose alerts give none) says so on Accounts,
+  with Set owed or Set balance.
+- **Linked accounts** (`balances.dart`, `account_links.dart`). An account linked to another
+  isn't listed on its own: its entries, and the balances its bank reported, count in that one's,
+  as that one's type; its own opening doesn't (an account read from a debit card's SMS opens at
+  the bank's balance). The account sheet links and unlinks them, and takes a full account
+  number. Accounts offers to link accounts that look like one (the same bank with digits one
+  of which ends the other, a full number another's label ends, the same card labelled two
+  ways, a debit card of a bank you have one account with) and to make a credit card of a bank
+  account a credit card's bills went into; "Not the same" and "It's a bank account" are
+  remembered on the device (`finance.not_same`, `finance.not_card`).
 - **Transfers** (`transfers.dart`): two legs, out and in, made, changed and deleted together.
   An entry can become one ("This was a transfer"), two entries can be paired, and a transfer
   can be unpaired (legs from SMS become spends and incomes again; legs the app made are
@@ -554,6 +587,10 @@ Migrations 0013–0018 and this app build go out together:
 3. Downgrading below 0013 is refused while any transfer, refund, investment or correction
    exists (0014–0017 likewise while goals, rules, holdings or reminder decisions do).
 
+Migration 0019 (linked accounts and account numbers) only adds two columns, so it needs no
+stream reset. Builds from before it ignore links and count a linked account on its own.
+Downgrading is refused while an account is linked or numbered.
+
 ## Bank SMS (Android)
 
 Personal can read the SMS a bank sends to the phone and add the payments it finds. It's
@@ -575,9 +612,12 @@ messages.
     device's data once; more than a few dozen messages are read on another isolate
     (`Isolate.run`), so a first read of months of SMS doesn't freeze the screen.
   - Each new entry goes in an account: your open account with the message's label, none if
-    that account is closed or deleted, else a new one (`smsAccountId` of you and the label, the
-    id 0013's backfill uses), opened so it matches the bank's first reported balance. A label
-    that says "credit card" makes a card, any other a bank account.
+    that account is closed or deleted, else the one account the label's digits say it is (its
+    full number ends in them, or it's the same card of the same bank labelled "Card" one way and
+    "Credit card" the other), else a new one (`smsAccountId` of you and the label, the id 0013's
+    backfill uses), opened so it matches the bank's first reported balance. A label that says
+    "credit card" makes a card, any other a bank account. An account linked to another counts
+    as that one: its type, and closed when that one is.
   - A refund goes back into the account for the spend it matches (the finance engine's refund
     rules), in that spend's category. A cash withdrawal is a transfer into your oldest open
     Cash account (`atmToCash`); with none, `countAtmAsSpending` decides whether it's spending.

@@ -6,6 +6,7 @@
 /// time one asks, and remembers its answers for the arguments it was last given.
 library;
 
+import 'account_links.dart' show labelParts;
 import 'allocation.dart';
 import 'allocation.dart' as allocation show plansForIncome, reconcilePlans;
 import 'balances.dart';
@@ -21,6 +22,7 @@ import 'refunds.dart' as refunds show refundTarget;
 import 'transfers.dart';
 import 'transfers.dart' as transfers show transferSuggestions;
 
+export 'account_links.dart';
 export 'allocation.dart';
 export 'balances.dart';
 export 'cash_flow.dart';
@@ -106,8 +108,29 @@ class FinanceEngine {
 
   late final Map<String, AccountBalance> _balanceById = {for (final b in balances) b.account.id: b};
 
-  /// The balance of account [accountId], or null if it's deleted or unknown.
+  /// The balance of account [accountId], or null if it's deleted, unknown or part of another
+  /// ([wholeOf]: its entries are in that one's balance).
   AccountBalance? balanceOf(String accountId) => _balanceById[accountId];
+
+  /// The account whose balance account [accountId]'s entries count in: the live account it's
+  /// linked to ([partOf]), else itself; null if it's deleted or unknown.
+  FinAccount? wholeOf(String accountId) => switch (_liveById[accountId]) {
+    final a? => partOf(a, _liveById) ?? a,
+    null => null,
+  };
+
+  /// The live accounts linked to account [accountId], whose entries count in its balance.
+  List<FinAccount> linkedTo(String accountId) => _balanceById[accountId]?.linked ?? const [];
+
+  /// A credit card label ("HDFC Credit card ··5678") that a live entry counted in account
+  /// [accountId]'s balance carries, if any: the bank's messages say it's a credit card.
+  String? creditCardLabelIn(String accountId) => _creditCardLabels[accountId];
+
+  late final Map<String, String> _creditCardLabels = {
+    for (final e in _live)
+      if (e.accountId case final id? when labelParts(e.account)?.card == 'credit')
+        if (wholeOf(id) case final whole?) whole.id: e.account!,
+  };
 
   /// Cash flow over [period] (cashFlow in cash_flow.dart). Remembered by its arguments: [notCounted] by
   /// identity and [label] by equality (a method tear-off of the same object is equal), so pass
@@ -487,12 +510,22 @@ class FinanceEngine {
 
   late final Map<String, List<String>> _pointing = () {
     final out = <String, List<String>>{};
-    final byAge = [...liveRules]..sort((a, b) => _accountOrderOf(a.createdMicros, a.id, b.createdMicros, b.id));
-    for (final r in byAge) {
+    for (final r in _rulesByAge) {
       (out[_destinationKey(r.goalId, r.accountId)] ??= []).add(r.id);
     }
     return out;
   }();
+
+  /// The live allocation rules that take only incomes into account [accountId], as ids, oldest
+  /// first (allocation_rules.refuse_if_filtered_on names the first): the account can't be deleted
+  /// while there's one, since the filter would match nothing (ISS-080).
+  List<String> rulesFilteringOn(String accountId) => [
+    for (final r in _rulesByAge)
+      if (r.sourceAccountId == accountId) r.id,
+  ];
+
+  late final List<FinRule> _rulesByAge = [...liveRules]
+    ..sort((a, b) => _accountOrderOf(a.createdMicros, a.id, b.createdMicros, b.id));
 
   // ---- allocation rules and plans (allocation.dart) ----
 
@@ -819,11 +852,16 @@ class FinanceEngine {
     return null;
   }
 
-  /// The accounts a goal can follow: live, open, not owed (no card or loan), and not followed by
-  /// another goal that's live and not archived ([exceptGoalId] aside, for editing it).
+  /// The accounts a goal can follow: live, open, not owed (no card or loan), not part of another
+  /// (its balance is that one's), and not followed by another goal that's live and not archived
+  /// ([exceptGoalId] aside, for editing it).
   List<FinAccount> followableAccounts({String? exceptGoalId}) => [
     for (final a in accounts)
-      if (!a.closed && !a.type.isLiability && (_followers[a.id] ?? const []).every((g) => g.id == exceptGoalId)) a,
+      if (!a.closed &&
+          !a.type.isLiability &&
+          partOf(a, _liveById) == null &&
+          (_followers[a.id] ?? const []).every((g) => g.id == exceptGoalId))
+        a,
   ];
 }
 

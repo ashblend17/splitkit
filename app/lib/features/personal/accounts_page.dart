@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
+import '../../core/data/providers.dart';
 import '../../core/finance/finance.dart';
 import '../../core/finance/finance_providers.dart';
 import '../../core/integrations.dart';
+import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
@@ -37,7 +40,10 @@ enum _Group {
 /// holdings, by them, listed under it: [HoldingsSection]), grouped, with closed accounts folded
 /// away at the end.
 /// Where the bank's last reported balance isn't what the entries add up to, it says so and
-/// offers Reconcile. A tap opens the account ([showAccountSheet]).
+/// offers Reconcile; where nothing ever checked a balance read from SMS, it says that too
+/// (ISS-126, ISS-127). Accounts that look like one are offered for linking, and bank accounts a
+/// credit card's messages went into for making credit cards. An account linked to another is
+/// listed under it. A tap opens the account ([showAccountSheet]).
 class AccountsPage extends ConsumerStatefulWidget {
   const AccountsPage({super.key});
 
@@ -128,6 +134,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _worthCard(worth),
+        ..._suggestions(),
         for (final group in _Group.values)
           if (open[group] case final shown?) ...[
             const SizedBox(height: 20),
@@ -214,6 +221,94 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
     );
   }
 
+  /// Accounts that look like one ("Link"), and bank accounts that look like credit cards.
+  List<Widget> _suggestions() {
+    final same = ref.watch(sameAccountsProvider).value ?? const <SameAccount>[];
+    final cards = ref.watch(looksLikeCardsProvider).value ?? const <LooksLikeCard>[];
+    return [
+      for (final pair in same)
+        _suggestion(
+          key: ValueKey('account:same:${pair.key}'),
+          title: 'Same account?',
+          body:
+              '${pair.part.name} looks like part of ${pair.whole.name}: ${pair.why}. Linked, its entries count in '
+              "${pair.whole.name}'s balance.",
+          yes: 'Link',
+          onYes: () => linkAccounts(context, pair.part, pair.whole),
+          no: 'Not the same',
+          onNo: () => ref.read(notSameAccountProvider.notifier).dismiss(pair),
+        ),
+      for (final card in cards)
+        _suggestion(
+          key: ValueKey('account:card:${card.account.id}'),
+          title: 'A credit card?',
+          body:
+              '${card.account.name} looks like a credit card: its bills say “${card.label}”. As one, its spends '
+              'are what you owe.',
+          yes: 'Make it a credit card',
+          onYes: () => _makeCard(card.account),
+          no: "It's a bank account",
+          onNo: () => ref.read(notCardProvider.notifier).dismiss(card),
+        ),
+    ];
+  }
+
+  Widget _suggestion({
+    required Key key,
+    required String title,
+    required String body,
+    required String yes,
+    required VoidCallback onYes,
+    required String no,
+    required VoidCallback onNo,
+  }) => Padding(
+    key: key,
+    padding: const EdgeInsets.only(top: 12),
+    child: SkCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(title, style: SkText.body(15, 700)),
+          const SizedBox(height: 4),
+          Text(body, style: SkText.body(13, 400, color: SkColors.ink2)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              SkButton(yes, size: SkButtonSize.small, variant: SkButtonVariant.strong, onPressed: onYes),
+              SkButton(no, size: SkButtonSize.small, variant: SkButtonVariant.secondary, onPressed: onNo),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  /// [a] becomes a credit card, with Undo. An opening worked out from what its bank reported
+  /// (a balance, read as an asset's) goes back to zero: you set what you owe after.
+  Future<void> _makeCard(FinAccount a) async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final writes = ref.read(writesProvider);
+    try {
+      await writes.updateAccount(a.id, type: AccountType.creditCard, openingMinor: a.openingMinor == 0 ? null : 0);
+      refreshPersonal(container.invalidate);
+      if (!mounted) return;
+      showMessage(
+        context,
+        '${a.name} is a credit card now',
+        actionLabel: 'Undo',
+        onAction: () async {
+          await writes.updateAccount(a.id, type: a.type, openingMinor: a.openingMinor == 0 ? null : a.openingMinor);
+          refreshPersonal(container.invalidate);
+        },
+      );
+    } catch (e) {
+      if (mounted) showMessage(context, apiErrorMessage(e));
+    }
+  }
+
   Widget _list(List<AccountBalance> accounts, NetWorth worth) => SkCard(
     padding: EdgeInsets.zero,
     child: Column(
@@ -234,8 +329,12 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
   /// holdings isn't reconciled: a correction would count at cost on top of their values.
   Widget _row(AccountBalance b, int value, {required bool byHoldings, required bool last}) {
     final a = b.account;
-    final check = ref.watch(featuresProvider).accountBalances && !a.closed && !byHoldings ? b.lastReported : null;
+    final checks = ref.watch(featuresProvider).accountBalances && !a.closed && !byHoldings;
+    final check = checks ? b.lastReported : null;
     final gap = check != null && check.gapMinor != 0 ? check : null;
+    // Added up from SMS and never checked: a card's SMS report a limit, and some banks' none.
+    final fromSms = a.smsLabel != null || b.linked.any((l) => l.smsLabel != null);
+    final since = checks && gap == null && fromSms && b.unchecked ? b.firstActivityDay : null;
     return Container(
       key: ValueKey('account:${a.id}'),
       decoration: BoxDecoration(
@@ -269,6 +368,7 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
                           [
                             accountTypeLabel(a.type),
                             if (a.smsLabel case final label? when label != a.name) label,
+                            if (b.linked.isNotEmpty) 'with ${b.linked.map((l) => l.name).join(', ')}',
                           ].join(' · '),
                           style: SkText.body(12, 400, color: SkColors.ink2),
                           maxLines: 1,
@@ -308,6 +408,34 @@ class _AccountsPageState extends ConsumerState<AccountsPage> {
                       size: SkButtonSize.small,
                       variant: SkButtonVariant.secondary,
                       onPressed: () => reconcileAccount(context, b, gap.reportedMinor, at: gap),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          if (since != null)
+            Padding(
+              key: ValueKey('account:unchecked:${a.id}'),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                decoration: BoxDecoration(color: SkColors.pendingSoft, borderRadius: BorderRadius.circular(12)),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        a.type.isLiability
+                            ? 'Added up from SMS since ${dayKeyLabel(since)}, never checked'
+                            : "Added up from SMS since ${dayKeyLabel(since)}; the bank hasn't said its balance",
+                        style: SkText.body(13, 600, color: SkPalette.pendingInk),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SkButton(
+                      a.type.isLiability ? 'Set owed' : 'Set balance',
+                      size: SkButtonSize.small,
+                      variant: SkButtonVariant.secondary,
+                      onPressed: () => showAccountSheet(context, existing: a),
                     ),
                   ],
                 ),

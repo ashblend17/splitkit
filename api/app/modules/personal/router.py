@@ -61,7 +61,10 @@ def list_personal(
     category: Annotated[list[str] | None, Query(description="Category keys, repeatable")] = None,
     deleted: bool = False,
     account: Annotated[str | None, Query(description='As labelled, e.g. "HDFC ··4821"')] = None,
-    account_id: uuid.UUID | None = None,
+    account_id: Annotated[
+        uuid.UUID | None,
+        Query(description="An account, with the accounts linked to it (their entries count in it)"),
+    ] = None,
     channel: Channel | None = None,
     source: Source | None = None,
     reviewed: bool | None = None,

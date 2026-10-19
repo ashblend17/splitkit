@@ -46,8 +46,14 @@ class PersonalAccount(Base):
     __table_args__ = (
         CheckConstraint(sql_in("type", ACCOUNT_TYPES), name="type"),
         CheckConstraint(sql_in("status", ACCOUNT_STATUSES), name="status"),
+        CheckConstraint("linked_account_id <> id", name="not_linked_to_itself"),
+        CheckConstraint("account_number ~ '^[0-9]{4,20}$'", name="account_number_digits"),
         # What entries point at, so an entry can only use its owner's account.
         UniqueConstraint("id", "user_id"),
+        # Linked only to its owner's accounts.
+        ForeignKeyConstraint(
+            ["linked_account_id", "user_id"], ["personal_accounts.id", "personal_accounts.user_id"]
+        ),
         # One account per label, ever (deleted ones too), as the label's id is fixed.
         Index(
             "uq_personal_accounts_user_sms_label",
@@ -69,6 +75,14 @@ class PersonalAccount(Base):
     """What you had in it (or owed on it, for a card or loan) before its first entry."""
     sms_label: Mapped[str | None]
     """The label bank SMS entries carry ("HDFC ··4821"); they land in this account."""
+    linked_account_id: Mapped[uuid.UUID | None]
+    """The account this one is part of: the same account under another label ("HDFC ··787778"
+    and "HDFC ··7778"), or a debit card on a bank account. Its entries count in that account's
+    balance, as that account's type, and its own opening balance doesn't count. One level only:
+    the account it's linked to isn't linked itself."""
+    account_number: Mapped[str | None]
+    """The full account or card number (digits), if you gave it: bank SMS show only the last few
+    digits, so a label whose digits end it is this account."""
     status: Mapped[str] = mapped_column(server_default="active")
     """active or closed. A closed account takes no new entries and still counts in net worth."""
     acting_admin_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))

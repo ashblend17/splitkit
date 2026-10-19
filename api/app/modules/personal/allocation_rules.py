@@ -311,6 +311,28 @@ def refuse_if_pointed_at(
         )
 
 
+def refuse_if_filtered_on(session: Session, account_id: uuid.UUID) -> None:
+    """For an account about to be deleted: refused while a live rule takes only incomes into
+    it, since the filter would then match nothing (ISS-080)."""
+    r = session.scalar(
+        select(PersonalAllocationRule)
+        .where(
+            PersonalAllocationRule.source_account_id == account_id,
+            PersonalAllocationRule.deleted_at.is_(None),
+        )
+        .order_by(PersonalAllocationRule.created_at, PersonalAllocationRule.id)
+        .limit(1)
+    )
+    if r is not None:
+        raise ApiError(
+            409,
+            "rule_points_here",
+            f"The rule “{describe(r)}” only takes incomes into this account. Change or delete it "
+            "first",
+            rule_id=str(r.id),
+        )
+
+
 def create_rule(
     session: Session, actor: Actor, body: PersonalAllocationRuleIn
 ) -> PersonalAllocationRuleOut:

@@ -1865,6 +1865,7 @@ class PersonalApi {
   ///   As labelled, e.g. \"HDFC ··4821\"
   ///
   /// * [String] accountId:
+  ///   An account, with the accounts linked to it (their entries count in it)
   ///
   /// * [String] channel:
   ///
@@ -1958,6 +1959,7 @@ class PersonalApi {
   ///   As labelled, e.g. \"HDFC ··4821\"
   ///
   /// * [String] accountId:
+  ///   An account, with the accounts linked to it (their entries count in it)
   ///
   /// * [String] channel:
   ///

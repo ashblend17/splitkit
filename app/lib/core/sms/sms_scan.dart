@@ -9,8 +9,11 @@
 ///
 /// After the checks for a payment already here, each message is read in order (design §5.2):
 /// 1. Its account: your open account with the message's label; none when that account is closed
-///    or deleted (the entry keeps the label); else a new account for the label, which starts
-///    reconciled (its opening balance comes from the first balance its messages report).
+///    or deleted (the entry keeps the label); else the one account the label's digits say it is
+///    (its full number ends in them, or it's the same card labelled another way:
+///    account_links.dart accountForNewLabel); else a new account for the label, which starts
+///    reconciled (its opening balance comes from the first balance its messages report). An
+///    account linked to another counts as that one: its type, and closed when that one is.
 /// 2. A refund is money back into the account, for the spend it matches ([refundTarget]'s rules,
 ///    counting what earlier refunds took back), in that spend's category.
 /// 3. A cash withdrawal, when you keep a Cash account, is a transfer into it.
@@ -53,8 +56,9 @@ typedef SmsAttachment = ({
   String? accountId,
 });
 
-/// One of your accounts with a bank SMS label: whether a message's entry can go in it ([active]:
-/// open, not deleted, in your currency). A closed or deleted account keeps its label.
+/// One of your accounts: whether a message's entry can go in it ([active]: open, not deleted, in
+/// your currency, and the account it's linked to open too), and the type its entries count as
+/// (the linked-to account's). A closed or deleted account keeps its label.
 typedef SmsAccount = ({String id, AccountType type, bool active, bool deleted});
 
 /// A live spend a refund could be for, as refundTarget (core/finance/refunds.dart) compares them,
@@ -122,6 +126,8 @@ class SmsScanInput {
     required this.now,
     this.testSenders = const {},
     this.accountsByLabel = const {},
+    this.accounts = const [],
+    this.accountsById = const {},
     this.firstActiveCashId,
     this.refundCandidates = const [],
     this.transferCandidates = const [],
@@ -162,6 +168,11 @@ class SmsScanInput {
 
   /// Your accounts with a label, by label (the live one, should a deleted one have it too).
   final Map<String, SmsAccount> accountsByLabel;
+
+  /// Your live accounts (closed ones too), which a label no account has may still be
+  /// (accountForNewLabel), and each of them as [SmsAccount], by id.
+  final List<FinAccount> accounts;
+  final Map<String, SmsAccount> accountsById;
 
   /// Where a cash withdrawal goes: your oldest open cash account (FinanceEngine.firstActiveCash).
   final String? firstActiveCashId;
@@ -448,17 +459,30 @@ class _Read {
   }
 
   /// The account an entry with [label] goes in: your open account with that label, none if the
-  /// account is closed or deleted, else the one this read makes for it ([_put] notes it).
+  /// account is closed or deleted, the one account the label's digits say it is (none if that one
+  /// isn't open), else the one this read makes for it ([_put] notes it).
   _Account? _accountFor(String? label) {
     if (label == null) return null;
     if (input.accountsByLabel[label] case final a?) return a.active ? (id: a.id, type: a.type) : null;
-    return _made[label] ?? (id: smsAccountId(input.userId, label), type: accountTypeForLabel(label));
+    if (_made[label] case final made?) return made;
+    if (_matched.containsKey(label)) return _matched[label];
+    if (accountForNewLabel(label, input.accounts) case final found?) {
+      final a = input.accountsById[found.id];
+      return _matched[label] = a != null && a.active ? (id: a.id, type: a.type) : null;
+    }
+    return (id: smsAccountId(input.userId, label), type: accountTypeForLabel(label));
   }
+
+  /// Labels no account has that are an account already here (accountForNewLabel), or null when
+  /// that one isn't open.
+  final _matched = <String, _Account?>{};
 
   /// Notes that [row] goes in [account] (the account for [label]): an account with no label yet
   /// is made, and its opening balance counts the entry.
   void _put(String? label, _Account? account, FinEntry Function() row) {
-    if (label == null || account == null || input.accountsByLabel.containsKey(label)) return;
+    if (label == null || account == null || input.accountsByLabel.containsKey(label) || _matched.containsKey(label)) {
+      return;
+    }
     _made[label] ??= account;
     (_onMade[label] ??= []).add(row());
   }

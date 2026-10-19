@@ -127,6 +127,8 @@ final class FinAccount {
     required this.currency,
     this.openingMinor = 0,
     this.smsLabel,
+    this.linkedAccountId,
+    this.accountNumber,
     this.closed = false,
     this.deleted = false,
     this.createdMicros = 0,
@@ -143,6 +145,8 @@ final class FinAccount {
       currency: raw['currency'] as String,
       openingMinor: raw['opening_balance_minor'] as int? ?? 0,
       smsLabel: raw['sms_label'] as String?,
+      linkedAccountId: raw['linked_account_id'] as String?,
+      accountNumber: raw['account_number'] as String?,
       closed: raw['status'] == 'closed',
       deleted: raw['deleted_at'] != null,
       createdMicros: isoMicros(raw['created_at']),
@@ -159,6 +163,15 @@ final class FinAccount {
 
   /// The bank SMS label its entries carry ("HDFC ··4821"), if any.
   final String? smsLabel;
+
+  /// The account this one is part of (the same account under another label, or a debit card on
+  /// a bank account): its entries count in that account's balance, as that account's type, and
+  /// its own opening doesn't count. Null for most accounts.
+  final String? linkedAccountId;
+
+  /// Its full number (digits), if you gave it: a bank SMS label whose digits end it is this
+  /// account (account_links.dart).
+  final String? accountNumber;
 
   /// Closed accounts take no new entries but still count in net worth.
   final bool closed;

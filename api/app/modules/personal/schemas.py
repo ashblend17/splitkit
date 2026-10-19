@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -52,6 +53,21 @@ def _valuation_date(day: date) -> date:
 
 
 ValuationDate = Annotated[date, AfterValidator(_valuation_date)]
+
+
+def _account_number(value: str | None) -> str | None:
+    if value is None:
+        return None
+    digits = re.sub(r"[\s-]", "", value)
+    if not digits:
+        return None
+    if not re.fullmatch(r"[0-9]{4,20}", digits):
+        raise ValueError("An account number is 4 to 20 digits")
+    return digits
+
+
+AccountNumber = Annotated[str | None, AfterValidator(_account_number)]
+"""The full number of an account or card, digits only (spaces and dashes are dropped)."""
 
 Quantity = Annotated[
     Decimal,
@@ -224,6 +240,17 @@ class PersonalAccountIn(Schema):
     status: AccountStatus | None = None
     """Leave it out to keep it (a new account is active). A closed account takes no new entries
     and still counts in net worth."""
+    linked_account_id: uuid.UUID | None = None
+    """Another open account of yours, in the same currency, that this one is part of: the same
+    account under another bank SMS label, or a debit card on a bank account. Its entries then
+    count in that account's balance, as that account's type, and its own opening balance
+    doesn't. That account can't be linked itself, nor can an investment account, one a goal
+    follows, or one other accounts are linked to. On an update, leaving it out keeps it and
+    null unlinks."""
+    account_number: AccountNumber = Field(default=None, max_length=30)
+    """The full account or card number, 4 to 20 digits (spaces and dashes are dropped). Bank SMS
+    show only its last digits; the app puts a message whose label's digits end it in this
+    account. On an update, leaving it out keeps it and null or "" clears it."""
 
 
 class PersonalAccountOut(Schema):
@@ -237,6 +264,9 @@ class PersonalAccountOut(Schema):
     opening_balance_minor: int
     sms_label: str | None
     status: AccountStatus
+    linked_account_id: uuid.UUID | None
+    """The account this one is part of: its entries count in that account's balance."""
+    account_number: str | None
     acting_admin_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime

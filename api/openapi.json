@@ -2503,6 +2503,18 @@
       },
       "PersonalAccountIn": {
         "properties": {
+          "account_number": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Number"
+          },
           "id": {
             "anyOf": [
               {
@@ -2514,6 +2526,18 @@
               }
             ],
             "title": "Id"
+          },
+          "linked_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Account Id"
           },
           "name": {
             "maxLength": 60,
@@ -2589,6 +2613,17 @@
       "PersonalAccountOut": {
         "description": "No balance: the app derives it from the opening balance and the entries in the account.",
         "properties": {
+          "account_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Number"
+          },
           "acting_admin_id": {
             "anyOf": [
               {
@@ -2626,6 +2661,18 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "linked_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Account Id"
           },
           "name": {
             "title": "Name",
@@ -2684,6 +2731,8 @@
           "opening_balance_minor",
           "sms_label",
           "status",
+          "linked_account_id",
+          "account_number",
           "acting_admin_id",
           "created_at",
           "updated_at",
@@ -8004,7 +8053,7 @@
     },
     "/api/v1/analytics/personal": {
       "get": {
-        "description": "One card per row of your analytics layout. `on` is today in your time zone.",
+        "description": "One card per row of your analytics layout. `on` is today in your time zone. With\n`group_share` (the default), your share of group expenses counts as spending in the trend,\ncategories, daily average, needs and wants and savings rate; the app sends false when its\ncash flow leaves the share out.",
         "operationId": "personal_dashboard",
         "parameters": [
           {
@@ -8037,6 +8086,16 @@
                 }
               ],
               "title": "On"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_share",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Group Share",
+              "type": "boolean"
             }
           }
         ],
@@ -16835,6 +16894,7 @@
             }
           },
           {
+            "description": "An account, with the accounts linked to it (their entries count in it)",
             "in": "query",
             "name": "account_id",
             "required": false,
@@ -16848,6 +16908,7 @@
                   "type": "null"
                 }
               ],
+              "description": "An account, with the accounts linked to it (their entries count in it)",
               "title": "Account Id"
             }
           },

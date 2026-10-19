@@ -646,12 +646,21 @@ class Ledger {
         reviewed == null) {
       return rows;
     }
+    // An account's entries come with those of the accounts linked to it (personal/repository.py).
+    final accountIds = accountId == null
+        ? null
+        : {
+            accountId,
+            for (final deleted in const [false, true])
+              for (final a in personalAccountList(deleted: deleted))
+                if (a['linked_account_id'] == accountId) a['id'] as String,
+          };
     return [
       for (final t in rows)
         if ((type == null || t.type == type) &&
             (anyCategory || categoryKeys.contains(_categories[t.categoryId]?['key'])) &&
             (account == null || t.account == account) &&
-            (accountId == null || t.accountId == accountId) &&
+            (accountIds == null || accountIds.contains(t.accountId)) &&
             (channel == null || t.channel == channel) &&
             (source == null || t.source == source) &&
             (reviewed == null || t.reviewed == reviewed))
@@ -973,6 +982,8 @@ class Ledger {
     'opening_balance_minor': a['opening_balance_minor'],
     'sms_label': a['sms_label'],
     'status': a['status'],
+    'linked_account_id': a['linked_account_id'],
+    'account_number': a['account_number'],
     'acting_admin_id': a['acting_admin_id'],
     'created_at': a['created_at'],
     'updated_at': a['updated_at'],

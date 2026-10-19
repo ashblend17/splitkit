@@ -322,4 +322,117 @@ void main() {
     expect(find.text('Swiggy order'), findsOneWidget);
     expect(find.text('Blue Tokai coffee'), findsNothing); // the ICICI card
   });
+
+  testWidgets('an account linked to another is listed under it, and counts in its balance', (tester) async {
+    final be = await pumpApp(tester, location: '/personal/accounts', size: tall);
+    be.offline = true;
+    final w = appContainer(tester).read(writesProvider);
+    final card = await runWrite(
+      tester,
+      w.createAccount(name: 'HDFC Debit card ··3016', type: AccountType.bank, smsLabel: 'HDFC Debit card ··3016'),
+    );
+    await runWrite(
+      tester,
+      w.createPersonal(
+        PersonalTxnIn(
+          type: PersonalTxnInTypeEnum.expense,
+          amountMinor: 13500,
+          description: 'Paddle',
+          date: DateTime.utc(2026, 9, 24),
+          accountId: card,
+          source_: PersonalTxnInSource_Enum.manual,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(ValueKey('account:$card')), findsOneWidget);
+    await runWrite(tester, w.linkAccount(card, intoId: hdfc));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ValueKey('account:$card')), findsNothing);
+    expect(find.text('Bank account · with HDFC Debit card ··3016'), findsOneWidget);
+    expect(find.text('₹96,000'), findsOneWidget); // ₹96,135 less the card's ₹135
+
+    // Its sheet lists the card, with Unlink.
+    await _open(tester, hdfc);
+    expect(find.byKey(ValueKey('account:linked:$card')), findsOneWidget);
+    await _tap(tester, find.descendant(of: find.byKey(ValueKey('account:linked:$card')), matching: find.text('Unlink')));
+    expect(_queued(tester).last.$3!['linked_account_id'], isNull);
+    expect(find.text('Unlinked HDFC Debit card ··3016 from HDFC ··4821'), findsOneWidget);
+    expect(find.byKey(ValueKey('account:$card')), findsOneWidget);
+  });
+
+  testWidgets('accounts that look like one are offered: Link, or Not the same', (tester) async {
+    final be = await pumpApp(tester, location: '/personal/accounts', size: tall);
+    be.offline = true;
+    final w = appContainer(tester).read(writesProvider);
+    final long = await runWrite(
+      tester,
+      w.createAccount(name: 'HDFC ··54821', type: AccountType.bank, smsLabel: 'HDFC ··54821'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Same account?'), findsOneWidget);
+    expect(
+      find.text(
+        "HDFC ··54821 looks like part of HDFC ··4821: the same bank, and 54821 ends in 4821. Linked, its entries "
+        "count in HDFC ··4821's balance.",
+      ),
+      findsOneWidget,
+    );
+    await _tap(tester, find.widgetWithText(SkButton, 'Link'));
+    final (method, path, body) = _queued(tester).last;
+    expect((method, path, body!['linked_account_id']), ('PUT', '/api/v1/personal/accounts/$long', hdfc));
+    expect(find.text('Linked HDFC ··54821 to HDFC ··4821'), findsOneWidget);
+    expect(find.text('Same account?'), findsNothing);
+
+    await _tap(tester, find.text('Undo'));
+    expect(find.text('Same account?'), findsOneWidget);
+    await _tap(tester, find.widgetWithText(SkButton, 'Not the same'));
+    expect(find.text('Same account?'), findsNothing);
+    expect(appContainer(tester).read(notSameAccountProvider).value, hasLength(1));
+  });
+
+  testWidgets('a card read from SMS and never checked says so; Set owed opens it', (tester) async {
+    final be = await pumpApp(tester, location: '/personal/accounts', size: tall);
+    be.offline = true;
+    final card = appContainer(tester).read(financeEngineProvider).value!.accountForLabel('ICICI Credit card ··9012')!;
+    expect(find.byKey(ValueKey('account:unchecked:${card.id}')), findsOneWidget);
+    expect(find.text('Added up from SMS since 5 Sep, never checked'), findsOneWidget);
+    await _tap(tester, find.text('Set owed'));
+    expect(find.text('The bank says…'), findsOneWidget);
+    expect(find.text('Type what the statement says you owe. A correction dated today makes this match.'), findsOneWidget);
+  });
+
+  testWidgets('"The bank says…" can be below zero (ISS-101)', (tester) async {
+    final be = await pumpApp(tester, location: '/personal/accounts', size: tall);
+    be.offline = true;
+    await _open(tester, cash);
+    await tester.enterText(find.byType(TextField).at(3), '300');
+    await _tap(tester, find.widgetWithText(SelectableChip, 'Overdrawn (below zero)').last);
+    await _tap(tester, find.text('Match'));
+    final (_, _, body) = _queued(tester).single;
+    expect((body!['direction'], body['amount_minor']), ('out', 280000)); // ₹2,500 to −₹300
+    expect(find.text('−₹300'), findsOneWidget);
+  });
+
+  testWidgets('an account sheet links the account to another, and takes its full number', (tester) async {
+    final be = await pumpApp(tester, location: '/personal/accounts', size: tall);
+    be.offline = true;
+    final w = appContainer(tester).read(writesProvider);
+    final card = await runWrite(tester, w.createAccount(name: 'Card ··3232', type: AccountType.bank));
+    await tester.pumpAndSettle();
+    await _open(tester, card);
+    await _tap(tester, find.text('This is part of another account'));
+    await _tap(tester, find.byKey(ValueKey('account:pick:$hdfc')));
+    expect(find.text('Link Card ··3232 to HDFC ··4821?'), findsOneWidget);
+    await _tap(tester, find.text('Link').last);
+    expect(_queued(tester).last.$3!['linked_account_id'], hdfc);
+    expect(find.byKey(ValueKey('account:$card')), findsNothing);
+
+    await _open(tester, hdfc);
+    expect(find.text('Account number (optional)'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'The full number'), '5010 0123 4821');
+    await _tap(tester, find.text('Save changes'));
+    expect(_queued(tester).last.$3!['account_number'], '5010 0123 4821');
+    expect(appContainer(tester).read(financeEngineProvider).value!.account(hdfc)!.accountNumber, '501001234821');
+  });
 }

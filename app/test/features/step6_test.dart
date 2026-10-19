@@ -139,11 +139,11 @@ void main() {
     await pumpApp(tester, location: '/personal/insights');
     expect(find.text('Spending over time'), findsOneWidget);
     expect(find.byType(TrendBars), findsOneWidget);
-    expect(find.text('₹32.5k'), findsOneWidget); // top of the highlighted bar
+    expect(find.text('₹50.7k'), findsOneWidget); // top of the highlighted bar: your own and your group share
     await tester.scrollUntilVisible(find.text('Average per day'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.byType(SplitBar), findsNWidgets(2)); // Personal vs group, Needs and wants
     expect(find.byType(StatBlock), findsNWidgets(2)); // Average per day, Savings rate
-    expect(find.text('August averaged ₹993 per day'), findsOneWidget);
+    expect(find.text('August averaged ₹1,191 per day'), findsOneWidget);
     // From what entries say: the account, how it was paid, who was paid.
     await tester.scrollUntilVisible(find.text('Top merchants'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('HDFC ··4821'), findsOneWidget);
@@ -213,8 +213,8 @@ void main() {
   testWidgets('Savings rate: the rate, and what was saved of what came in', (tester) async {
     await newCards(tester);
     expect(find.text('Savings rate'), findsOneWidget);
-    expect(find.text('62%'), findsOneWidget);
-    expect(find.text('₹52,550 saved of ₹85,000 income'), findsOneWidget);
+    expect(find.text('40%'), findsOneWidget); // with your share of group spending
+    expect(find.text('₹34,340 saved of ₹85,000 income'), findsOneWidget);
 
     // Spent more than came in: a typographic minus, whichever the server sent.
     await newCards(tester, (savings, _) => savings['headline'] = '-13%');
@@ -231,11 +231,11 @@ void main() {
     await newCards(tester);
     expect(find.text('Needs and wants'), findsOneWidget);
     expect(find.byType(SplitBar), findsOneWidget);
-    expect(find.text('Needs · 88%'), findsOneWidget);
-    expect(find.text('Wants · 12%'), findsOneWidget);
-    expect(find.text('₹28,491'), findsOneWidget);
-    expect(find.text('₹3,959'), findsOneWidget);
-    expect(find.textContaining('not sorted'), findsNothing);
+    expect(find.text('Needs · 76%'), findsOneWidget);
+    expect(find.text('Wants · 24%'), findsOneWidget);
+    expect(find.text('₹37,645'), findsOneWidget);
+    expect(find.text('₹12,215'), findsOneWidget);
+    expect(find.text('₹800 not sorted'), findsOneWidget); // a group expense under Other
 
     await newCards(tester, (_, needWant) {
       needWant['headline'] = 'ignored';

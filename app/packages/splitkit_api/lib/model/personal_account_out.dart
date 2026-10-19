@@ -20,6 +20,8 @@ class PersonalAccountOut {
     required this.openingBalanceMinor,
     this.smsLabel,
     required this.status,
+    this.linkedAccountId,
+    this.accountNumber,
     this.actingAdminId,
     required this.createdAt,
     required this.updatedAt,
@@ -41,6 +43,10 @@ class PersonalAccountOut {
 
   PersonalAccountOutStatusEnum status;
 
+  String? linkedAccountId;
+
+  String? accountNumber;
+
   String? actingAdminId;
 
   DateTime createdAt;
@@ -60,6 +66,8 @@ class PersonalAccountOut {
     other.openingBalanceMinor == openingBalanceMinor &&
     other.smsLabel == smsLabel &&
     other.status == status &&
+    other.linkedAccountId == linkedAccountId &&
+    other.accountNumber == accountNumber &&
     other.actingAdminId == actingAdminId &&
     other.createdAt == createdAt &&
     other.updatedAt == updatedAt &&
@@ -76,6 +84,8 @@ class PersonalAccountOut {
     (openingBalanceMinor.hashCode) +
     (smsLabel == null ? 0 : smsLabel!.hashCode) +
     (status.hashCode) +
+    (linkedAccountId == null ? 0 : linkedAccountId!.hashCode) +
+    (accountNumber == null ? 0 : accountNumber!.hashCode) +
     (actingAdminId == null ? 0 : actingAdminId!.hashCode) +
     (createdAt.hashCode) +
     (updatedAt.hashCode) +
@@ -83,7 +93,7 @@ class PersonalAccountOut {
     (version.hashCode);
 
   @override
-  String toString() => 'PersonalAccountOut[id=$id, name=$name, type=$type, currency=$currency, openingBalanceMinor=$openingBalanceMinor, smsLabel=$smsLabel, status=$status, actingAdminId=$actingAdminId, createdAt=$createdAt, updatedAt=$updatedAt, deletedAt=$deletedAt, version=$version]';
+  String toString() => 'PersonalAccountOut[id=$id, name=$name, type=$type, currency=$currency, openingBalanceMinor=$openingBalanceMinor, smsLabel=$smsLabel, status=$status, linkedAccountId=$linkedAccountId, accountNumber=$accountNumber, actingAdminId=$actingAdminId, createdAt=$createdAt, updatedAt=$updatedAt, deletedAt=$deletedAt, version=$version]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -98,6 +108,16 @@ class PersonalAccountOut {
       json[r'sms_label'] = null;
     }
       json[r'status'] = this.status;
+    if (this.linkedAccountId != null) {
+      json[r'linked_account_id'] = this.linkedAccountId;
+    } else {
+      json[r'linked_account_id'] = null;
+    }
+    if (this.accountNumber != null) {
+      json[r'account_number'] = this.accountNumber;
+    } else {
+      json[r'account_number'] = null;
+    }
     if (this.actingAdminId != null) {
       json[r'acting_admin_id'] = this.actingAdminId;
     } else {
@@ -140,6 +160,8 @@ class PersonalAccountOut {
         openingBalanceMinor: mapValueOfType<int>(json, r'opening_balance_minor')!,
         smsLabel: mapValueOfType<String>(json, r'sms_label'),
         status: PersonalAccountOutStatusEnum.fromJson(json[r'status'])!,
+        linkedAccountId: mapValueOfType<String>(json, r'linked_account_id'),
+        accountNumber: mapValueOfType<String>(json, r'account_number'),
         actingAdminId: mapValueOfType<String>(json, r'acting_admin_id'),
         createdAt: mapDateTime(json, r'created_at', r'')!,
         updatedAt: mapDateTime(json, r'updated_at', r'')!,

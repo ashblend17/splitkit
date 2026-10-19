@@ -269,6 +269,8 @@ const _vpa = r'([a-z0-9][a-z0-9.\-_]*@[a-z][a-z0-9.]*[a-z])';
 final _payees = [
   _re(r'\bupi/p2[ma]/\d+/([^/]+?)(?=/|\.|\s+not\b|$)'), // Axis: UPI/P2M/<ref>/RAPIDO
   _re(";\\s*$_name\\s+credited\\b"), // ICICI: …; SWIGGY credited
+  // ICICI cards: … on 19-Oct-26. Info- ZOMATO LIMITE. (before "to": "SMS BLOCK 3232 to …")
+  _re('\\binfo\\s*[:\\-]?\\s*(?!(?:upi|neft|imps|rtgs|nach|ach)\\b)$_name$_end'),
   _re('\\btrf to\\s+$_name$_end'), // SBI
   _re('\\btransferred to\\s+(?:(?:mr|mrs|ms|dr)\\.?\\s+)?$_name$_end'), // SBI
   _re('\\bto\\s+(?:vpa\\s+)?$_vpa'),

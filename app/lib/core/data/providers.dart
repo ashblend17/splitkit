@@ -318,10 +318,22 @@ final allCategoriesProvider = FutureProvider<List<CategoryOut>>(
 );
 
 /// Personal dashboard for "week", "month" or "year", as of today on this device. Analytics is
-/// online only: offline, the page shows the offline card.
+/// online only: offline, the page shows the offline card. Its spending counts your share of
+/// group expenses exactly when Overview's cash flow does ([cashFlowProvider]).
 final personalDashboardProvider = FutureProvider.family<DashboardOut, String>((ref, period) {
   _afterEachSync(ref);
-  return fetch(ref, ref.watch(apiProvider).analytics.personalDashboard(period: period, on_: apiDate(appClock.now())));
+  final links = ref.watch(integrationsProvider);
+  return fetch(
+    ref,
+    ref
+        .watch(apiProvider)
+        .analytics
+        .personalDashboard(
+          period: period,
+          on_: apiDate(appClock.now()),
+          groupShare: links.groupShareInPersonal && links.groupShareInCashFlow,
+        ),
+  );
 });
 
 final groupDashboardProvider = FutureProvider.family<DashboardOut, String>((ref, groupId) {

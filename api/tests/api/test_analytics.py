@@ -1,4 +1,7 @@
-from tests.api.conftest import cat, gid, login, register
+from sqlalchemy import text
+
+from app.core.db import SessionLocal
+from tests.api.conftest import cat, gid, login, register, uid
 
 API = "/api/v1"
 TXNS = f"{API}/personal/transactions"
@@ -9,7 +12,9 @@ def cards(client, headers, path):
 
 
 def test_personal_dashboard_matches_personal_analytics_mockup(client, seeded):
-    c = cards(client, login(client, "john"), "/analytics/personal?period=month&on=2026-09-23")
+    """The mockup's figures are your own spending: group shares left out."""
+    path = "/analytics/personal?period=month&on=2026-09-23&group_share=false"
+    c = cards(client, login(client, "john"), path)
     trend = c["spending_trend"]
     assert (trend["title"], trend["period_label"], trend["headline"]) == (
         "Spending over time",
@@ -47,9 +52,10 @@ def test_personal_dashboard_matches_personal_analytics_mockup(client, seeded):
 
 
 def test_savings_rate_and_needs_and_wants(client, seeded):
-    """September: ₹85,000 salary, ₹32,450 spent (transfers and the SIP aren't spending)."""
+    """September: ₹85,000 salary, ₹32,450 spent (transfers and the SIP aren't spending), group
+    shares left out."""
     h = login(client, "john")
-    c = cards(client, h, "/analytics/personal?period=month&on=2026-09-23")
+    c = cards(client, h, "/analytics/personal?period=month&on=2026-09-23&group_share=false")
     rate = c["savings_rate"]
     assert (rate["title"], rate["period_label"], rate["headline"], rate["stat"]) == (
         "Savings rate",
@@ -65,13 +71,13 @@ def test_savings_rate_and_needs_and_wants(client, seeded):
         ("Wants", 3959),
     ]
     # July: the refund comes off shopping, a want.
-    july = cards(client, h, "/analytics/personal?period=month&on=2026-07-31")
+    july = cards(client, h, "/analytics/personal?period=month&on=2026-07-31&group_share=false")
     assert july["savings_rate"]["headline"] == "59%"  # 50,570 of 85,000
     assert [(r["label"], r["value_minor"] // 100) for r in july["need_vs_want"]["rows"]] == [
         ("Needs", 26230),
         ("Wants", 8200),
     ]
-    week = cards(client, h, "/analytics/personal?period=week&on=2026-09-23")
+    week = cards(client, h, "/analytics/personal?period=week&on=2026-09-23&group_share=false")
     assert (week["savings_rate"]["headline"], week["savings_rate"]["stat"]) == (
         "—",
         {"value_minor": -358_600, "note": "No income in 17 – 23 Sep"},
@@ -139,9 +145,55 @@ def test_what_isnt_spending_stays_out(client, seeded):
     }
     assert client.post(TXNS, headers=h, json=refund).status_code == 201
     after = cards(client, h, "/analytics/personal?period=month&on=2026-09-23")
-    assert after["spending_trend"]["headline"] == before["spending_trend"]["headline"] == "₹32,450"
+    # The groceries count once, through john's share of the group expense.
+    assert after["spending_trend"]["headline"] == before["spending_trend"]["headline"] == "₹50,660"
     assert after["savings_rate"] == before["savings_rate"]
     assert after["need_vs_want"] == before["need_vs_want"]
+
+
+def test_a_group_you_left_drops_out_of_your_group_share(client, seeded):
+    """ISS-039: Insights and the summary count your shares only in groups you're still in, as
+    your device does (it no longer has a group you've left)."""
+    h = login(client, "john")
+    path = "/analytics/personal?period=month&on=2026-09-23"
+    assert cards(client, h, path)["personal_vs_group"]["rows"][1]["value_minor"] == 1_821_000
+    summary = f"{API}/personal/summary?month=2026-09-01"
+    assert client.get(summary, headers=h).json()["group_share_minor"] == 1_821_000
+    with SessionLocal.begin() as s:
+        s.execute(
+            text("UPDATE group_members SET left_at = now() WHERE user_id = :u"), {"u": uid("john")}
+        )
+    c = cards(client, h, path)
+    assert c["personal_vs_group"]["rows"][1]["value_minor"] == 0
+    personal = c["personal_vs_group"]["rows"][0]["value_minor"]
+    assert c["spending_trend"]["bars"][-1]["value_minor"] == personal
+    assert client.get(summary, headers=h).json()["group_share_minor"] == 0
+
+
+def test_group_shares_count_as_spending(client, seeded):
+    """By default your share of group expenses is spending, as the app's cash flow counts it,
+    in its expense's category; the cards about your own entries stay as they were."""
+    h = login(client, "john")
+    path = "/analytics/personal?period=month&on=2026-09-23"
+    c, own = cards(client, h, path), cards(client, h, f"{path}&group_share=false")
+    [personal, share] = [r["value_minor"] for r in c["personal_vs_group"]["rows"]]
+    assert (personal, share) == (3_245_000, 1_821_000)
+    spent = personal + share
+    assert c["spending_trend"]["headline"] == "₹50,660"
+    assert c["spending_trend"]["bars"][-1]["value_minor"] == spent
+    rows = c["spending_by_category"]["rows"]
+    assert sum(r["value_minor"] for r in rows) == spent
+    assert {r["label"] for r in rows} > {r["label"] for r in own["spending_by_category"]["rows"]}
+    assert c["average_daily"]["stat"]["value_minor"] == (spent // 23 + 50) // 100 * 100
+    assert c["savings_rate"]["stat"]["value_minor"] == 8_500_000 - spent
+    assert sum(r["value_minor"] for r in c["need_vs_want"]["rows"]) == spent
+    for card in (
+        "spending_by_account",
+        "spending_by_channel",
+        "top_merchants",
+        "personal_vs_group",
+    ):
+        assert c[card] == own[card], card
 
 
 def test_by_account_names_the_account(client, seeded):

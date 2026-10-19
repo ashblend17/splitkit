@@ -9,7 +9,7 @@
       "title": "Spending over time",
       "period_label": "Last 6 months",
       "source": "personal_monthly",
-      "headline": "₹32,450",
+      "headline": "₹50,660",
       "bars": [
         {
           "label": "Apr",
@@ -28,17 +28,17 @@
         },
         {
           "label": "Jul",
-          "value_minor": 3443000,
+          "value_minor": 4101000,
           "highlight": false
         },
         {
           "label": "Aug",
-          "value_minor": 3077500,
+          "value_minor": 3691500,
           "highlight": false
         },
         {
           "label": "Sep",
-          "value_minor": 3245000,
+          "value_minor": 5066000,
           "highlight": true
         }
       ],
@@ -56,27 +56,39 @@
       "rows": [
         {
           "label": "Rent",
-          "value_minor": 1800000
+          "value_minor": 2300000
         },
         {
           "label": "Food",
-          "value_minor": 582000
+          "value_minor": 820800
+        },
+        {
+          "label": "Travel",
+          "value_minor": 436100
         },
         {
           "label": "Transport",
-          "value_minor": 294000
+          "value_minor": 390600
         },
         {
           "label": "Shopping",
-          "value_minor": 231000
+          "value_minor": 309000
         },
         {
           "label": "Fun",
-          "value_minor": 164900
+          "value_minor": 252400
+        },
+        {
+          "label": "Stay",
+          "value_minor": 224000
         },
         {
           "label": "Bills",
-          "value_minor": 112000
+          "value_minor": 192000
+        },
+        {
+          "label": "Other",
+          "value_minor": 80000
         },
         {
           "label": "Health",
@@ -115,8 +127,8 @@
       "bars": [],
       "rows": [],
       "stat": {
-        "value_minor": 141100,
-        "note": "August averaged ₹993 per day"
+        "value_minor": 220300,
+        "note": "August averaged ₹1,191 per day"
       }
     },
     {
@@ -197,12 +209,12 @@
       "title": "Savings rate",
       "period_label": "September",
       "source": "personal_savings_rate",
-      "headline": "62%",
+      "headline": "40%",
       "bars": [],
       "rows": [],
       "stat": {
-        "value_minor": 5255000,
-        "note": "₹52,550 saved of ₹85,000 income"
+        "value_minor": 3434000,
+        "note": "₹34,340 saved of ₹85,000 income"
       }
     },
     {
@@ -216,11 +228,15 @@
       "rows": [
         {
           "label": "Needs",
-          "value_minor": 2849100
+          "value_minor": 3764500
         },
         {
           "label": "Wants",
-          "value_minor": 395900
+          "value_minor": 1221500
+        },
+        {
+          "label": "Not sorted",
+          "value_minor": 80000
         }
       ],
       "stat": null

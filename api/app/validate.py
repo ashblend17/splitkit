@@ -187,6 +187,21 @@ CHECKS: list[Check] = [
         """),
     ),
     Check(
+        "account_links_one_level",
+        "error",
+        "A live account linked to another is linked to a live account of yours in the same "
+        "currency that isn't linked itself.",
+        "The API refuses anything else. Set the account's linked_account_id to null, then reset "
+        "the owner's stream.",
+        _sql("""
+            SELECT a.id, a.user_id, a.linked_account_id
+            FROM personal_accounts a JOIN personal_accounts t ON t.id = a.linked_account_id
+            WHERE a.deleted_at IS NULL
+              AND (t.deleted_at IS NOT NULL OR t.linked_account_id IS NOT NULL
+                   OR t.currency <> a.currency)
+        """),
+    ),
+    Check(
         "goal_contributions_count_once",
         "error",
         "No entry counts towards a goal twice: as a contribution, and through the balance of an "

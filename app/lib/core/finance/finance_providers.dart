@@ -94,6 +94,12 @@ const _entriesAndGroups = {LedgerDomain.personal, LedgerDomain.groups};
 abstract final class FinanceKeys {
   /// The [TransferSuggestion.key]s of the pairs you said aren't a transfer, in the order you did.
   static const notTransfer = 'finance.not_transfer';
+
+  /// The [SameAccount.key]s of the accounts you said aren't one account.
+  static const notSame = 'finance.not_same';
+
+  /// The ids of the accounts you said aren't a credit card.
+  static const notCard = 'finance.not_card';
 }
 
 /// The pairs you said aren't a transfer ("Not a transfer"), as [TransferSuggestion.key]s, so
@@ -101,22 +107,75 @@ abstract final class FinanceKeys {
 /// server" keeps them, signing out forgets them.
 final notTransferProvider = AsyncNotifierProvider<NotTransferPairs, Set<String>>(NotTransferPairs.new);
 
-class NotTransferPairs extends AsyncNotifier<Set<String>> {
+class NotTransferPairs extends DismissedKeys {
+  @override
+  String get storeKey => FinanceKeys.notTransfer;
+
+  /// "Not a transfer": [suggestion] isn't offered again on this device.
+  Future<void> dismiss(TransferSuggestion suggestion) => dismissKey(suggestion.key);
+}
+
+/// The accounts you said aren't one ("Not the same"), as [SameAccount.key]s; kept as
+/// [notTransferProvider] is.
+final notSameAccountProvider = AsyncNotifierProvider<NotSameAccounts, Set<String>>(NotSameAccounts.new);
+
+class NotSameAccounts extends DismissedKeys {
+  @override
+  String get storeKey => FinanceKeys.notSame;
+
+  Future<void> dismiss(SameAccount pair) => dismissKey(pair.key);
+}
+
+/// The accounts you said aren't a credit card ("It's a bank account"); kept as
+/// [notTransferProvider] is.
+final notCardProvider = AsyncNotifierProvider<NotCards, Set<String>>(NotCards.new);
+
+class NotCards extends DismissedKeys {
+  @override
+  String get storeKey => FinanceKeys.notCard;
+
+  Future<void> dismiss(LooksLikeCard card) => dismissKey(card.account.id);
+}
+
+/// Keys of suggestions you turned down, kept in the device store under [storeKey].
+abstract class DismissedKeys extends AsyncNotifier<Set<String>> {
+  String get storeKey;
+
   @override
   Future<Set<String>> build() async {
     final store = await ref.watch(localStoreProvider.future);
-    final saved = await store.deviceValue(FinanceKeys.notTransfer);
+    final saved = await store.deviceValue(storeKey);
     return Set.unmodifiable(saved is List ? saved.cast<String>() : const <String>[]);
   }
 
-  /// "Not a transfer": [suggestion] isn't offered again on this device.
-  Future<void> dismiss(TransferSuggestion suggestion) async {
+  /// [key] isn't offered again on this device.
+  Future<void> dismissKey(String key) async {
     final store = await ref.read(localStoreProvider.future);
     final before = state.value ?? await future;
-    if (before.contains(suggestion.key)) return;
+    if (before.contains(key)) return;
     // Shown at once; saved after, with whatever else was dismissed meanwhile.
-    final after = Set<String>.unmodifiable({...state.value ?? before, suggestion.key});
+    final after = Set<String>.unmodifiable({...state.value ?? before, key});
     state = AsyncData(after);
-    await store.setDeviceValue(FinanceKeys.notTransfer, after.toList());
+    await store.setDeviceValue(storeKey, after.toList());
   }
 }
+
+/// Pairs of your accounts that look like one account (sameAccounts in account_links.dart), less
+/// those you said aren't ([notSameAccountProvider]): Accounts offers to link them.
+final sameAccountsProvider = FutureProvider<List<SameAccount>>((ref) async {
+  final dismissed = await ref.watch(notSameAccountProvider.future);
+  return localOn(ref, const {LedgerDomain.personal}, (l) => sameAccounts(l.finance.balances, dismissed: dismissed));
+});
+
+/// Bank accounts a credit card's messages went into (looksLikeCards), less those you said aren't
+/// one ([notCardProvider]): Accounts offers to make them credit cards.
+final looksLikeCardsProvider = FutureProvider<List<LooksLikeCard>>((ref) async {
+  final dismissed = await ref.watch(notCardProvider.future);
+  return localOn(ref, const {LedgerDomain.personal}, (l) {
+    final f = l.finance;
+    return [
+      for (final c in looksLikeCards(f.balances, f.creditCardLabelIn))
+        if (!dismissed.contains(c.account.id)) c,
+    ];
+  });
+});

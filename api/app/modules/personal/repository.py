@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.modules.categories.models import Category
 from app.modules.expenses.models import Expense, ExpenseSplit
 from app.modules.groups.models import GroupMember
-from app.modules.personal.models import PersonalTransaction
+from app.modules.personal.models import PersonalAccount, PersonalTransaction
 from app.modules.settlements.models import Settlement
 
 
@@ -41,7 +41,14 @@ def query(
     if account:
         q = q.where(PersonalTransaction.account == account)
     if account_id:
-        q = q.where(PersonalTransaction.account_id == account_id)
+        # With the accounts linked to it: their entries count in its balance.
+        parts = select(PersonalAccount.id).where(
+            PersonalAccount.user_id == user_id, PersonalAccount.linked_account_id == account_id
+        )
+        q = q.where(
+            (PersonalTransaction.account_id == account_id)
+            | PersonalTransaction.account_id.in_(parts)
+        )
     if channel:
         q = q.where(PersonalTransaction.channel == channel)
     if source:
@@ -63,9 +70,17 @@ def query(
     )
 
 
+def current_groups(user_id: uuid.UUID):
+    """The groups you're still in, as a subquery. A group you've left drops out of your group
+    share, as it does from your device (ISS-039)."""
+    return select(GroupMember.group_id).where(
+        GroupMember.user_id == user_id, GroupMember.left_at.is_(None)
+    )
+
+
 def group_share(session: Session, user_id: uuid.UUID, start: date, end: date, currency: str) -> int:
-    """Your shares of live group expenses in `currency` dated between start and end
-    (inclusive)."""
+    """Your shares of live expenses in `currency`, in groups you're still in, dated between
+    start and end (inclusive)."""
     total = session.scalar(
         select(func.coalesce(func.sum(ExpenseSplit.share_minor), 0))
         .join(Expense, Expense.id == ExpenseSplit.expense_id)
@@ -73,6 +88,7 @@ def group_share(session: Session, user_id: uuid.UUID, start: date, end: date, cu
             ExpenseSplit.user_id == user_id,
             Expense.deleted_at.is_(None),
             Expense.currency == currency,
+            Expense.group_id.in_(current_groups(user_id)),
             Expense.date >= start,
             Expense.date <= end,
         )
@@ -85,9 +101,7 @@ def covered_ids(session: Session, user_id: uuid.UUID) -> set[uuid.UUID]:
     of those. They're listed but not counted: your share of the expense counts as group
     spending (a refund of it belongs to the group too), and a payment isn't spending. A group
     you've left drops out, as it does from your device."""
-    groups = select(GroupMember.group_id).where(
-        GroupMember.user_id == user_id, GroupMember.left_at.is_(None)
-    )
+    groups = current_groups(user_id)
     via_expense = (
         select(PersonalTransaction.id)
         .join(Expense, Expense.id == PersonalTransaction.expense_id)

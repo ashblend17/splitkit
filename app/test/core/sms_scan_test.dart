@@ -154,6 +154,43 @@ void main() {
       }
     });
 
+    test('a label no account has goes in the account whose full number it ends', () {
+      final ledger = _seed(patch: {'HDFC ··4821': {'account_number': '50100123454821'}});
+      final out = _scan(ledger, [
+        _hdfc('Rs.200.00 debited from HDFC Bank A/c XX54821 on 20-09-26 towards BLINKIT via NetBanking.', 20),
+      ]);
+      expect(out.newAccounts, isEmpty);
+      expect(
+        (out.created.single.$2.accountId, out.created.single.$2.account),
+        (_accountId(ledger, 'HDFC ··4821'), 'HDFC ··54821'),
+      );
+    });
+
+    test("a card's other wording goes in the card's account (ISS-088)", () {
+      final ledger = _seed(accounts: ['HDFC Card ··5678']);
+      final out = _scan(ledger, [
+        _hdfc('Spent Rs.1,299.00 On HDFC Bank Credit Card 5678 At AMAZON On 2026-09-22', 22),
+      ]);
+      expect(out.newAccounts, isEmpty);
+      expect(out.created.single.$2.accountId, _accountId(ledger, 'HDFC Card ··5678'));
+    });
+
+    test("an account linked to a closed one takes no entries, and one linked to a card is the card's type", () {
+      final hdfc = _accountId(_seed(), 'HDFC ··4821'), card = _accountId(_seed(), 'ICICI Credit card ··9012');
+      final debit = _hdfc('Rs.640.00 spent on HDFC Bank Debit Card XX3016 on 20-09-26 at STARBUCKS.', 20);
+      final open = _seed(accounts: ['HDFC Debit card ··3016'], patch: {'HDFC Debit card ··3016': {'linked_account_id': hdfc}});
+      expect(_scan(open, [debit]).created.single.$2.accountId, _accountId(open, 'HDFC Debit card ··3016'));
+      final closed = _seed(
+        closed: {'HDFC ··4821'},
+        accounts: ['HDFC Debit card ··3016'],
+        patch: {'HDFC Debit card ··3016': {'linked_account_id': hdfc}},
+      );
+      expect(_scan(closed, [debit]).created.single.$2.accountId, isNull);
+      final onCard = _seed(accounts: ['HDFC Card ··3016'], patch: {'HDFC Card ··3016': {'linked_account_id': card}});
+      final input = smsScanInput(onCard, const [], const Features());
+      expect(input.accountsByLabel['HDFC Card ··3016']?.type, AccountType.creditCard);
+    });
+
     test('an entry you made by hand gets the account with the message', () {
       final out = _scan(seed, [
         _hdfc('Rs.1860.00 debited from a/c **4821 on 19-09-26 to VPA bigbasket@hdfcbank(UPI Ref No 626200000002).', 19),
@@ -488,14 +525,18 @@ const _salary = '2676dd92-8311-501e-8c3c-c03c47f029bd'; // September's, into HDF
 final me = _seed().me;
 
 /// The seed's sync snapshot as a Ledger, with the accounts named in [closed] closed and in
-/// [deleted] deleted, and [entries] (personal entries' data) added.
+/// [deleted] deleted, [patch] applied to accounts by name, and [entries] (personal entries' data)
+/// and [accounts] (bank accounts with these labels, each patched by [patch] too) added.
 Ledger _seed({
   Set<String> closed = const {},
   Set<String> deleted = const {},
   List<Map<String, dynamic>> entries = const [],
+  List<String> accounts = const [],
+  Map<String, Map<String, dynamic>> patch = const {},
 }) {
   final fixture = jsonDecode(File('test/fixtures/sync/john.json').readAsStringSync()) as Map<String, dynamic>;
   final snapshots = (fixture['snapshots'] as Map).cast<String, dynamic>();
+  final user = snapshots.keys.firstWhere((k) => k.startsWith('user:'));
   return Ledger([
     for (final s in snapshots.entries)
       for (final e in ((s.value as Map)['entities'] as List).cast<Map<String, dynamic>>())
@@ -504,9 +545,23 @@ Ledger _seed({
           if (e['entity'] == 'personal_account' && closed.contains(e['data']['name'])) 'status': 'closed',
           if (e['entity'] == 'personal_account' && deleted.contains(e['data']['name']))
             'deleted_at': '2026-09-24T00:00:00+00:00',
+          if (e['entity'] == 'personal_account') ...?patch[e['data']['name']],
         }),
-    for (final t in entries)
-      LocalEntity(snapshots.keys.firstWhere((k) => k.startsWith('user:')), 'personal_transaction', t['id'], 1, t),
+    for (final t in entries) LocalEntity(user, 'personal_transaction', t['id'], 1, t),
+    for (final label in accounts)
+      LocalEntity(user, 'personal_account', smsAccountId(user.substring(5), label), 1, {
+        'id': smsAccountId(user.substring(5), label),
+        'user_id': user.substring(5),
+        'name': label,
+        'type': 'bank',
+        'currency': 'INR',
+        'opening_balance_minor': 0,
+        'sms_label': label,
+        'status': 'active',
+        'created_at': '2026-09-01T00:00:00+00:00',
+        'deleted_at': null,
+        ...?patch[label],
+      }),
   ]);
 }
 

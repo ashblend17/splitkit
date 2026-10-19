@@ -960,4 +960,131 @@ void main() {
       [('personal_transaction', 1), ('personal_account', 2)],
     );
   });
+
+  testWidgets('linking and unlinking an account: one PUT each, and the balance follows', (tester) async {
+    await _offline(tester);
+    final w = _writes(tester);
+    final hdfc = _account(_ledger(tester), 'HDFC ··4821');
+    final card = await runWrite(
+      tester,
+      w.createAccount(name: 'HDFC Debit card ··3016', type: AccountType.bank, smsLabel: 'HDFC Debit card ··3016'),
+    );
+    await runWrite(tester, w.createPersonal(_sms('Paddle', 82800, accountId: card)));
+    final before = _ledger(tester).finance.balanceOf(hdfc)!.balanceMinor;
+
+    await runWrite(tester, w.linkAccount(card, intoId: hdfc));
+    final op = _ops(tester).last;
+    expect((op.method, op.path, op.body!['linked_account_id'], op.label), (
+      'PUT',
+      '/api/v1/personal/accounts/$card',
+      hdfc,
+      'Linked HDFC Debit card ··3016',
+    ));
+    expect(PersonalAccountIn.fromJson(op.body), isNotNull);
+    var f = _ledger(tester).finance;
+    expect(f.balanceOf(card), isNull);
+    expect(f.balanceOf(hdfc)!.balanceMinor, before - 82800);
+    expect(f.linkedTo(hdfc).map((a) => a.id), [card]);
+    // HDFC's entries now come with the card's.
+    expect(
+      (_ledger(tester).personalList(accountId: hdfc, limit: 1 << 20)['items'] as List).any((t) => t['account_id'] == card),
+      isTrue,
+    );
+    // Any other edit keeps the link: the client sends every key.
+    await runWrite(tester, w.updateAccount(card, name: 'HDFC debit card'));
+    expect(_ops(tester).last.body!['linked_account_id'], hdfc);
+
+    await runWrite(tester, w.unlinkAccount(card));
+    expect(_ops(tester).last.body!['linked_account_id'], isNull);
+    f = _ledger(tester).finance;
+    expect((f.balanceOf(card)?.entryCount, f.balanceOf(hdfc)!.balanceMinor), (1, before));
+  });
+
+  testWidgets('what can be linked, refused as the server refuses it', (tester) async {
+    await _offline(tester);
+    final w = _writes(tester);
+    final l = _ledger(tester);
+    final hdfc = _account(l, 'HDFC ··4821'), zerodha = _account(l, 'Zerodha'), savings = _account(l, 'Emergency savings');
+    final card = await runWrite(tester, w.createAccount(name: 'HDFC Card ··3016', type: AccountType.bank));
+    final part = await runWrite(tester, w.createAccount(name: 'HDFC ··787778', type: AccountType.bank));
+    await runWrite(tester, w.linkAccount(part, intoId: hdfc));
+
+    await _expectRefused(tester, w.linkAccount(card, intoId: card), 'link_invalid', "An account can't be linked to itself");
+    await _expectRefused(
+      tester,
+      w.linkAccount(card, intoId: part),
+      'link_invalid',
+      'HDFC ··787778 is part of HDFC ··4821. Link to that one instead',
+    );
+    await _expectRefused(tester, w.linkAccount(card, intoId: zerodha), 'link_invalid', "Investment accounts can't be linked");
+    await _expectRefused(
+      tester,
+      w.linkAccount(hdfc, intoId: card),
+      'account_in_use',
+      'HDFC ··787778 is linked to this account. Unlink it first',
+    );
+    await _expectRefused(
+      tester,
+      w.linkAccount(savings, intoId: hdfc),
+      'account_in_use',
+      "A goal follows this account's balance, so it can't be linked to another",
+    );
+    await _expectRefused(tester, w.updateAccount(hdfc, type: AccountType.investment), 'link_invalid');
+    // Deleting the account others are linked to is refused, even with no entries of its own.
+    await _expectRefused(
+      tester,
+      w.deleteAccount(hdfc),
+      'account_in_use',
+      'HDFC ··787778 is linked to this account. Unlink it first',
+    );
+  });
+
+  testWidgets('a linked account deleted, then its account: restored, it comes back unlinked', (tester) async {
+    await _offline(tester);
+    final w = _writes(tester);
+    final bank = await runWrite(tester, w.createAccount(name: 'Axis', type: AccountType.bank));
+    final card = await runWrite(tester, w.createAccount(name: 'Axis Debit card ··1111', type: AccountType.bank));
+    await runWrite(tester, w.linkAccount(card, intoId: bank));
+    await runWrite(tester, w.deleteAccount(card));
+    await runWrite(tester, w.deleteAccount(bank));
+    await runWrite(tester, w.restoreAccount(card));
+    final restored = _ops(tester).last.entities.single.data;
+    expect((restored['deleted_at'], restored['linked_account_id']), (null, null));
+  });
+
+  testWidgets('no new entry goes through a link to a closed account', (tester) async {
+    await _offline(tester);
+    final w = _writes(tester);
+    final bank = await runWrite(tester, w.createAccount(name: 'Axis', type: AccountType.bank));
+    final card = await runWrite(tester, w.createAccount(name: 'Axis Debit card ··1111', type: AccountType.bank));
+    await runWrite(tester, w.linkAccount(card, intoId: bank));
+    await runWrite(tester, w.closeAccount(bank));
+    await _expectRefused(
+      tester,
+      w.createPersonal(_sms('Tea', 1000, accountId: card)),
+      'account_closed',
+      'That account is part of Axis, which is closed',
+    );
+  });
+
+  testWidgets('an account number is kept as digits, cleared with "", and refused unless 4 to 20 of them', (tester) async {
+    await _offline(tester);
+    final w = _writes(tester);
+    final sbi = await runWrite(
+      tester,
+      w.createAccount(name: 'SBI savings', type: AccountType.bank, accountNumber: ' 3001 2345-678456 '),
+    );
+    expect(_ops(tester).last.body!['account_number'], ' 3001 2345-678456 '); // the server keeps the digits too
+    expect(_ledger(tester).rawAccount(sbi)!['account_number'], '30012345678456');
+    await runWrite(tester, w.updateAccount(sbi, name: 'SBI'));
+    expect(_ledger(tester).rawAccount(sbi)!['account_number'], '30012345678456');
+    await runWrite(tester, w.updateAccount(sbi, accountNumber: ''));
+    expect(_ledger(tester).rawAccount(sbi)!['account_number'], isNull);
+    await _expectRefused(
+      tester,
+      w.updateAccount(sbi, accountNumber: '12a4'),
+      'invalid_input',
+      'An account number is 4 to 20 digits',
+    );
+  });
 }

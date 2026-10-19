@@ -75,10 +75,13 @@ def _labels(session: Session) -> dict[uuid.UUID, str]:
     return {c.id: c.label for c in session.scalars(select(Category))}
 
 
-def personal_dashboard(session: Session, actor: Actor, period: Period, on: date) -> DashboardOut:
-    """Kept for app builds that ask the server; newer ones work this out on the device from
-    the same rows, and a parity test holds the two equal (with group share left out of
-    spending, as here)."""
+def personal_dashboard(
+    session: Session, actor: Actor, period: Period, on: date, group_share: bool = True
+) -> DashboardOut:
+    """Personal's Insights. With `group_share`, your share of group expenses is spending, as
+    the app's cash flow counts it: the trend, categories, daily average, needs and wants and
+    the savings rate add it; By account, By payment mode and Top merchants stay your own
+    entries."""
     me, currency = actor.user_id, actor.user.currency
     categories = {c.id: c for c in session.scalars(select(Category))}
     accounts = dict(
@@ -124,18 +127,22 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
             )
         )
     income = [sources.Entry(t.date, t.amount_minor) for t in rows if t.type == "income"]
-    shares = [
-        sources.Entry(d, share)
-        for d, share in session.execute(
-            select(Expense.date, ExpenseSplit.share_minor)
-            .join(ExpenseSplit, ExpenseSplit.expense_id == Expense.id)
-            .where(
-                ExpenseSplit.user_id == me,
-                Expense.currency == currency,
-                Expense.deleted_at.is_(None),
-            )
+    # As repository.group_share: your shares of live expenses in your currency, in groups
+    # you're still in (a group you've left is gone from your device too).
+    shares = []
+    for d, share, category_id in session.execute(
+        select(Expense.date, ExpenseSplit.share_minor, Expense.category_id)
+        .join(ExpenseSplit, ExpenseSplit.expense_id == Expense.id)
+        .where(
+            ExpenseSplit.user_id == me,
+            Expense.currency == currency,
+            Expense.deleted_at.is_(None),
+            Expense.group_id.in_(personal_repo.current_groups(me)),
         )
-    ]
+    ):
+        c = categories.get(category_id)
+        label, kind = (c.label, c.kind) if c else ("Uncategorised", None)
+        shares.append(sources.Entry(d, share, label, kind=kind))
     ctx = sources.Context(
         period=period,
         on=on,
@@ -143,6 +150,7 @@ def personal_dashboard(session: Session, actor: Actor, period: Period, on: date)
         personal=personal,
         income=income,
         group_shares=shares,
+        count_group_share=group_share,
     )
     return DashboardOut(
         scope="personal",

@@ -509,6 +509,10 @@ class _Draft {
       final a = account(accountId);
       if (a == null || a['deleted_at'] != null) _refuse('unknown_account', "That account isn't available");
       if (a['status'] == 'closed') _refuse('account_closed', 'That account is closed');
+      // Its entries count in the account it's linked to, which takes none while closed.
+      if (account(a['linked_account_id'] as String? ?? '') case final whole? when whole['status'] == 'closed') {
+        _refuse('account_closed', 'That account is part of ${whole['name']}, which is closed');
+      }
       if (a['currency'] != t['currency']) {
         _refuse('currency_mismatch', 'That account is in ${a['currency']}; this entry is in ${t['currency']}');
       }
@@ -584,6 +588,7 @@ class _Draft {
     if (account(id) != null) return;
     final data = _accountData(id, body, null);
     _checkLabel(data['sms_label'] as String?, id);
+    if (data['linked_account_id'] case final String to) _checkLink(data, to);
     _set(_account, data);
     _claim(data);
   }
@@ -595,12 +600,25 @@ class _Draft {
     if (before['type'] == 'investment' && data['type'] != 'investment' && _holds(id)) {
       _refuse('account_in_use', 'This account has holdings, so it stays an investment account', status: 409);
     }
+    final link = data['linked_account_id'] as String?;
+    if (data['type'] == 'investment' && (link != null || _linkedHere(id) != null)) {
+      _refuse('link_invalid', "Investment accounts can't be linked");
+    }
+    if (link != null && link != before['linked_account_id']) _checkLink(data, link);
     if (data['sms_label'] != before['sms_label']) _checkLabel(data['sms_label'] as String?, id);
     if (data['status'] == 'closed' && before['status'] != 'closed') {
       _refuseIfPointedAt(_l.finance, 'account', accountId: id);
     }
     final changed = {
-      for (final k in const ['name', 'type', 'opening_balance_minor', 'sms_label', 'status'])
+      for (final k in const [
+        'name',
+        'type',
+        'opening_balance_minor',
+        'sms_label',
+        'linked_account_id',
+        'account_number',
+        'status',
+      ])
         if (data[k] != before[k]) k,
     };
     // The server leaves an account nothing changes as it is, version too.
@@ -618,6 +636,8 @@ class _Draft {
     'currency': before?['currency'] ?? _l.userOut()['currency'],
     'opening_balance_minor': body.openingBalanceMinor,
     'sms_label': LocalWrites._text(body.smsLabel),
+    'linked_account_id': body.linkedAccountId,
+    'account_number': _accountNumber(body.accountNumber),
     'status': body.status?.value ?? before?['status'] ?? 'active',
     'acting_admin_id': _adminId,
     'created_at': before?['created_at'] ?? _now,
@@ -625,6 +645,34 @@ class _Draft {
     'deleted_at': null,
     'version': (before?['version'] as int? ?? 0) + 1,
   };
+
+  /// accounts._check_link: account [a] (as it will be) linked to account [to], another open
+  /// account of yours in the same currency that isn't linked itself. Neither may be an investment
+  /// account, and [a] may have no accounts linked to it and no goal following it.
+  void _checkLink(Json a, String to) {
+    if (to == a['id']) _refuse('link_invalid', "An account can't be linked to itself");
+    final target = account(to);
+    if (target == null || target['deleted_at'] != null) _refuse('unknown_account', "That account isn't available");
+    if (target['status'] == 'closed') _refuse('account_closed', 'That account is closed');
+    if (target['linked_account_id'] case final String whole) {
+      _refuse('link_invalid', '${target['name']} is part of ${account(whole)?['name']}. Link to that one instead');
+    }
+    if (target['currency'] != a['currency']) {
+      _refuse('currency_mismatch', 'That account is in ${target['currency']}; this one is in ${a['currency']}');
+    }
+    if (a['type'] == 'investment' || target['type'] == 'investment') {
+      _refuse('link_invalid', "Investment accounts can't be linked");
+    }
+    if (_linkedHere(a['id'] as String) case final child?) {
+      _refuse('account_in_use', '${child['name']} is linked to this account. Unlink it first', status: 409);
+    }
+    if (_l.rawGoals.any((g) => g['deleted_at'] == null && g['linked_account_id'] == a['id'])) {
+      _refuse('account_in_use', "A goal follows this account's balance, so it can't be linked to another", status: 409);
+    }
+  }
+
+  /// The oldest live account linked to account [id], as the items so far leave it (accounts._linked_here).
+  Json? _linkedHere(String id) => _linkedTo(_allAccounts(), id);
 
   /// One account per label, ever: deleted accounts keep theirs (accounts._check_label).
   void _checkLabel(String? label, String self) {
@@ -711,7 +759,34 @@ PersonalAccountIn _accountIn(Json a) => PersonalAccountIn(
   openingBalanceMinor: a['opening_balance_minor'] as int? ?? 0,
   smsLabel: a['sms_label'] as String?,
   status: PersonalAccountInStatusEnum.fromJson(a['status']),
+  linkedAccountId: a['linked_account_id'] as String?,
+  accountNumber: a['account_number'] as String?,
 );
+
+/// The oldest live account of [accounts] (raw) linked to account [id], or null.
+Json? _linkedTo(Iterable<Json> accounts, String id) {
+  final linked = [
+    for (final a in accounts)
+      if (a['linked_account_id'] == id && a['deleted_at'] == null) a,
+  ]..sort(_accountOrder);
+  return linked.firstOrNull;
+}
+
+/// The API's order for accounts: created_at, then id.
+int _accountOrder(Json a, Json b) {
+  final c = DateTime.parse(a['created_at'] as String).compareTo(DateTime.parse(b['created_at'] as String));
+  return c != 0 ? c : (a['id'] as String).compareTo(b['id'] as String);
+}
+
+/// An account number as the server keeps it (schemas._account_number): digits only, spaces and
+/// dashes dropped, blank as none; refused unless 4 to 20 digits.
+String? _accountNumber(String? raw) {
+  if (raw == null) return null;
+  final digits = raw.replaceAll(RegExp(r'[\s-]'), '');
+  if (digits.isEmpty) return null;
+  if (!RegExp(r'^[0-9]{4,20}$').hasMatch(digits)) _refuse('invalid_input', 'An account number is 4 to 20 digits');
+  return digits;
+}
 
 PersonalAccountInTypeEnum _accountType(AccountType t) => PersonalAccountInTypeEnum.fromJson(t.wire)!;
 
@@ -773,6 +848,7 @@ extension FinanceWrites on LocalWrites {
     required AccountType type,
     int openingMinor = 0,
     String? smsLabel,
+    String? accountNumber,
     String? id,
   }) async {
     final l = await _ledger();
@@ -782,6 +858,7 @@ extension FinanceWrites on LocalWrites {
       type: _accountType(type),
       openingBalanceMinor: openingMinor,
       smsLabel: smsLabel,
+      accountNumber: accountNumber,
     );
     final entities = (_Draft(this, l)..add(BatchItem.createAccount(id, body))).finish();
     await _queue(
@@ -799,15 +876,43 @@ extension FinanceWrites on LocalWrites {
 
   /// Changes account [id] (`PUT /personal/accounts/{id}`): what's given, the rest as it is.
   /// [smsLabel] '' clears the label; a new one moves in your entries that have it and no account
-  /// yet. Nothing is queued when nothing changes.
-  Future<void> updateAccount(String id, {String? name, AccountType? type, int? openingMinor, String? smsLabel}) async {
+  /// yet. [accountNumber] '' clears the number. Nothing is queued when nothing changes.
+  Future<void> updateAccount(
+    String id, {
+    String? name,
+    AccountType? type,
+    int? openingMinor,
+    String? smsLabel,
+    String? accountNumber,
+  }) async {
     final l = await _ledger();
     final body = _accountIn(_required(l.rawAccount(id), 'Account'))..status = null;
     if (name != null) body.name = name;
     if (type != null) body.type = _accountType(type);
     if (openingMinor != null) body.openingBalanceMinor = openingMinor;
     if (smsLabel != null) body.smsLabel = smsLabel;
+    if (accountNumber != null) body.accountNumber = accountNumber;
     await _queueAccountEdit(l, id, body, 'Edited');
+  }
+
+  /// Makes account [id] part of account [intoId] (the same account under another label, or a
+  /// debit card on a bank account): its entries then count in [intoId]'s balance, as its type.
+  /// Nothing moves, so [unlinkAccount] undoes it.
+  Future<void> linkAccount(String id, {required String intoId}) async {
+    final l = await _ledger();
+    final body = _accountIn(_required(l.rawAccount(id), 'Account'))
+      ..status = null
+      ..linkedAccountId = intoId;
+    await _queueAccountEdit(l, id, body, 'Linked');
+  }
+
+  /// Account [id] counts on its own again.
+  Future<void> unlinkAccount(String id) async {
+    final l = await _ledger();
+    final body = _accountIn(_required(l.rawAccount(id), 'Account'))
+      ..status = null
+      ..linkedAccountId = null;
+    await _queueAccountEdit(l, id, body, 'Unlinked');
   }
 
   /// Closes account [id]: it takes no new entries and still counts in net worth. With [zeroFirst]
@@ -868,10 +973,27 @@ extension FinanceWrites on LocalWrites {
     final l = await _ledger();
     final before = _required(l.rawAccount(id), 'Account');
     if ((before['deleted_at'] != null) == deleted) return;
+    final accounts = [
+      for (final gone in const [false, true]) ...l.personalAccountList(deleted: gone),
+    ];
+    final child = deleted ? _linkedTo(accounts, id) : null;
+    if (child != null) {
+      _refuse('account_in_use', '${child['name']} is linked to this account. Unlink it first', status: 409);
+    }
+    // No live account is linked to it, so the list is its own entries.
     if (deleted && (l.personalList(accountId: id, limit: 0)['count'] as int) > 0) {
       _refuse('account_in_use', "This account has entries, so it can't be deleted. Close it instead", status: 409);
     }
     if (deleted) _refuseIfPointedAt(l.finance, 'account', accountId: id);
+    final filtering = deleted ? l.finance.rulesFilteringOn(id) : const <String>[];
+    if (filtering.isNotEmpty) {
+      _refuse(
+        'rule_points_here',
+        'The rule “${describeRule(l.finance.ruleById(filtering.first)!)}” only takes incomes into this account. '
+            'Change or delete it first',
+        status: 409,
+      );
+    }
     if (deleted && l.finance.holdings.any((h) => h.accountId == id)) {
       _refuse('account_in_use', "This account has holdings, so it can't be deleted", status: 409);
     }
@@ -880,8 +1002,12 @@ extension FinanceWrites on LocalWrites {
     }
     final version = before['version'] as int;
     final now = _now();
+    // Linked to an account deleted since: it comes back on its own (accounts.set_deleted).
+    final whole = before['linked_account_id'] == null ? null : l.rawAccount(before['linked_account_id'] as String);
     final data = {
       ...before,
+      if (!deleted && before['linked_account_id'] != null && (whole == null || whole['deleted_at'] != null))
+        'linked_account_id': null,
       'acting_admin_id': _ref.read(sessionProvider).value?.adminId,
       'updated_at': now,
       'deleted_at': deleted ? now : null,

@@ -70,6 +70,12 @@ def _check_account(session: Session, actor: Actor, account_id: uuid.UUID, curren
         raise ApiError(
             422, "currency_mismatch", f"That account is in {a.currency}; this goal is in {currency}"
         )
+    if a.linked_account_id is not None:
+        # Its balance is part of the other account's.
+        whole = session.get(PersonalAccount, a.linked_account_id)
+        raise ApiError(
+            422, "link_invalid", f"That account is part of {whole.name}. Follow that one instead"
+        )
 
 
 def _mode(body: PersonalGoalIn, g: PersonalGoal | None) -> tuple[str, uuid.UUID | None, int | None]:

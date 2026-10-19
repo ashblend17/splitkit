@@ -262,6 +262,13 @@ def _check_account(session: Session, actor: Actor, account_id: uuid.UUID, curren
         raise ApiError(422, "unknown_account", "That account isn't available")
     if a.status == "closed":
         raise ApiError(422, "account_closed", "That account is closed")
+    if a.linked_account_id is not None:
+        # Its entries count in the account it's linked to, which takes none while closed.
+        root = session.get(PersonalAccount, a.linked_account_id)
+        if root is not None and root.status == "closed":
+            raise ApiError(
+                422, "account_closed", f"That account is part of {root.name}, which is closed"
+            )
     if a.currency != currency:
         raise ApiError(
             422,
@@ -520,10 +527,10 @@ def update(
         if k in given:
             given[k] = _text(given[k])
     if "account_id" not in body.model_fields_set and given.get("account") not in (None, t.account):
-        # An older app relabelled it: use the account with that label, if there is one.
+        # An older app relabelled it: the account with that label, or none, so the label and the
+        # account agree (ISS-068).
         found = accounts.for_label(session, actor.user_id, given["account"], t.currency)
-        if found is not None:
-            given["account_id"] = found.id
+        given["account_id"] = found.id if found is not None else None
     links = {k: given.get(k, getattr(t, k)) for k in LINKS}
     direction = _validate(session, actor, body, links, t)
     if body.amount_minor < t.amount_minor:

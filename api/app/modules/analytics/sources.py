@@ -62,11 +62,20 @@ class Context:
     income: list[Entry] = field(default_factory=list)
     """Your counted personal income."""
     group_shares: list[Entry] = field(default_factory=list)
-    """Your shares of group expenses (all groups)."""
+    """Your shares of group expenses (all groups), in each expense's category."""
+    count_group_share: bool = False
+    """Whether your group shares are spending, as the app's cash flow counts them while
+    `groupShareInCashFlow` is on: what you used, whoever paid."""
     group_expenses: list[Entry] = field(default_factory=list)
     """Every live expense in the group being viewed (person = payer's display name)."""
     my_share_in_group: int = 0
     member_count: int = 0
+
+    @property
+    def spending(self) -> list[Entry]:
+        """What the spending cards add up: your personal spending, plus your group shares
+        when they count."""
+        return self.personal + self.group_shares if self.count_group_share else self.personal
 
 
 @dataclass
@@ -113,7 +122,7 @@ def _percent(part: int, whole: int) -> int:
 
 def personal_monthly(ctx: Context) -> CardData:
     buckets = trend_buckets(ctx.period, ctx.on)
-    totals = [_sum(ctx.personal, b) for b in buckets]
+    totals = [_sum(ctx.spending, b) for b in buckets]
     # Refunds can take a bucket below zero: its bar shows nothing, the headline the real total.
     bars = [Bar(label=b.label, value_minor=max(t, 0)) for b, t in zip(buckets, totals, strict=True)]
     if bars:
@@ -127,7 +136,7 @@ def personal_monthly(ctx: Context) -> CardData:
 
 def personal_by_category(ctx: Context) -> CardData:
     span = current(ctx.period, ctx.on)
-    return CardData(period_label=span.label, rows=_rows(ctx.personal, span, lambda e: e.category))
+    return CardData(period_label=span.label, rows=_rows(ctx.spending, span, lambda e: e.category))
 
 
 def scope_split(ctx: Context) -> CardData:
@@ -143,8 +152,8 @@ def scope_split(ctx: Context) -> CardData:
 
 def personal_daily_avg(ctx: Context) -> CardData:
     span, before = current(ctx.period, ctx.on), previous(ctx.period, ctx.on)
-    now = _whole(_sum(ctx.personal, span) // span.days)
-    then = _whole(_sum(ctx.personal, before) // before.days)
+    now = _whole(_sum(ctx.spending, span) // span.days)
+    then = _whole(_sum(ctx.spending, before) // before.days)
     return CardData(
         period_label=range_label(span.start, span.end),
         stat=Stat(
@@ -207,14 +216,14 @@ def group_paid_by(ctx: Context) -> CardData:
 
 
 def personal_by_account(ctx: Context) -> CardData:
-    """Spending per account or card, for entries that say which."""
+    """Spending per account or card, for entries that say which (a group share says none)."""
     span = current(ctx.period, ctx.on)
     named = [e for e in ctx.personal if e.account]
     return CardData(period_label=span.label, rows=_rows(named, span, lambda e: e.account or ""))
 
 
 def personal_by_channel(ctx: Context) -> CardData:
-    """Spending by how it was paid."""
+    """Your own spending by how it was paid (a group share wasn't paid by you)."""
     span = current(ctx.period, ctx.on)
     rows = _rows(ctx.personal, span, lambda e: CHANNELS.get(e.channel or "", "Not said"))
     return CardData(period_label=span.label, rows=rows)
@@ -230,11 +239,12 @@ def personal_top_merchants(ctx: Context) -> CardData:
 
 
 def personal_savings_rate(ctx: Context) -> CardData:
-    """How much of the period's income you kept: income less spending (refunds come off it).
-    The headline is the rate, or "—" without income; the stat is what was left."""
+    """How much of the period's income you kept: income less spending (refunds come off it,
+    group shares count when they do). The headline is the rate, or "—" without income; the stat
+    is what was left."""
     span = current(ctx.period, ctx.on)
     income = _sum(ctx.income, span)
-    net = income - _sum(ctx.personal, span)
+    net = income - _sum(ctx.spending, span)
     if income > 0:
         rate = _percent(net, income)
         headline = f"{MINUS if rate < 0 else ''}{abs(rate)}%"
@@ -252,7 +262,7 @@ def personal_need_want(ctx: Context) -> CardData:
     categories you added) when there is some."""
     span = current(ctx.period, ctx.on)
     totals: dict[str | None, int] = defaultdict(int)
-    for e in ctx.personal:
+    for e in ctx.spending:
         if span.contains(e.day):
             totals[e.kind if e.kind in ("need", "want") else None] += e.amount_minor
     rows = [

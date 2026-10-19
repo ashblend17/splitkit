@@ -20,6 +20,8 @@ class PersonalAccountIn {
     this.openingBalanceMinor = 0,
     this.smsLabel,
     this.status,
+    this.linkedAccountId,
+    this.accountNumber,
   });
 
   String? id;
@@ -38,6 +40,10 @@ class PersonalAccountIn {
 
   PersonalAccountInStatusEnum? status;
 
+  String? linkedAccountId;
+
+  String? accountNumber;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is PersonalAccountIn &&
     other.id == id &&
@@ -46,7 +52,9 @@ class PersonalAccountIn {
     other.type == type &&
     other.openingBalanceMinor == openingBalanceMinor &&
     other.smsLabel == smsLabel &&
-    other.status == status;
+    other.status == status &&
+    other.linkedAccountId == linkedAccountId &&
+    other.accountNumber == accountNumber;
 
   @override
   int get hashCode =>
@@ -57,10 +65,12 @@ class PersonalAccountIn {
     (type.hashCode) +
     (openingBalanceMinor.hashCode) +
     (smsLabel == null ? 0 : smsLabel!.hashCode) +
-    (status == null ? 0 : status!.hashCode);
+    (status == null ? 0 : status!.hashCode) +
+    (linkedAccountId == null ? 0 : linkedAccountId!.hashCode) +
+    (accountNumber == null ? 0 : accountNumber!.hashCode);
 
   @override
-  String toString() => 'PersonalAccountIn[id=$id, version=$version, name=$name, type=$type, openingBalanceMinor=$openingBalanceMinor, smsLabel=$smsLabel, status=$status]';
+  String toString() => 'PersonalAccountIn[id=$id, version=$version, name=$name, type=$type, openingBalanceMinor=$openingBalanceMinor, smsLabel=$smsLabel, status=$status, linkedAccountId=$linkedAccountId, accountNumber=$accountNumber]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -86,6 +96,16 @@ class PersonalAccountIn {
       json[r'status'] = this.status;
     } else {
       json[r'status'] = null;
+    }
+    if (this.linkedAccountId != null) {
+      json[r'linked_account_id'] = this.linkedAccountId;
+    } else {
+      json[r'linked_account_id'] = null;
+    }
+    if (this.accountNumber != null) {
+      json[r'account_number'] = this.accountNumber;
+    } else {
+      json[r'account_number'] = null;
     }
     return json;
   }
@@ -116,6 +136,8 @@ class PersonalAccountIn {
         openingBalanceMinor: mapValueOfType<int>(json, r'opening_balance_minor') ?? 0,
         smsLabel: mapValueOfType<String>(json, r'sms_label'),
         status: PersonalAccountInStatusEnum.fromJson(json[r'status']),
+        linkedAccountId: mapValueOfType<String>(json, r'linked_account_id'),
+        accountNumber: mapValueOfType<String>(json, r'account_number'),
       );
     }
     return null;

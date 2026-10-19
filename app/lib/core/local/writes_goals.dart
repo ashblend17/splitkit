@@ -218,6 +218,10 @@ extension _GoalDraft on _Draft {
     if (a['currency'] != currency) {
       _refuse('currency_mismatch', 'That account is in ${a['currency']}; this goal is in $currency');
     }
+    if (a['linked_account_id'] case final String whole) {
+      // Its balance is part of the other account's.
+      _refuse('link_invalid', 'That account is part of ${account(whole)?['name']}. Follow that one instead');
+    }
   }
 
   /// allocation_rules.refuse_if_pointed_at for goal [goalId]: refused while a live rule, active

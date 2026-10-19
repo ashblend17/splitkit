@@ -50,8 +50,10 @@ class Integrations {
   final int linkWindowDays;
 
   /// Cash flow counts your share of group expenses as spending: it's what you used, so it comes
-  /// off what's left over and the savings rate. Only while [groupShareInPersonal] is on too; off,
-  /// the share can still show next to your spending, but isn't part of it.
+  /// off what's left over and the savings rate. Insights' spending cards (the trend, categories,
+  /// daily average, needs and wants, savings rate) count it the same way (`group_share`). Only
+  /// while [groupShareInPersonal] is on too; off, the share can still show next to your
+  /// spending, but isn't part of it.
   final bool groupShareInCashFlow;
 
   /// Net worth adds what friends owe you in Split, net (or takes away what you owe them), as a
