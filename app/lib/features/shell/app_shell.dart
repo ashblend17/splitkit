@@ -17,6 +17,7 @@ import '../home/activity_filters.dart';
 import '../personal/personal_txn_sheet.dart';
 import '../sms/sms_watcher.dart';
 import 'app_mode.dart';
+import '../../core/config.dart';
 
 /// Signed-in shell: tab bar under 600px, navigation rail up to 1279px (HomeTablet), sidebar
 /// from 1280px (HomeDesktop).
@@ -203,6 +204,7 @@ class AppShell extends ConsumerWidget {
                 addLabel: addLabel,
                 accent: accent,
                 modeSwitch: ModeSwitch(personal: personal, onChanged: onMode, expand: true),
+                title: AppConfig.appName,
                 user: SkPerson(id: me.id, name: me.name),
                 role: me.role == 'admin' ? 'Administrator' : 'Personal account',
               ),

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/local/ledger.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/local/ledger.dart';
 
 /// The Ledger's personal views with the finance revamp's entry types and accounts: what the
 /// seeded parity fixtures (local_parity_test.dart) don't have. A refund of a split spend, a

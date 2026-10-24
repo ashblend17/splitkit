@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/local/balance_engine.dart';
+import 'package:app/core/local/balance_engine.dart';
 
 /// The same language-neutral vectors the Python engine and planner pass.
 void main() {

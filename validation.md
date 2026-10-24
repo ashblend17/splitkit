@@ -1,6 +1,6 @@
 # Validation and recovery
 
-How to check that Splitkit's data is correct — on the server, on each device, and between the
+How to check that the app's data is correct — on the server, on each device, and between the
 two — and what to do when something is wrong. Commands assume the repo root unless they `cd`.
 
 ## Quick check
@@ -24,7 +24,7 @@ cd app && flutter analyze && flutter test --concurrency=1       # app: 240+ test
 
 ## What "valid" means
 
-Splitkit's money rules (HANDOFF rules 1–4) and the sync design depend on a few invariants.
+The app's money rules (HANDOFF rules 1–4) and the sync design depend on a few invariants.
 Some are enforced by PostgreSQL and can't be broken by the app; the rest are checked by
 `app.validate`.
 
@@ -101,8 +101,9 @@ They **write** to the server, so use a throwaway database, never the dev one:
 
 ```sh
 cd api
-export DATABASE_URL=postgresql+psycopg://splitkit:splitkit@localhost:5433/splitkit_fixtures
-docker compose exec db psql -U splitkit -c 'CREATE DATABASE splitkit_fixtures' || true
+set -a; . ../.env; set +a                        # DB_USER, DB_NAME, POSTGRES_PASSWORD, SEED_PASSWORD
+export DATABASE_URL="postgresql+psycopg://$DB_USER:$POSTGRES_PASSWORD@localhost:5433/${DB_NAME}_fixtures"
+docker compose exec db createdb -U "$DB_USER" "${DB_NAME}_fixtures" || true
 uv run alembic upgrade head && uv run python -m app.seed --reset
 uv run uvicorn app.main:app --port 8001 &
 cd ../app && LIVE_API=http://localhost:8001 flutter test test/live
@@ -163,7 +164,7 @@ Everything below is on **Profile › This device** unless stated.
 | App shows an error card on first sign-in | The first sync needs a connection | Connect and tap **Try again**. After that the app opens offline. |
 | Signed out unexpectedly | The token expired (the app wasn't opened online for 7 days) | Sign in again as the same person: the device's data and unsynced changes are kept and sent. |
 | Need to wipe the app or switch phones with changes waiting | Logging out or clearing app storage deletes unsynced changes | **Copy unsynced changes** first (JSON with each request), then log out. The Log out dialog warns when changes would be lost. |
-| App crashes on open, or the local database is damaged | Rare: storage corruption | If it opens: **Reload from the server**. If it doesn't: clear the app's storage (Android: Settings › Apps › Splitkit › Storage › Clear storage; web: clear site data), then sign in. Unsynced changes are lost in that case. |
+| App crashes on open, or the local database is damaged | Rare: storage corruption | If it opens: **Reload from the server**. If it doesn't: clear the app's storage (Android: Settings › Apps › <the app> › Storage › Clear storage; web: clear site data), then sign in. Unsynced changes are lost in that case. |
 | An admin is stuck "viewing as" someone | View-as lives in memory only | Tap **Exit** on the amber banner, or restart the app (it always comes back as the admin). On the server: `python -m app.recover end-admin-sessions`. |
 
 ## When something is wrong: on the server
@@ -197,14 +198,14 @@ fresh snapshot built from the tables.
 ### Backups and restore
 
 ```sh
-# Back up (custom format, compressed)
-docker compose exec -T db pg_dump -U splitkit -Fc splitkit > splitkit-$(date +%F).dump
+# Back up (custom format, compressed). $DB_USER and $DB_NAME come from .env: . ./.env
+docker compose exec -T db pg_dump -U "$DB_USER" -Fc "$DB_NAME" > db-$(date +%F).dump
 
 # Restore into a stopped API
 docker compose stop api
-docker compose exec -T db dropdb -U splitkit --if-exists splitkit
-docker compose exec -T db createdb -U splitkit splitkit
-docker compose exec -T db pg_restore -U splitkit -d splitkit < splitkit-YYYY-MM-DD.dump
+docker compose exec -T db dropdb -U "$DB_USER" --if-exists "$DB_NAME"
+docker compose exec -T db createdb -U "$DB_USER" "$DB_NAME"
+docker compose exec -T db pg_restore -U "$DB_USER" -d "$DB_NAME" < db-YYYY-MM-DD.dump
 docker compose start api                       # runs `alembic upgrade head` on start
 docker compose exec api python -m app.validate
 docker compose exec api python -m app.recover reset-stream --all
@@ -234,7 +235,7 @@ transaction). Fix the cause and run `upgrade head` again. After any migration ru
 
 `python -m app.seed --reset` **deletes everything** and loads the sample data (Goa Trip,
 Flatmates, personal finances). Use it only on the dev or a throwaway database. Test runs use
-their own database (`splitkit_test` by default; set `TEST_DATABASE_URL` to pick another) and
+their own database (`<DB_NAME>_test` on the server `.env` points at; set `TEST_DATABASE_URL` to pick another) and
 never touch the dev one.
 
 ## Build environment (this machine)

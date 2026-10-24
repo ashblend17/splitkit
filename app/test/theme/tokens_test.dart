@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/theme/theme.dart';
+import 'package:app/core/theme/theme.dart';
 
-/// tokens.g.dart must match splitkit-design/tokens.json. If this fails, run
+/// tokens.g.dart must match design/tokens.json. If this fails, run
 /// `python3 tool/gen_tokens.py` from the repo root.
 void main() {
-  final tokens = jsonDecode(File('../splitkit-design/tokens.json').readAsStringSync()) as Map<String, dynamic>;
+  final tokens = jsonDecode(File('../design/tokens.json').readAsStringSync()) as Map<String, dynamic>;
 
   test('colours, light and dark', () {
     for (final (key, generated) in [('color', skColorTokens), ('colorDark', skDarkColorTokens)]) {

@@ -43,7 +43,8 @@
         }
       ],
       "rows": [],
-      "stat": null
+      "stat": null,
+      "averages": null
     },
     {
       "id": "c0408923-233c-5c4b-b5be-9370591d0c29",
@@ -95,7 +96,64 @@
           "value_minor": 61100
         }
       ],
-      "stat": null
+      "stat": null,
+      "averages": {
+        "label": "Average of 5 months",
+        "now_label": "September so far",
+        "unit": "month",
+        "rows": [
+          {
+            "label": "Rent",
+            "average_minor": 2000000,
+            "now_minor": 2300000
+          },
+          {
+            "label": "Food",
+            "average_minor": 421800,
+            "now_minor": 820800
+          },
+          {
+            "label": "Shopping",
+            "average_minor": 268200,
+            "now_minor": 309000
+          },
+          {
+            "label": "Transport",
+            "average_minor": 209700,
+            "now_minor": 390600
+          },
+          {
+            "label": "Bills",
+            "average_minor": 127600,
+            "now_minor": 192000
+          },
+          {
+            "label": "Fun",
+            "average_minor": 74000,
+            "now_minor": 252400
+          },
+          {
+            "label": "Health",
+            "average_minor": 47800,
+            "now_minor": 61100
+          },
+          {
+            "label": "Other",
+            "average_minor": 32000,
+            "now_minor": 80000
+          },
+          {
+            "label": "Travel",
+            "average_minor": 0,
+            "now_minor": 436100
+          },
+          {
+            "label": "Stay",
+            "average_minor": 0,
+            "now_minor": 224000
+          }
+        ]
+      }
     },
     {
       "id": "4801303e-4440-5e34-b4b1-5072e1f77110",
@@ -115,7 +173,8 @@
           "value_minor": 1821000
         }
       ],
-      "stat": null
+      "stat": null,
+      "averages": null
     },
     {
       "id": "1228e1ee-6276-58cd-9a76-c6453c445acc",
@@ -129,7 +188,8 @@
       "stat": {
         "value_minor": 220300,
         "note": "August averaged ₹1,191 per day"
-      }
+      },
+      "averages": null
     },
     {
       "id": "217a6f35-849b-5b1a-b462-b5dfdd481ccf",
@@ -149,7 +209,8 @@
           "value_minor": 34000
         }
       ],
-      "stat": null
+      "stat": null,
+      "averages": null
     },
     {
       "id": "7314db44-43a6-52e0-a827-864728a16513",
@@ -177,7 +238,8 @@
           "value_minor": 34000
         }
       ],
-      "stat": null
+      "stat": null,
+      "averages": null
     },
     {
       "id": "0de3b09d-7e6b-52e9-9494-eb6718552bc1",
@@ -201,7 +263,8 @@
           "value_minor": 34000
         }
       ],
-      "stat": null
+      "stat": null,
+      "averages": null
     },
     {
       "id": "ea6cde56-d84e-5611-a14d-9480fe692b74",
@@ -215,7 +278,8 @@
       "stat": {
         "value_minor": 3434000,
         "note": "₹34,340 saved of ₹85,000 income"
-      }
+      },
+      "averages": null
     },
     {
       "id": "f887ef88-3f91-5c9d-ba23-dc757d95c031",
@@ -239,7 +303,8 @@
           "value_minor": 80000
         }
       ],
-      "stat": null
+      "stat": null,
+      "averages": null
     }
   ]
 }

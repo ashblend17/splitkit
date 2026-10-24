@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/finance/finance.dart';
-import 'package:splitkit/core/local/ledger.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/finance/finance.dart';
+import 'package:app/core/local/ledger.dart';
 
 /// Every screen answer the device computes must equal the API's for the same data.
 ///

@@ -3,7 +3,7 @@
     "key": "equal",
     "label": "Equal",
     "symbol": "=",
-    "hint": "Everyone ticked pays the same. Untick anyone who is not involved."
+    "hint": "Everyone ticked pays the same. Tap a name to split with only them, or untick anyone who is not involved."
   },
   {
     "key": "exact",

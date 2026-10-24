@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/router/router.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/local/writes.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/admin/admin_dashboard_page.dart';
-import 'package:splitkit/features/admin/admin_users_page.dart';
-import 'package:splitkit/features/admin/admin_widgets.dart';
-import 'package:splitkit/features/admin/audit_log_page.dart';
+import 'package:app/core/router/router.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/local/writes.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/admin/admin_dashboard_page.dart';
+import 'package:app/features/admin/admin_users_page.dart';
+import 'package:app/features/admin/admin_widgets.dart';
+import 'package:app/features/admin/audit_log_page.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

@@ -9,14 +9,14 @@ import 'package:uuid/uuid.dart';
 
 import 'model.dart';
 
-/// uuid5(NAMESPACE_URL, "https://splitkit.app/sms-account"): ledger_rules.ACCOUNT_NAMESPACE.
+/// The same as ledger_rules.ACCOUNT_NAMESPACE; never change it.
 /// Never change it, or every phone would make a second account for each bank label.
 const accountNamespace = 'e90fe153-8f9c-5d42-8516-3ac04850d447';
 
-/// uuid5(NAMESPACE_URL, "https://splitkit.app/allocation-plan"): ledger_rules.PLAN_NAMESPACE.
+/// The same as ledger_rules.PLAN_NAMESPACE; never change it.
 const planNamespace = '1e9fd80e-c002-5f96-bd4e-d295ec89c7fc';
 
-/// uuid5(NAMESPACE_URL, "https://splitkit.app/reminder-state"): ledger_rules.REMINDER_NAMESPACE.
+/// The same as ledger_rules.REMINDER_NAMESPACE; never change it.
 const reminderNamespace = '3b36adfa-75dd-550a-ac0b-0e156df727cc';
 
 const _uuid = Uuid();

@@ -1,4 +1,4 @@
-# Splitkit app (Flutter)
+# The app (Flutter)
 
 Android, iOS and Web from one codebase.
 
@@ -9,7 +9,7 @@ lib/
   design_system/   presentational widgets; see /gallery
   features/        screens (build step 5 onwards); gallery/ is the component gallery
 packages/
-  splitkit_api/    generated from api/openapi.json by tool/gen_api_client.sh; don't edit
+  api_client/      generated from api/openapi.json by tool/gen_api_client.sh; don't edit
 ```
 
 ```sh

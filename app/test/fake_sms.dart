@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:splitkit/core/sms/sms.dart';
-import 'package:splitkit/features/sms/sms_source.dart';
+import 'package:app/core/sms/sms.dart';
+import 'package:app/features/sms/sms_source.dart';
 
 /// An SMS inbox for tests. Off (like web) unless [available]; [inbox] holds the messages,
 /// [access] whether reading is allowed, and [grant] what the system prompt answers.
@@ -47,14 +47,18 @@ class FakeSmsSource implements SmsSource {
   Stream<void> get changes => _changes.stream;
 
   /// What the app last told the phone about notifications.
-  ({bool notify, bool split, String pattern})? configured;
+  ({bool notify, bool split, bool amounts, String pattern})? configured;
   bool notifications = true;
   SmsLaunch? launch;
   final cancelled = <int>[];
 
   @override
-  Future<void> configure({required bool notify, required bool split, required String senderPattern}) async =>
-      configured = (notify: notify, split: split, pattern: senderPattern);
+  Future<void> configure({
+    required bool notify,
+    required bool split,
+    required bool lockScreenAmounts,
+    required String senderPattern,
+  }) async => configured = (notify: notify, split: split, amounts: lockScreenAmounts, pattern: senderPattern);
 
   @override
   Future<bool> hasNotificationAccess() async => notifications;

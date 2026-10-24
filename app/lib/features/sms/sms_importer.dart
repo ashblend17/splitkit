@@ -26,7 +26,7 @@ export '../../core/sms/sms_scan.dart' show SkippedSms;
 /// This phone's bank SMS settings for the signed-in user (in the device store, so another
 /// phone or the web never reads anything).
 class SmsSettings {
-  const SmsSettings({required this.since, this.notify = true});
+  const SmsSettings({required this.since, this.notify = true, this.lockScreenAmounts = false});
 
   /// Messages from this day on are read: the range picked when it was turned on.
   final DateTime since;
@@ -34,10 +34,27 @@ class SmsSettings {
   /// A notification when a bank SMS arrives with the app closed (features/sms/notifications).
   final bool notify;
 
-  Map<String, Object?> toJson() => {'since': since.toIso8601String(), 'notify': notify};
+  /// Whether a locked phone shows what the notification says ("₹450 at Swiggy"). Off, it
+  /// shows "A payment from your bank" until the phone is unlocked (spec §5.7).
+  final bool lockScreenAmounts;
 
-  static SmsSettings fromJson(Map<Object?, Object?> j) =>
-      SmsSettings(since: DateTime.parse(j['since']! as String), notify: j['notify'] as bool? ?? true);
+  SmsSettings copyWith({bool? notify, bool? lockScreenAmounts}) => SmsSettings(
+    since: since,
+    notify: notify ?? this.notify,
+    lockScreenAmounts: lockScreenAmounts ?? this.lockScreenAmounts,
+  );
+
+  Map<String, Object?> toJson() => {
+    'since': since.toIso8601String(),
+    'notify': notify,
+    'lock_screen_amounts': lockScreenAmounts,
+  };
+
+  static SmsSettings fromJson(Map<Object?, Object?> j) => SmsSettings(
+    since: DateTime.parse(j['since']! as String),
+    notify: j['notify'] as bool? ?? true,
+    lockScreenAmounts: j['lock_screen_amounts'] as bool? ?? false,
+  );
 }
 
 /// What one read of the inbox did.
@@ -124,10 +141,15 @@ class SmsImporter {
   }
 
   /// Notifications on or off (while reading is on).
-  Future<void> setNotify(bool notify) async {
+  Future<void> setNotify(bool notify) => _change((s) => s.copyWith(notify: notify));
+
+  /// Whether a locked phone shows what a notification says.
+  Future<void> setLockScreenAmounts(bool show) => _change((s) => s.copyWith(lockScreenAmounts: show));
+
+  Future<void> _change(SmsSettings Function(SmsSettings) change) async {
     final settings = await this.settings();
     if (settings == null) return;
-    await (await _store).setDeviceValue(SmsKeys.settings, SmsSettings(since: settings.since, notify: notify).toJson());
+    await (await _store).setDeviceValue(SmsKeys.settings, change(settings).toJson());
     await configureNotifications();
   }
 
@@ -142,6 +164,7 @@ class SmsImporter {
     await source.configure(
       notify: settings != null && settings.notify && _ref.read(featuresProvider).smsNotifications,
       split: links.notificationSplitAction && links.splitFromTransaction,
+      lockScreenAmounts: settings?.lockScreenAmounts ?? false,
       senderPattern: senderPatternWithTests,
     );
   }

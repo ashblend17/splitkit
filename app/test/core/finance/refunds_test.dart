@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/categorise/category_rules.dart';
-import 'package:splitkit/core/finance/finance.dart';
+import 'package:app/core/categorise/category_rules.dart';
+import 'package:app/core/finance/finance.dart';
 
 import 'finance_helpers.dart';
 

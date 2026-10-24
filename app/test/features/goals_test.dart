@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/integrations.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/router/router.dart';
-import 'package:splitkit/core/theme/theme.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/common/common.dart';
-import 'package:splitkit/features/goals/goal_detail_page.dart';
-import 'package:splitkit/features/goals/goals_page.dart';
-import 'package:splitkit/features/goals/top_goals_card.dart';
-import 'package:splitkit/features/shell/app_mode.dart';
+import 'package:app/core/integrations.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/router/router.dart';
+import 'package:app/core/theme/theme.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/common/common.dart';
+import 'package:app/features/goals/goal_detail_page.dart';
+import 'package:app/features/goals/goals_page.dart';
+import 'package:app/features/goals/top_goals_card.dart';
+import 'package:app/features/shell/app_mode.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

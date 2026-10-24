@@ -29,7 +29,7 @@ Future<void> main() async {
       savedAppModeProvider.overrideWithValue(savedMode),
       savedThemeModeProvider.overrideWithValue(savedTheme),
     ],
-    child: const SplitkitApp(),
+    child: const RootApp(),
   ));
 }
 
@@ -38,13 +38,13 @@ Future<void> main() async {
 @pragma('vm:entry-point')
 Future<void> smsBackgroundMain() => runSmsBackground();
 
-class SplitkitApp extends ConsumerWidget {
-  const SplitkitApp({super.key});
+class RootApp extends ConsumerWidget {
+  const RootApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return TodayTicker(
-      child: SkThemedApp(title: 'Splitkit', routerConfig: ref.watch(routerProvider), builder: appChrome),
+      child: SkThemedApp(title: AppConfig.appName, routerConfig: ref.watch(routerProvider), builder: appChrome),
     );
   }
 }

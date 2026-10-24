@@ -1,4 +1,4 @@
-package com.splitkit.splitkit
+package com.example.app
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -33,7 +33,7 @@ class SmsReceiver : BroadcastReceiver() {
         var left = messages.size
         for (sms in messages) {
             SmsBackground.describe(context, sms) { described ->
-                if (described != null) SmsNotifier.show(context, sms, described, config.splitAction)
+                if (described != null) SmsNotifier.show(context, sms, described, config.splitAction, config.lockScreenAmounts)
                 if (--left == 0) pending.finish()
             }
         }
@@ -41,23 +41,25 @@ class SmsReceiver : BroadcastReceiver() {
 }
 
 /** What the app told the phone (SmsChannel "configure"), kept for the receiver. */
-data class SmsConfig(val notify: Boolean, val splitAction: Boolean, val senders: Regex) {
+data class SmsConfig(val notify: Boolean, val splitAction: Boolean, val lockScreenAmounts: Boolean, val senders: Regex) {
     companion object {
-        private const val PREFS = "splitkit_sms"
+        private const val PREFS = "sms_config" // the app rewrites it each time it reads the inbox
 
         fun read(context: Context): SmsConfig {
             val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             return SmsConfig(
                 notify = p.getBoolean("notify", false),
                 splitAction = p.getBoolean("split", true),
+                lockScreenAmounts = p.getBoolean("amounts", false),
                 senders = Regex(p.getString("senders", null) ?: "(?!)"),
             )
         }
 
-        fun write(context: Context, notify: Boolean, splitAction: Boolean, senders: String) {
+        fun write(context: Context, notify: Boolean, splitAction: Boolean, lockScreenAmounts: Boolean, senders: String) {
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putBoolean("notify", notify)
                 .putBoolean("split", splitAction)
+                .putBoolean("amounts", lockScreenAmounts)
                 .putString("senders", senders)
                 .apply()
         }

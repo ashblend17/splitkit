@@ -1,4 +1,4 @@
-// GENERATED from splitkit-design/tokens.json by tool/gen_tokens.py. Do not edit.
+// GENERATED from design/tokens.json by tool/gen_tokens.py. Do not edit.
 // ignore_for_file: constant_identifier_names
 
 import 'dart:ui';

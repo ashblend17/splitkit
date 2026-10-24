@@ -10,12 +10,14 @@ import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../core/theme/theme_mode.dart';
+import '../../core/version.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import '../../core/integrations.dart';
 import '../sms/sms_setup_page.dart';
 import '../sms/sms_source.dart';
 import 'device_card.dart';
+import '../../core/config.dart';
 
 /// Screen 13: who you are and your settings. Shared by both modes: this month's spending
 /// lives in Personal, balances in Split.
@@ -128,6 +130,17 @@ class ProfilePage extends ConsumerWidget {
                         ),
                       ),
                       const DeviceCard(),
+                      const SizedBox(height: 16),
+                      // The app and the server are released on their own (README "Versions").
+                      Text(
+                        switch (ref.watch(serverVersionProvider).value) {
+                          final server? => '${AppConfig.appName} ${AppVersion.label} · server $server',
+                          null => '${AppConfig.appName} ${AppVersion.label}',
+                        },
+                        key: const ValueKey('profile:versions'),
+                        textAlign: TextAlign.center,
+                        style: SkText.body(12, 400, color: SkColors.ink3),
+                      ),
                     ],
                   ),
                 ],

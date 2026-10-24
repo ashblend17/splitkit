@@ -3,9 +3,9 @@
 ///
 /// Skipped unless LIVE_API is set. It WRITES to that server, so point it at a throwaway,
 /// freshly seeded database, never the dev one, e.g.:
-///   DATABASE_URL=…/splitkit_fixtures uv run python -m app.seed --reset   (in api/)
-///   DATABASE_URL=…/splitkit_fixtures uv run uvicorn app.main:app --port 8001
-///   LIVE_API=http://localhost:8001 flutter test test/live
+///   DATABASE_URL=…/DB_NAME_fixtures uv run python -m app.seed --reset   (in api/)
+///   DATABASE_URL=…/DB_NAME_fixtures uv run uvicorn app.main:app --port 8001
+///   LIVE_API=http://localhost:8001 SEED_PASSWORD=… flutter test test/live
 @Tags(['live'])
 library;
 
@@ -15,10 +15,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:sembast/sembast_memory.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/store.dart';
-import 'package:splitkit/core/local/sync_engine.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/store.dart';
+import 'package:app/core/local/sync_engine.dart';
 
 final _base = Platform.environment['LIVE_API'];
 var _n = 0;
@@ -32,7 +32,7 @@ class LiveApi {
     final r = await http.post(
       Uri.parse('$_base/api/v1/auth/login'),
       headers: {'content-type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': 'dev-password'}),
+      body: jsonEncode({'email': email, 'password': Platform.environment['SEED_PASSWORD'] ?? ''}),
     );
     expect(r.statusCode, 200, reason: r.body);
     return LiveApi((jsonDecode(r.body) as Map)['access_token'] as String);

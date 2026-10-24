@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/session/session.dart';
+import '../../core/fixed_names.dart';
 
 /// The app's two halves. Each has its own tabs, add button and accent colour; Profile (and
 /// Admin) belong to both.
@@ -14,7 +15,7 @@ String homeOf(AppMode mode) => switch (mode) {
 };
 
 class AppModeStore {
-  static const _key = 'splitkit.mode';
+  static const _key = FixedNames.mode;
 
   Future<AppMode?> read() async => AppMode.values.asNameMap()[(await SharedPreferences.getInstance()).getString(_key)];
   Future<void> write(AppMode mode) async => (await SharedPreferences.getInstance()).setString(_key, mode.name);

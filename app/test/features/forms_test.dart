@@ -65,7 +65,7 @@ void main() {
     final be = FakeBackend();
     final path = '/api/v1/groups/${be.goa['id']}/members';
     be.postResponses[path] = (404, {
-      'error': {'code': 'no_account', 'message': "There's no Splitkit account with that email yet"},
+      'error': {'code': 'no_account', 'message': "There's no App account with that email yet"},
     });
     await pumpApp(tester, backend: be, size: const Size(1440, 900), location: '/groups/${be.goa['id']}');
     await tester.tap(find.text('Invite'));
@@ -73,7 +73,7 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'neha.k@example.com');
     await tester.tap(find.text('Add to group'));
     await tester.pumpAndSettle();
-    expect(find.textContaining("There's no Splitkit account with that email yet. Add their name"), findsOneWidget);
+    expect(find.textContaining("There's no App account with that email yet. Add their name"), findsOneWidget);
     expect(find.text('Add and invite'), findsOneWidget);
 
     await tester.tap(find.text('Add and invite'));

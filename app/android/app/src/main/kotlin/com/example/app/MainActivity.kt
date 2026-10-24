@@ -1,4 +1,4 @@
-package com.splitkit.splitkit
+package com.example.app
 
 import android.content.Intent
 import android.os.Bundle

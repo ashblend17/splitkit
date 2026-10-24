@@ -62,6 +62,8 @@ part 'model/category_match_out.dart';
 part 'model/category_option_out.dart';
 part 'model/category_out.dart';
 part 'model/category_total.dart';
+part 'model/chart_average.dart';
+part 'model/chart_averages.dart';
 part 'model/chart_bar.dart';
 part 'model/chart_row.dart';
 part 'model/chart_stat.dart';

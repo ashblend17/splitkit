@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerate the Dart API client (app/packages/splitkit_api) from the API's OpenAPI spec.
+# Regenerate the Dart API client (app/packages/api_client) from the API's OpenAPI spec.
 # Uses openapi-generator's plain `dart` target (no build_runner). See dart_client_spec() in
 # api/app/openapi.py for the two spec adjustments that target needs.
 set -euo pipefail
@@ -25,12 +25,12 @@ for schema in spec["components"]["schemas"].values():
 with open(path, "w", encoding="utf-8") as f:
     json.dump(spec, f, indent=2)
 PY
-rm -rf app/packages/splitkit_api
+rm -rf app/packages/api_client
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/work" openapitools/openapi-generator-cli:v7.16.0 generate \
   -i "/work/$(basename "$tmp")/openapi.json" \
   -g dart \
-  -o /work/app/packages/splitkit_api \
-  --additional-properties=pubName=splitkit_api,pubDescription="Generated Splitkit API client",pubAuthor=Splitkit \
+  -o /work/app/packages/api_client \
+  --additional-properties=pubName=api_client,pubDescription="Generated API client",pubAuthor=App \
   --global-property=apiTests=false,modelTests=false,apiDocs=false,modelDocs=false \
   > /dev/null
-echo "Generated app/packages/splitkit_api"
+echo "Generated app/packages/api_client"

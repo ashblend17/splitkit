@@ -16,4 +16,7 @@ class AppConfig {
   /// A sender whose SMS are read as if from a bank, for trying the importer on an emulator
   /// (`adb emu sms send 5551234 "…"` sends from a number, not a bank header). Empty: none.
   static const smsTestSender = String.fromEnvironment('SMS_TEST_SENDER');
+
+  /// What the app is called on screen. tool/build.sh passes .env's APP_NAME.
+  static const appName = String.fromEnvironment('APP_NAME', defaultValue: 'App');
 }

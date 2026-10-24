@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'theme.dart';
+import '../fixed_names.dart';
 
 /// Light, dark, or as the phone or browser is set ([ThemeMode.system], the default). Kept on
 /// this device only: a phone and a laptop can differ.
 class ThemeModeStore {
-  static const _key = 'splitkit.theme';
+  static const _key = FixedNames.theme;
 
   Future<ThemeMode?> read() async => ThemeMode.values.asNameMap()[(await SharedPreferences.getInstance()).getString(_key)];
   Future<void> write(ThemeMode mode) async => (await SharedPreferences.getInstance()).setString(_key, mode.name);
@@ -88,7 +89,7 @@ class _SkThemedAppState extends ConsumerState<SkThemedApp> with WidgetsBindingOb
     return MaterialApp.router(
       title: widget.title,
       debugShowCheckedModeBanner: false,
-      theme: buildSplitkitTheme(),
+      theme: buildAppTheme(),
       routerConfig: widget.routerConfig,
       // Status bar icons that show on the page behind them (the app draws its own headers).
       builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(

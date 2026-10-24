@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/import_tricount/import_api.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/import_tricount/import_api.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

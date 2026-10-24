@@ -46,7 +46,7 @@ class PersonOut(Schema):
     """How many rows this person is in (paying or sharing)."""
     match: Literal["you", "matched", "suggested", "unmatched"]
     user: UserBrief | None
-    """The suggested Splitkit person. None: suggest a new placeholder member."""
+    """The suggested person here. None: suggest a new placeholder member."""
 
 
 class CategoryMatchOut(Schema):
@@ -111,7 +111,7 @@ class ImportCommitIn(Schema):
     new_group: NewGroupIn | None = None
     people: list[PersonMapIn] = []
     categories: dict[str, str] = {}
-    """Tricount category -> Splitkit category key. Missing or unknown: Other."""
+    """Tricount category -> category keys here. Missing or unknown: Other."""
 
     @model_validator(mode="after")
     def _one_target(self):

@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/api.dart';
 import '../../core/data/providers.dart';
 import '../../core/integrations.dart';
 import '../../core/theme/theme.dart';
+import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import 'cards.dart';
 
 /// Screen 14, Personal's Insights tab: your dashboard, rendered by looping over your
-/// analytics layout.
+/// analytics layout. Switching period keeps the cards up, dimmed, until the new figures come,
+/// and then the bars and amounts move to them.
 class PersonalAnalyticsPage extends ConsumerStatefulWidget {
   const PersonalAnalyticsPage({super.key});
 
@@ -19,10 +22,17 @@ class PersonalAnalyticsPage extends ConsumerStatefulWidget {
 class _PersonalAnalyticsPageState extends ConsumerState<PersonalAnalyticsPage> {
   String _period = 'month';
 
+  /// The last dashboard shown, kept up while another period loads.
+  DashboardOut? _shown;
+
   @override
   Widget build(BuildContext context) {
     final dashboard = ref.watch(personalDashboardProvider(_period));
     final groupShare = ref.watch(integrationsProvider).groupShareInPersonal;
+    // Remembered as it's drawn, not a state change: nothing else depends on it.
+    if (dashboard.hasValue) _shown = dashboard.value;
+    final failed = dashboard.hasError && !dashboard.isLoading;
+    final kept = failed ? null : _shown;
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -59,11 +69,18 @@ class _PersonalAnalyticsPageState extends ConsumerState<PersonalAnalyticsPage> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    AsyncBody(
-                      value: dashboard,
-                      onRetry: () => ref.invalidate(personalDashboardProvider(_period)),
-                      builder: (d) => DashboardCards(dashboard: d, hideTypes: {if (!groupShare) 'personal_vs_group'}),
-                    ),
+                    if (kept == null)
+                      AsyncBody(
+                        value: dashboard,
+                        onRetry: () => ref.invalidate(personalDashboardProvider(_period)),
+                        builder: (d) => DashboardCards(dashboard: d, hideTypes: {if (!groupShare) 'personal_vs_group'}),
+                      )
+                    else
+                      AnimatedOpacity(
+                        opacity: dashboard.hasValue ? 1 : 0.55,
+                        duration: SkMotion.of(context, SkMotion.quick),
+                        child: DashboardCards(dashboard: kept, hideTypes: {if (!groupShare) 'personal_vs_group'}),
+                      ),
                   ],
                 ),
               ),
@@ -96,7 +113,7 @@ class EditLayoutButton extends StatelessWidget {
   );
 }
 
-/// Week / Month / Year.
+/// Week / Month / Year, on a thumb that slides to the one picked.
 class PeriodTabs extends StatelessWidget {
   const PeriodTabs({super.key, required this.value, required this.onChanged, Color? selectedColor})
     : _selectedColor = selectedColor;
@@ -108,44 +125,10 @@ class PeriodTabs extends StatelessWidget {
   Color get selectedColor => _selectedColor ?? SkColors.brandInk;
 
   @override
-  Widget build(BuildContext context) {
-    Widget tab(String key, String label) {
-      final on = key == value;
-      return Expanded(
-        child: Semantics(
-          selected: on,
-          button: true,
-          child: GestureDetector(
-            onTap: () => onChanged(key),
-            child: Container(
-              height: 36,
-              decoration: BoxDecoration(
-                color: on ? SkColors.surface : Colors.transparent,
-                borderRadius: BorderRadius.circular(9),
-                boxShadow: on
-                    ? [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))]
-                    : null,
-              ),
-              alignment: Alignment.center,
-              child: Text(label, style: SkText.body(13, on ? 700 : 600, color: on ? selectedColor : SkColors.ink2)),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: SkColors.sunken, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          tab('week', 'Week'),
-          const SizedBox(width: 4),
-          tab('month', 'Month'),
-          const SizedBox(width: 4),
-          tab('year', 'Year'),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SkSegmented(
+    options: const [('week', 'Week'), ('month', 'Month'), ('year', 'Year')],
+    value: value,
+    onChanged: onChanged,
+    selectedColor: selectedColor,
+  );
 }

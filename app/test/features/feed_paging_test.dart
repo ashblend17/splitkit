@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/expenses/activity_table.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/expenses/activity_table.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

@@ -27,7 +27,7 @@ class TricountLinkPreviewOut(Schema):
     expenses: int
     payments: int
     unsupported: int
-    """Entries Splitkit can't hold (income, …). They stay in Tricount only."""
+    """Entries the app can't hold (income, …). They stay in Tricount only."""
     people: list[TricountPersonOut]
     problem: str | None
     """Why this tricount can't be linked to the group (a different currency), or None."""
@@ -60,13 +60,15 @@ class TricountConflictOut(Schema):
     group_id: uuid.UUID
     group_name: str
     entity: Literal["expense", "payment"]
-    splitkit: ConflictSideOut
+    local: ConflictSideOut
+    """This app's version."""
     tricount: ConflictSideOut
     created_at: datetime
 
 
 class ResolveConflictIn(Schema):
-    keep: Literal["splitkit", "tricount"]
+    keep: Literal["local", "tricount"]
+    """This app's version, or Tricount's."""
 
 
 class TricountLinkOut(Schema):

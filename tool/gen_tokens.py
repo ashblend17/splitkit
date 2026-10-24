@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate app/lib/core/theme/tokens.g.dart from splitkit-design/tokens.json.
+"""Generate app/lib/core/theme/tokens.g.dart from design/tokens.json.
 
 Usage: python3 tool/gen_tokens.py   (app/test/theme/tokens_test.dart fails if the output is stale)
 """
@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "splitkit-design" / "tokens.json"
+SRC = ROOT / "design" / "tokens.json"
 OUT = ROOT / "app" / "lib" / "core" / "theme" / "tokens.g.dart"
 
 
@@ -23,7 +23,7 @@ def num(v) -> str:
 def main() -> None:
     t = json.loads(SRC.read_text(encoding="utf-8"))
     lines = [
-        "// GENERATED from splitkit-design/tokens.json by tool/gen_tokens.py. Do not edit.",
+        "// GENERATED from design/tokens.json by tool/gen_tokens.py. Do not edit.",
         "// ignore_for_file: constant_identifier_names",
         "",
         "import 'dart:ui';",

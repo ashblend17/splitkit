@@ -8,11 +8,15 @@ There is no public API: this follows what the open-source clients learned from t
   access to that tricount; joining it (registry-synchronization) makes it writable.
 - Writes are only accepted from clients that identify as the Android app (User-Agent).
 - Creating an entry with our own uuid is idempotent: a repeat returns the first entry.
+- Tricount says whom the device counts as in a tricount (`membership_uuid_active`, set with a
+  registry PUT) added whatever it sends. A device that joins counts as the member with the
+  lowest id until it's told otherwise.
 """
 
 import uuid
 from dataclasses import dataclass
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 from cryptography.hazmat.primitives import serialization
@@ -92,6 +96,8 @@ class Client:
 
     def __init__(self, creds: Credentials, on_session=None, timeout: float = 30):
         settings = get_settings()
+        self.zone = ZoneInfo(settings.tricount_time_zone)
+        """Where the app's days are: entries' days are read in it."""
         self.creds = creds
         self._on_session = on_session
         self._http = httpx.Client(
@@ -170,7 +176,7 @@ class Client:
         body = self._call("GET", "/registry", params={"public_identifier_token": public_token})
         for raw in wire.items(body, "Registry"):
             if raw.get("public_identifier_token") == public_token:
-                return wire.registry(raw)
+                return wire.registry(raw, self.zone)
         raise TricountError(404, "No tricount has that link")
 
     def join(self, public_token: str) -> wire.Registry:
@@ -191,7 +197,9 @@ class Client:
         raise TricountError(404, "No tricount has that link")
 
     def registry(self, registry_id: int) -> wire.Registry:
-        found = wire.registry(wire.first(self._call("GET", f"/registry/{registry_id}"), "Registry"))
+        found = wire.registry(
+            wire.first(self._call("GET", f"/registry/{registry_id}"), "Registry"), self.zone
+        )
         if found.id != registry_id:
             raise wire.WireError(f"Asked for tricount {registry_id}, got {found.id}")
         return found

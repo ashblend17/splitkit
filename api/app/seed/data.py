@@ -12,8 +12,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 
 IST = timezone(timedelta(hours=5, minutes=30))
-DEV_PASSWORD = "dev-password"
-"""Every seeded account uses this password. Development only."""
 
 
 def at(d: date, hh: int = 12, mm: int = 0) -> datetime:
@@ -334,7 +332,7 @@ EXPENSES = [
     E("goa_tickets",     "goa", "Return tickets",             sep(20), "travel",        "john",  9720,  "exact",
       [("john", 3025), ("rahul", 1377), ("aman", 2353), ("priya", 2493), ("vivek", 472)],
       imported=True, notes="Fares depended on when each person booked. Vivek took the overnight bus."),
-    # ---- Goa Trip: added in Splitkit ----
+    # ---- Goa Trip: added here ----
     E("goa_uber",        "goa", "Uber to airport",            sep(22), "transport",     "john",  620,   "equal", eq(["john", "rahul"]), created=at(sep(22), 7, 5)),
     E("goa_dinner",      "goa", "Dinner at Thalassa",         sep(23), "food",          "rahul", 1800,  "equal", eq(["john", "rahul", "aman", "vivek"]), created=at(sep(23), 21, 40)),
 

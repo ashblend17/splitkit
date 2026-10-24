@@ -6,6 +6,8 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../categorise/category_rules.dart' show merchantKey;
+
 import '../data/providers.dart';
 import '../integrations.dart';
 import '../local/ledger.dart';
@@ -89,6 +91,27 @@ final transferSuggestionsProvider = FutureProvider<List<TransferSuggestion>>((re
 
 /// Your entries and accounts, and groups: an entry linked to a split isn't a transfer.
 const _entriesAndGroups = {LedgerDomain.personal, LedgerDomain.groups};
+
+/// The spend income [txnId] could be money back for (ISS-089): a bank often sends a merchant's
+/// refund as a plain credit ("credited … by VPA swiggy.stores@icici"), read as income. One from
+/// the same merchant in the 60 days before, with at least this much left to refund
+/// ([FinanceEngine.refundTarget]). Only offered, never assumed: a friend paying you back through
+/// the same app looks the same.
+final refundSuggestionProvider = FutureProvider.family<FinEntry?, String>((ref, txnId) {
+  if (!ref.watch(featuresProvider).refunds) return null;
+  return localOnOrNull(ref, _entriesAndGroups, (l) {
+    final t = l.finance.entry(txnId);
+    final merchant = t?.merchant;
+    if (t == null || t.deleted || t.txnType != TxnType.income || merchant == null) return null;
+    if (t.expenseId != null || t.settlementId != null || l.notCounted.contains(t.id)) return null;
+    return l.finance.refundTarget(
+      amountMinor: t.amount,
+      day: t.day,
+      merchantKey: merchantKey(merchant),
+      accountId: t.accountId,
+    );
+  });
+});
 
 /// Device-store keys (LocalStore.deviceValue).
 abstract final class FinanceKeys {

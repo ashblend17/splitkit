@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
+import 'package:app/core/api/api.dart';
 
 /// Real responses captured from the seeded API (test/fixtures/api) must parse with the
 /// generated client. Catches drift between server output and the OpenAPI spec.

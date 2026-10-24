@@ -50,13 +50,13 @@ ALLOCATION_KINDS = ("percentage", "fixed")
 the app warns and never rescales) or a fixed amount."""
 
 ACCOUNT_NAMESPACE = uuid.UUID("e90fe153-8f9c-5d42-8516-3ac04850d447")
-"""uuid5(NAMESPACE_URL, "https://splitkit.app/sms-account")."""
+"""A fixed namespace: never change it (the app's core/finance/ids.dart has the same)."""
 
 
 PLAN_NAMESPACE = uuid.UUID("1e9fd80e-c002-5f96-bd4e-d295ec89c7fc")
-"""uuid5(NAMESPACE_URL, "https://splitkit.app/allocation-plan")."""
+"""A fixed namespace: never change it (the app's core/finance/ids.dart has the same)."""
 REMINDER_NAMESPACE = uuid.UUID("3b36adfa-75dd-550a-ac0b-0e156df727cc")
-"""uuid5(NAMESPACE_URL, "https://splitkit.app/reminder-state")."""
+"""A fixed namespace: never change it (the app's core/finance/ids.dart has the same)."""
 
 
 def implied_direction(type: str) -> str | None:

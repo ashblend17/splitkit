@@ -2,9 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/session/session.dart';
-import 'package:splitkit/design_system/design_system.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/session/session.dart';
+import 'package:app/design_system/design_system.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

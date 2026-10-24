@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/sms/merchant_names.dart';
-import 'package:splitkit/core/sms/sms.dart';
-import 'package:splitkit/core/sms/sms_ids.dart';
-import 'package:splitkit/core/sms/sms_parser.dart';
+import 'package:app/core/sms/merchant_names.dart';
+import 'package:app/core/sms/sms.dart';
+import 'package:app/core/sms/sms_ids.dart';
+import 'package:app/core/sms/sms_parser.dart';
 
 /// Every message in test/fixtures/sms/corpus.json reads as it says. Only the fields a case
 /// lists are checked, and the kind (a payment unless it says otherwise).

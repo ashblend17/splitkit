@@ -17,7 +17,7 @@ class TricountConflictOut {
     required this.groupId,
     required this.groupName,
     required this.entity,
-    required this.splitkit,
+    required this.local,
     required this.tricount,
     required this.createdAt,
   });
@@ -30,7 +30,7 @@ class TricountConflictOut {
 
   TricountConflictOutEntityEnum entity;
 
-  ConflictSideOut splitkit;
+  ConflictSideOut local;
 
   ConflictSideOut tricount;
 
@@ -42,7 +42,7 @@ class TricountConflictOut {
     other.groupId == groupId &&
     other.groupName == groupName &&
     other.entity == entity &&
-    other.splitkit == splitkit &&
+    other.local == local &&
     other.tricount == tricount &&
     other.createdAt == createdAt;
 
@@ -53,12 +53,12 @@ class TricountConflictOut {
     (groupId.hashCode) +
     (groupName.hashCode) +
     (entity.hashCode) +
-    (splitkit.hashCode) +
+    (local.hashCode) +
     (tricount.hashCode) +
     (createdAt.hashCode);
 
   @override
-  String toString() => 'TricountConflictOut[id=$id, groupId=$groupId, groupName=$groupName, entity=$entity, splitkit=$splitkit, tricount=$tricount, createdAt=$createdAt]';
+  String toString() => 'TricountConflictOut[id=$id, groupId=$groupId, groupName=$groupName, entity=$entity, local=$local, tricount=$tricount, createdAt=$createdAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -66,7 +66,7 @@ class TricountConflictOut {
       json[r'group_id'] = this.groupId;
       json[r'group_name'] = this.groupName;
       json[r'entity'] = this.entity;
-      json[r'splitkit'] = this.splitkit;
+      json[r'local'] = this.local;
       json[r'tricount'] = this.tricount;
       json[r'created_at'] = this.createdAt.toUtc().toIso8601String();
     return json;
@@ -95,7 +95,7 @@ class TricountConflictOut {
         groupId: mapValueOfType<String>(json, r'group_id')!,
         groupName: mapValueOfType<String>(json, r'group_name')!,
         entity: TricountConflictOutEntityEnum.fromJson(json[r'entity'])!,
-        splitkit: ConflictSideOut.fromJson(json[r'splitkit'])!,
+        local: ConflictSideOut.fromJson(json[r'local'])!,
         tricount: ConflictSideOut.fromJson(json[r'tricount'])!,
         createdAt: mapDateTime(json, r'created_at', r'')!,
       );
@@ -149,7 +149,7 @@ class TricountConflictOut {
     'group_id',
     'group_name',
     'entity',
-    'splitkit',
+    'local',
     'tricount',
     'created_at',
   };

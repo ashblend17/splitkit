@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/finance/finance.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/outbox.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/writes.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/finance/finance.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/outbox.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/writes.dart';
 
 import '../fake_backend.dart';
 
@@ -132,8 +132,10 @@ void main() {
     // A day of slack for time zones, as the server allows; not two.
     await _expectRefused(tester, make(day: DateTime(2026, 9, 27)), 'invalid_input', "A value can't be from the future");
     await runWrite(tester, make(day: DateTime(2026, 9, 26)));
-    await runWrite(tester, w.closeAccount(zerodha));
-    await _expectRefused(tester, make(), 'account_closed', 'That account is closed');
+    // A closed one takes none. (Zerodha can't be closed while its holdings are worth something.)
+    final groww = await runWrite(tester, w.createAccount(name: 'Groww', type: AccountType.investment));
+    await runWrite(tester, w.closeAccount(groww));
+    await _expectRefused(tester, make(accountId: groww), 'account_closed', 'That account is closed');
   });
 
   testWidgets('an edit sends the full body, so the cost basis, quantity and account stay', (tester) async {

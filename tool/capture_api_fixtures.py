@@ -3,9 +3,9 @@
 
 Needs the API running with freshly seeded data on a throwaway database (create it first: seeding
 the compose one wipes what's in it):
-  cd api && export DATABASE_URL=postgresql+psycopg://splitkit:splitkit@localhost:5433/splitkit_fixtures
+  cd api && export DATABASE_URL=postgresql+psycopg://<DB_USER>:<POSTGRES_PASSWORD>@localhost:5433/<DB_NAME>_fixtures
   uv run alembic upgrade head && uv run python -m app.seed --reset && uv run uvicorn app.main:app --port 8001
-  API=http://localhost:8001 python3 tool/capture_api_fixtures.py   # from the repo root
+  API=http://localhost:8001 SEED_PASSWORD=<the seed's> python3 tool/capture_api_fixtures.py   # from the repo root
 Read-only except for one rejected (422) request.
 
 Also writes app/test/fixtures/sync/<user>.json: every sync snapshot a seeded user can see plus the
@@ -21,6 +21,8 @@ import urllib.request
 from pathlib import Path
 
 BASE = os.environ.get("API", "http://localhost:8000") + "/api/v1"
+PASSWORD = os.environ["SEED_PASSWORD"]
+"""What the seeded accounts sign in with (SEED_PASSWORD, as the seed was run with)."""
 OUT = Path(__file__).resolve().parents[1] / "app" / "test" / "fixtures" / "api"
 SYNC_OUT = OUT.parent / "sync"
 PARITY_USERS = {"john": "admin@example.com", "rahul": "rahul.sharma@example.com"}
@@ -41,7 +43,7 @@ def call(path, body=None, token=None):
 
 
 def main():
-    login = call("/auth/login", {"email": "admin@example.com", "password": "dev-password"})
+    login = call("/auth/login", {"email": "admin@example.com", "password": PASSWORD})
     token = login["access_token"]
     login["access_token"] = "<token>"
     groups = call("/groups", token=token)
@@ -96,7 +98,7 @@ def main():
 def capture_sync():
     SYNC_OUT.mkdir(parents=True, exist_ok=True)
     for key, email in PARITY_USERS.items():
-        login = call("/auth/login", {"email": email, "password": "dev-password"})
+        login = call("/auth/login", {"email": email, "password": PASSWORD})
         if "access_token" not in login:
             raise SystemExit(f"Can't log in as {email}: {login}")
         token = login["access_token"]

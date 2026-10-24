@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 import 'banks.dart';
 import 'sms.dart';
 
-/// Made for this (uuid5 of the url namespace and "https://splitkit.app/sms"); never change it,
+/// Made for this (a uuid5 of the url namespace); never change it,
 /// or every SMS already read would come back as a new entry.
 const _namespace = 'aad579b2-f47f-534f-8b91-c87b76358e34';
 

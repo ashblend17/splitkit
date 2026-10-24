@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/data/providers.dart';
-import 'package:splitkit/design_system/design_system.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/data/providers.dart';
+import 'package:app/design_system/design_system.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';
@@ -33,7 +33,7 @@ void main() {
     be.postResponses['/api/v1/auth/login'] = (200, {...fixture('login'), 'access_token': 't'});
     await pumpApp(tester, token: null, backend: be);
     await tester.enterText(find.byType(TextField).at(0), 'admin@example.com');
-    await tester.enterText(find.byType(TextField).at(1), 'dev-password');
+    await tester.enterText(find.byType(TextField).at(1), 'correct-password');
     await tester.tap(find.text('Log in'));
     await tester.pumpAndSettle();
 

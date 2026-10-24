@@ -22,6 +22,7 @@ class AnalyticsCardOut {
     this.bars = const [],
     this.rows = const [],
     this.stat,
+    this.averages,
   });
 
   String id;
@@ -42,6 +43,8 @@ class AnalyticsCardOut {
 
   ChartStat? stat;
 
+  ChartAverages? averages;
+
   @override
   bool operator ==(Object other) => identical(this, other) || other is AnalyticsCardOut &&
     other.id == id &&
@@ -52,7 +55,8 @@ class AnalyticsCardOut {
     other.headline == headline &&
     _deepEquality.equals(other.bars, bars) &&
     _deepEquality.equals(other.rows, rows) &&
-    other.stat == stat;
+    other.stat == stat &&
+    other.averages == averages;
 
   @override
   int get hashCode =>
@@ -65,10 +69,11 @@ class AnalyticsCardOut {
     (headline == null ? 0 : headline!.hashCode) +
     (bars.hashCode) +
     (rows.hashCode) +
-    (stat == null ? 0 : stat!.hashCode);
+    (stat == null ? 0 : stat!.hashCode) +
+    (averages == null ? 0 : averages!.hashCode);
 
   @override
-  String toString() => 'AnalyticsCardOut[id=$id, type=$type, title=$title, periodLabel=$periodLabel, source_=$source_, headline=$headline, bars=$bars, rows=$rows, stat=$stat]';
+  String toString() => 'AnalyticsCardOut[id=$id, type=$type, title=$title, periodLabel=$periodLabel, source_=$source_, headline=$headline, bars=$bars, rows=$rows, stat=$stat, averages=$averages]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -88,6 +93,11 @@ class AnalyticsCardOut {
       json[r'stat'] = this.stat;
     } else {
       json[r'stat'] = null;
+    }
+    if (this.averages != null) {
+      json[r'averages'] = this.averages;
+    } else {
+      json[r'averages'] = null;
     }
     return json;
   }
@@ -120,6 +130,7 @@ class AnalyticsCardOut {
         bars: ChartBar.listFromJson(json[r'bars']),
         rows: ChartRow.listFromJson(json[r'rows']),
         stat: ChartStat.fromJson(json[r'stat']),
+        averages: ChartAverages.fromJson(json[r'averages']),
       );
     }
     return null;

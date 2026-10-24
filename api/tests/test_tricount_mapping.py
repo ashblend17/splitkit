@@ -1,5 +1,6 @@
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -28,6 +29,7 @@ def _entry(amount, allocations, kind=wire.EXPENSE, payer="a"):
         kind=kind,
         description="x",
         amount_minor=amount,
+        at=datetime(2026, 9, 1, 6, 30, tzinfo=UTC),
         day=date(2026, 9, 1),
         payer_uuid=payer,
         allocations=[wire.Allocation(*a) for a in allocations],
@@ -40,7 +42,7 @@ def test_splits_come_back_as_the_simplest_method_that_fits():
     assert by_shares.method == "shares" and [v for _, v in by_shares.inputs] == [2, 1, 1]
     exact = mapping.local_split(_entry(1000, [("a", 700), ("b", 300)]))
     assert exact.method == "exact" and [int(v) for _, v in exact.inputs] == [700, 300]
-    # Tricount's own rounding of a ratio split that Splitkit would round differently: exact.
+    # Tricount's own rounding of a ratio split that would be rounded differently here: exact.
     odd = mapping.local_split(_entry(1000, [("a", 333, 1), ("b", 333, 1), ("c", 334, 1)]))
     assert odd.method == "exact"
 
@@ -57,8 +59,43 @@ def test_wire_amounts_and_dates():
     assert wire.to_minor({"value": "-12.345", "currency": "EUR"}) == 1235
     assert wire.from_minor(1234, "EUR", negative=True) == {"value": "-12.34", "currency": "EUR"}
     assert wire.from_minor(0, "EUR", negative=True) == {"value": "0.00", "currency": "EUR"}
-    assert wire.to_day("2026-03-02 23:59:59.000000") == date(2026, 3, 2)
-    assert wire.from_day(date(2026, 3, 2)) == "2026-03-02 12:00:00.000000"
+
+
+INDIA = ZoneInfo("Asia/Kolkata")
+
+
+def test_tricount_times_are_utc_and_days_are_local_days():
+    """As a real tricount showed (2026-10-24): its app dates an entry 10:20 UTC when it's made
+    at 15:50 in India, and lists entries newest first by that."""
+    at = wire.to_instant("2026-10-24 10:20:04.761000")
+    assert at == datetime(2026, 10, 24, 10, 20, 4, 761000, tzinfo=UTC)
+    assert wire.from_instant(at) == "2026-10-24 10:20:04.761000"
+    assert wire.local_day(at, INDIA) == date(2026, 10, 24)
+    # Past 18:30 UTC it's the next day in India.
+    assert wire.local_day(wire.to_instant("2026-10-24 19:00:00.000000"), INDIA) == date(
+        2026, 10, 25
+    )
+    with pytest.raises(wire.WireError):
+        wire.to_instant("24/10/2026")
+
+
+def test_an_entry_is_sent_for_the_moment_it_was_made():
+    made = datetime(2026, 10, 24, 10, 20, tzinfo=UTC)  # 15:50 in India
+    # Dated the day it was made: that moment, so it's first in Tricount.
+    assert wire.entry_time(date(2026, 10, 24), INDIA, made) == made
+    # Dated another day: that day, at the time of day it was made there.
+    assert wire.entry_time(date(2026, 10, 20), INDIA, made) == datetime(
+        2026, 10, 20, 10, 20, tzinfo=UTC
+    )
+    # Made at 01:00 in India, which is still the day before in UTC.
+    late = datetime(2026, 10, 24, 19, 30, tzinfo=UTC)
+    assert wire.entry_time(date(2026, 10, 25), INDIA, late) == late
+    # An edit on the same day keeps Tricount's moment; moving the day keeps its time of day.
+    kept = datetime(2026, 10, 24, 16, 45, 12, 5000, tzinfo=UTC)
+    assert wire.entry_time(date(2026, 10, 24), INDIA, made, kept) == kept
+    assert wire.entry_time(date(2026, 10, 22), INDIA, made, kept) == datetime(
+        2026, 10, 22, 16, 45, 12, 5000, tzinfo=UTC
+    )
 
 
 # ---- the plan ----

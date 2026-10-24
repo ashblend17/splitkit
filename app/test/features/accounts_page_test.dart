@@ -3,17 +3,17 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/finance/finance.dart';
-import 'package:splitkit/core/finance/finance_providers.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/writes.dart';
-import 'package:splitkit/core/router/router.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/personal/account_sheet.dart';
-import 'package:splitkit/features/personal/accounts_page.dart';
-import 'package:splitkit/features/sms/sms_importer.dart';
-import 'package:splitkit/features/sms/sms_setup_page.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/finance/finance.dart';
+import 'package:app/core/finance/finance_providers.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/writes.dart';
+import 'package:app/core/router/router.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/personal/account_sheet.dart';
+import 'package:app/features/personal/accounts_page.dart';
+import 'package:app/features/sms/sms_importer.dart';
+import 'package:app/features/sms/sms_setup_page.dart';
 
 import '../fake_backend.dart';
 import '../fake_sms.dart';
@@ -399,7 +399,13 @@ void main() {
     expect(find.text('Added up from SMS since 5 Sep, never checked'), findsOneWidget);
     await _tap(tester, find.text('Set owed'));
     expect(find.text('The bank says…'), findsOneWidget);
-    expect(find.text('Type what the statement says you owe. A correction dated today makes this match.'), findsOneWidget);
+    expect(
+      find.text(
+        "Type what the statement says you owe. A correction dated today makes this match, and entries dated before "
+        "it won't change it.",
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('"The bank says…" can be below zero (ISS-101)', (tester) async {
@@ -411,7 +417,10 @@ void main() {
     await _tap(tester, find.text('Match'));
     final (_, _, body) = _queued(tester).single;
     expect((body!['direction'], body['amount_minor']), ('out', 280000)); // ₹2,500 to −₹300
+    expect(body['balance_minor'], -30000); // what it is from now on (ISS-130)
     expect(find.text('−₹300'), findsOneWidget);
+    await _open(tester, cash);
+    expect(find.text('Balance set to −₹300 on Today.'), findsOneWidget);
   });
 
   testWidgets('an account sheet links the account to another, and takes its full number', (tester) async {

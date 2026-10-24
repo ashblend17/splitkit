@@ -171,6 +171,11 @@
      "body": "Self-transfer of Rs.5,000.00 between your SBI accounts is successful. -SBI", "expect": {"skip": "ownTransfer"}},
     {"name": "SBI Card refund abroad", "sender": "AX-SBICRD-T", "received": "2026-10-06T23:00:00+05:30",
      "body": "Refund of USD 12.99 from NETFLIX.COM credited to your SBI Credit Card ending 3344 on 06/10/26.", "expect": {"skip": "foreignCurrency"}},
+    {"name": "SBI Card abroad, with the rupee charge", "sender": "AX-SBICRD-T", "received": "2026-10-04T23:00:00+05:30",
+     "body": "USD 12.99 (INR 1,085.20) spent on your SBI Credit Card ending 3344 at NETFLIX.COM on 04/10/26. Avl Lmt: INR 48,914.80",
+     "expect": {"direction": "spent", "amount_minor": 108520, "account": "SBI Credit card ··3344", "channel": "card", "merchant": "NETFLIX", "date": "2026-10-04", "description": "Netflix"}},
+    {"name": "SBI Card abroad, only a rupee limit", "sender": "AX-SBICRD-T", "received": "2026-10-05T23:00:00+05:30",
+     "body": "USD 4.99 spent on your SBI Credit Card ending 3344 at SPOTIFY on 05/10/26. Avl Lmt: INR 48,500.00", "expect": {"skip": "foreignCurrency"}},
 
     {"name": "Axis UPI to a merchant", "sender": "AD-AXISBK-S", "received": "2026-10-12T18:22:30+05:30",
      "body": "INR 350.00 debited from A/c no. XX6677 on 12-10-2026 at 18:22:10 IST. UPI/P2M/627900112233/RAPIDO. Not you? SMS BLOCKUPI to 919951860002 - Axis Bank",

@@ -8,6 +8,7 @@ import '../api/api.dart';
 import '../config.dart';
 import '../local/providers.dart';
 import '../local/sync_engine.dart';
+import '../fixed_names.dart';
 
 /// A logged-in user and their token. In view-as (an admin acting as [user]), [adminId] is the
 /// admin and [readOnly] blocks writes; the server enforces both again.
@@ -26,8 +27,8 @@ class Session {
 /// Where the token lives between launches (localStorage on web), with the signed-in user so
 /// the app can open without a connection.
 class TokenStore {
-  static const _key = 'splitkit.token';
-  static const _userKey = 'splitkit.user';
+  static const _key = FixedNames.token;
+  static const _userKey = FixedNames.user;
 
   Future<String?> read() async => (await SharedPreferences.getInstance()).getString(_key);
   Future<void> write(String token) async => (await SharedPreferences.getInstance()).setString(_key, token);
@@ -50,7 +51,7 @@ final tokenStoreProvider = Provider<TokenStore>((_) => TokenStore());
 
 /// A server picked in the developer settings. It wins over the build-time API_ORIGIN.
 class ApiOriginStore {
-  static const _key = 'splitkit.apiOrigin';
+  static const _key = FixedNames.apiOrigin;
 
   Future<String?> read() async => (await SharedPreferences.getInstance()).getString(_key);
   Future<void> write(String origin) async => (await SharedPreferences.getInstance()).setString(_key, origin);

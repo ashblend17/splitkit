@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/data/providers.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/store.dart';
-import 'package:splitkit/core/local/writes.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/data/providers.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/store.dart';
+import 'package:app/core/local/writes.dart';
 
 import '../fake_backend.dart';
 

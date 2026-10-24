@@ -9,11 +9,11 @@ library;
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:splitkit/core/categorise/category_guesser.dart';
-import 'package:splitkit/core/categorise/category_rules.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/sms/merchant_names.dart';
-import 'package:splitkit/core/sms/sms.dart';
+import 'package:app/core/categorise/category_guesser.dart';
+import 'package:app/core/categorise/category_rules.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/sms/merchant_names.dart';
+import 'package:app/core/sms/sms.dart';
 
 import 'heavy_seed.dart';
 

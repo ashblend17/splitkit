@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/integrations.dart';
-import 'package:splitkit/core/theme/theme.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/shell/app_mode.dart';
+import 'package:app/core/integrations.dart';
+import 'package:app/core/theme/theme.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/shell/app_mode.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

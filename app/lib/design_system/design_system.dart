@@ -1,4 +1,4 @@
-/// Splitkit design system. Every widget is presentational and data-driven: screens pass in
+/// The app's design system. Every widget is presentational and data-driven: screens pass in
 /// copy and values; none of these know about groups, analytics or admin on their own.
 library;
 
@@ -9,14 +9,17 @@ export 'src/analytics_card.dart';
 export 'src/avatar.dart';
 export 'src/balance_card.dart';
 export 'src/buttons.dart';
+export 'src/carousel.dart';
 export 'src/category_selector.dart';
 export 'src/filters.dart';
 export 'src/friend_balance.dart';
 export 'src/group_card.dart';
 export 'src/mode_switch.dart';
+export 'src/motion.dart';
 export 'src/navigation.dart';
 export 'src/overlays.dart';
 export 'src/progress_bar.dart';
+export 'src/segmented.dart';
 export 'src/sk_icon.dart';
 export 'src/split_selector.dart';
 export 'src/states.dart';

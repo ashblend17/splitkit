@@ -44,7 +44,11 @@ def test_goa_csv_reads_every_row():
     assert train.shares == [(p, 133600) for p in ["John", "Rahul S", "Aman", "Priya", "Vivek"]]
     pizza = next(r for r in rows if r.title == "Late-night pizza")
     assert dict(pizza.shares)["Kabir M."] == 12500
-    assert [r.title for r in rows if not r.ok] == ["Souvenirs", "Villa deposit back"]
+    assert [r.title for r in rows if not r.ok] == ["Souvenirs"]
+    # Money Rahul received for five of them: each other one's share becomes a payment to him.
+    villa = next(r for r in rows if r.title == "Villa deposit back")
+    assert (villa.kind, villa.payer, villa.amount_minor) == ("income", "Rahul S", 300000)
+    assert villa.shares == [(p, 60000) for p in ["John", "Rahul S", "Aman", "Priya", "Vivek"]]
     transfer = rows[-1]
     assert (transfer.kind, transfer.payer, transfer.shares) == (
         "transfer",
@@ -75,7 +79,14 @@ def test_paid_by_paid_for_layout():
         [("Rahul S", 90000), ("John", 90000)],
     )
     assert (rows[1].payer, rows[1].amount_minor) == ("John", 62050)
-    assert [i.code for i in rows[2].issues] == ["many_payers"]
+    # Coffee, ₹100 by Rahul and ₹20 by John for ₹60 each: one expense per payer, shared alike.
+    assert [(r.title, r.payer, r.amount_minor, r.shares) for r in rows[2:]] == [
+        ("Coffee", "Rahul S", 10000, [("Rahul S", 5000), ("John", 5000)]),
+        ("Coffee", "John", 2000, [("Rahul S", 1000), ("John", 1000)]),
+    ]
+    assert rows[2].ok and [i.message for i in rows[3].issues] == [
+        "Paid by Rahul S and John: this is John's part"
+    ]
 
 
 def test_third_party_exporter_headers():
@@ -95,6 +106,44 @@ def test_third_party_exporter_headers():
         2450,
         [("Giulia", 1225), ("Marco", 1225)],
     )
+
+
+def test_a_sesterce_export_without_a_type_reads_transfers_from_the_category():
+    """ISS-028: tricount-exporter and tricount-downloader write Sesterce's layout, with no type
+    column; a transfer is the category "Money Transfer"."""
+    content = (
+        b"Date,Title,Amount,Paid by,Paid for John,Paid for Omar,Currency,Category\n"
+        b"2026-09-21,Groceries,600,John,300,300,INR,Food\n"
+        b"2026-09-22,Paying back,500,Omar,500,0,INR,Money Transfer\n"
+    )
+    groceries, back = planned(content, "sesterce.csv")
+    assert (groceries.kind, groceries.category) == ("expense", "Food")
+    assert (back.kind, back.payer, back.shares, back.category) == (
+        "transfer",
+        "Omar",
+        [("John", 50000)],
+        None,
+    )
+
+
+def test_converted_amounts_in_another_currency_than_the_group_are_skipped():
+    """ISS-021: "Amount in default currency (EUR)" can't stand in for rupees."""
+    content = (
+        b"Title,Amount,Currency,Amount in default currency (EUR),Date,Paid by,Impacted to A,"
+        b"Impacted to B\n"
+        b"Dinner,30.00,USD,27.60,2026-09-21,A,15.00,15.00\n"
+        b"Taxi,10.00,INR,0.11,2026-09-21,A,5.00,5.00\n"
+    )
+    parsed = parse(content, "t.csv")
+    assert parsed.default_currency == "EUR"
+    dinner, taxi = plan(parsed.rows, "INR", parsed.default_currency)
+    assert [(i.level, i.message) for i in dinner.issues] == [
+        ("error", "Tricount converted this one to EUR, not INR, so it can't be imported here")
+    ]
+    assert taxi.ok and taxi.amount_minor == 1000  # already in rupees
+    # Into a euro group the converted amount is the one to use.
+    [ok, _] = plan(parsed.rows, "EUR", parsed.default_currency)
+    assert ok.ok and ok.amount_minor == 2760 and ok.original == "$30"
 
 
 def test_tab_delimited_mdy_dates_and_a_totals_line():
@@ -249,7 +298,7 @@ def test_converted_rows_spread_the_converted_total():
 def test_unconvertible_currency_is_an_error():
     row = _one("10,10,10", amount="30", currency="THB")
     assert not row.ok
-    assert row.issues[0].message == "This one is in THB, and Splitkit can't convert it to INR"
+    assert row.issues[0].message == "This one is in THB, and it can't be converted to INR here"
 
 
 def test_amount_with_too_many_decimals_is_rounded_with_a_warning():

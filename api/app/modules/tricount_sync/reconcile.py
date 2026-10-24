@@ -1,12 +1,12 @@
-"""One sync pass for a linked group: Tricount and Splitkit end up the same, or a conflict is
+"""One sync pass for a linked group: Tricount and the app end up the same, or a conflict is
 recorded for someone to resolve.
 
 A pass reads the whole tricount (Tricount has no change feed), then:
 
-1. People: Tricount members Splitkit doesn't know become placeholder members (or are matched
-   by name); Splitkit members Tricount doesn't know are added to the tricount.
+1. People: Tricount members the app doesn't know become placeholder members (or are matched
+   by name); members here Tricount doesn't know are added to the tricount.
 2. The group's name.
-3. Entries, compared three ways (see mapping.py): Splitkit's version L, Tricount's R, and the
+3. Entries, compared three ways (see mapping.py): the app's version L, Tricount's R, and the
    base B both last agreed on. Only R moved: Tricount's change is applied here. Only L moved:
    it is sent to Tricount. Both moved differently: a TricountConflict. Deletions count as
    changes, and new entries on either side are created on the other.
@@ -14,8 +14,9 @@ A pass reads the whole tricount (Tricount has no change feed), then:
 Nothing needs a separate retry queue: what still has to be sent is whatever differs from its
 base, so a pass that fails half way (Tricount down, a crash) just leaves work for the next.
 Creates on both sides use ids derived from the other side's, so redoing one never duplicates.
-Every Splitkit write goes through record() as the "Tricount" system user, so devices get it
-through the sync log and history says "by Tricount".
+Every write here goes through record() as the "Tricount" system user, so devices get it
+through the sync log and history says "by Tricount". The other way, each change sent is credited
+in Tricount to whoever made it here: the device is switched to their member first (_credit).
 """
 
 import logging
@@ -29,6 +30,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.orm.exc import StaleDataError
 
+from app.core.config import get_settings
 from app.core.db import SessionLocal
 from app.core.events import record
 from app.core.money import format_minor
@@ -39,7 +41,7 @@ from app.modules.expenses import repository as expenses_repo
 from app.modules.expenses import service as expenses
 from app.modules.expenses.models import Expense, ExpenseSplit
 from app.modules.groups import repository as groups_repo
-from app.modules.groups.models import Group, GroupMember
+from app.modules.groups.models import ActivityEvent, Group, GroupMember
 from app.modules.import_tricount.matching import _norm as norm_name
 from app.modules.settlements.models import Settlement
 from app.modules.tricount_sync import mapping, wire
@@ -317,7 +319,7 @@ class _Pass:
                 )
                 self.link.title_base = self.group.name
         else:
-            # Renamed here (or on both sides: Splitkit's name wins, no need to ask).
+            # Renamed here (or on both sides: the app's name wins, no need to ask).
             self.client.update_registry(self.link.registry_id, {"title": here})
             self.link.title_base = here
         self.s.commit()
@@ -376,6 +378,9 @@ class _Pass:
             derived=lambda key, gen: mapping.remote_uuid(key[1], gen),
         )
         by_id = {m.id: m for m in maps}
+        self.authors = self._authors(plan.actions, by_id)
+        self.active_member = self.remote.active_member_uuid
+        self.credit_refused = False
         if plan.deletes_held:
             self.out.warnings.append(
                 f"Tricount no longer has {plan.deletes_held} entries. They were kept here in "
@@ -405,15 +410,62 @@ class _Pass:
             amount = format_minor(total, self.link.currency)
             self.out.warnings.append(
                 f"{len(entries)} {'entry' if len(entries) == 1 else 'entries'} in Tricount "
-                f"with {reason} ({amount}) can't be shown in Splitkit, so balances can differ."
+                f"with {reason} ({amount}) can't be shown in {get_settings().app_name}, so "
+                "balances can differ."
             )
+
+    def _authors(self, actions: list["Action"], by_id: dict) -> dict[uuid.UUID, uuid.UUID]:
+        """Who last changed each entry about to be sent: the newest activity on it by anyone
+        but the Tricount user, else whoever made it."""
+        ids = set()
+        for a in actions:
+            if a.kind in ("push", "push_delete"):
+                row = by_id.get(a.map_id) if a.map_id else None
+                key = (row.entity, row.entity_id) if row else a.local_key
+                if key:
+                    ids.add(key[1])
+        if not ids:
+            return {}
+        found: dict[uuid.UUID, uuid.UUID] = {}
+        for entity_id, actor_id in self.s.execute(
+            select(ActivityEvent.entity_id, ActivityEvent.actor_id)
+            .where(
+                ActivityEvent.group_id == self.group_id,
+                ActivityEvent.entity_id.in_(ids),
+                ActivityEvent.actor_id != self.actor.user_id,
+            )
+            .order_by(ActivityEvent.at)
+        ):
+            found[entity_id] = actor_id  # oldest first, so the newest stays
+        for (_, entity_id), x in self.locals.items():
+            if entity_id in ids:
+                found.setdefault(entity_id, x.created_by)
+        return found
+
+    def _credit(self, entity_id: uuid.UUID) -> None:
+        """Tricount says whom its device counts as added or changed what it sends (ISS-052).
+        Make that the person who changed this entry here, if they're in the tricount. Tricount
+        refusing the switch doesn't stop the entry: it's sent, credited to whoever it was."""
+        user = self.authors.get(entity_id)
+        member = self.member_of.get(user) if user else None
+        if member is None or member == self.active_member or self.credit_refused:
+            return
+        try:
+            self.client.update_registry(self.link.registry_id, {"membership_uuid_active": member})
+        except TricountError as e:
+            if e.status not in (400, 404, 409, 422):
+                raise
+            self.credit_refused = True
+            self.out.warnings.append(f"Tricount wouldn't say who made the changes: {e.message}")
+            return
+        self.active_member = member
 
     def _known(self, canon: mapping.Canon) -> bool:
         people = [canon.get("payer"), canon.get("from"), canon.get("to")]
         people += [who for who, _ in canon.get("shares", [])]
         return all(p in self.user_of for p in people if p)
 
-    # Splitkit's side, as (deleted, comparable form or None if someone isn't in the tricount).
+    # the app's side, as (deleted, comparable form or None if someone isn't in the tricount).
     def _local_state(self, row: Expense | Settlement) -> "LocalState":
         m = self.member_of.get
         day = row.date.isoformat()
@@ -496,6 +548,7 @@ class _Pass:
             if remote is None and row.remote_id is not None:
                 row.generation += 1  # deleted in Tricount: create it there afresh
             body = self._body(row, local, a.local, remote)
+            self._credit(row.entity_id)
             if remote is None:
                 row.remote_id = self.client.create_entry(self.link.registry_id, body)
             else:
@@ -503,6 +556,7 @@ class _Pass:
             row.base = a.local
             self.out.pushed += 1
         elif a.kind == "push_delete":
+            self._credit(row.entity_id)
             try:
                 self.client.delete_entry(self.link.registry_id, row.remote_id)
             except TricountError as e:
@@ -518,7 +572,14 @@ class _Pass:
             "uuid": mapping.remote_uuid(row.entity_id, row.generation),
             "amount_minor": local.amount_minor,
             "currency": self.link.currency,
-            "day": local.date,
+            # When it happened, as Tricount keeps it (UTC): made today, the moment it was made,
+            # so it's first in Tricount's list; an edit on the same day keeps Tricount's moment.
+            "at": wire.entry_time(
+                local.date,
+                self.client.zone,
+                made=local.created_at,
+                kept=remote.at if remote else None,
+            ),
             "attachment_ids": remote.attachment_ids if remote else None,
         }
         if row.entity == "settlement":
@@ -690,7 +751,7 @@ class LocalState:
 class RemoteState:
     uuid: str
     canon: mapping.Canon | None
-    """None for an entry Splitkit can't hold (income, …): never synced."""
+    """None for an entry the app can't hold (income, …): never synced."""
 
 
 @dataclass
@@ -718,7 +779,7 @@ def plan_entries(
     derived,
 ) -> Plan:
     """What to do with every entry. `derived(local_key, generation)` is the Tricount id a
-    Splitkit entry is created with, used to recognise our own creates after a crash."""
+    entry from here is created with, used to recognise our own creates after a crash."""
     actions: list[Action] = []
     used_remote: set[int] = set()
     mapped_local: set[tuple[str, uuid.UUID]] = set()
@@ -735,14 +796,14 @@ def plan_entries(
             continue  # waits for its people to reach the tricount
         remote = remotes.get(m.remote_id) if m.remote_id is not None else None
         if remote is not None and remote.canon is None:
-            continue  # turned into something Splitkit can't hold; leave it be
+            continue  # turned into something the app can't hold; leave it be
         lc = None if local is None or local.deleted else local.canon
         rc = None if remote is None else remote.canon
         b = m.base
         if m.force == "pull":
             b = lc  # as if only Tricount had changed
         elif m.force == "push":
-            b = rc  # as if only Splitkit had changed
+            b = rc  # as if only the app had changed
         if lc == rc:
             if lc is None:
                 actions.append(Action("forget", m.id))

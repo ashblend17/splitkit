@@ -7,8 +7,9 @@ import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import 'tricount_providers.dart';
+import '../../core/config.dart';
 
-/// Every entry changed in both Splitkit and Tricount, for someone to pick a side.
+/// Every entry changed in both this app and Tricount, for someone to pick a side.
 Future<void> showTricountConflictsSheet(BuildContext context) => showAppBottomSheet<void>(
   context,
   title: 'Changed in both apps',
@@ -24,7 +25,7 @@ class _ConflictSheet extends ConsumerWidget {
     if (conflicts.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Text('Nothing to sort out. Splitkit and Tricount agree.', style: SkText.body(14, 400, color: SkColors.ink2)),
+        child: Text('Nothing to sort out. ${AppConfig.appName} and Tricount agree.', style: SkText.body(14, 400, color: SkColors.ink2)),
       );
     }
     return Column(
@@ -32,7 +33,7 @@ class _ConflictSheet extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'These were changed in Splitkit and in Tricount since the two last agreed. Pick the version to keep; '
+          'These were changed in ${AppConfig.appName} and in Tricount since the two last agreed. Pick the version to keep; '
           'the other app is updated to match.',
           style: SkText.body(14, 400, color: SkColors.ink2, height: 1.45),
         ),
@@ -88,7 +89,7 @@ class _TricountConflictCardState extends ConsumerState<TricountConflictCard> {
             style: SkText.body(12, 600, color: SkColors.ink2),
           ),
           const SizedBox(height: 8),
-          _Side(app: 'Splitkit', side: c.splitkit),
+          _Side(app: AppConfig.appName, side: c.local),
           const SizedBox(height: 8),
           _Side(app: 'Tricount', side: c.tricount),
           const SizedBox(height: 12),
@@ -96,10 +97,10 @@ class _TricountConflictCardState extends ConsumerState<TricountConflictCard> {
             children: [
               Expanded(
                 child: SkButton(
-                  "Keep Splitkit's",
+                  "Keep ${AppConfig.appName}'s",
                   size: SkButtonSize.small,
                   expand: true,
-                  onPressed: _busy ? null : () => _keep(ResolveConflictInKeepEnum.splitkit),
+                  onPressed: _busy ? null : () => _keep(ResolveConflictInKeepEnum.local),
                 ),
               ),
               const SizedBox(width: 8),

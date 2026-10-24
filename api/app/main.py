@@ -27,7 +27,7 @@ from app.modules.users.router import router as users_router
 API_PREFIX = "/api/v1"
 
 app = FastAPI(
-    title="Splitkit API",
+    title="API",
     version=__version__,
     openapi_url=f"{API_PREFIX}/openapi.json",
     docs_url=f"{API_PREFIX}/docs",

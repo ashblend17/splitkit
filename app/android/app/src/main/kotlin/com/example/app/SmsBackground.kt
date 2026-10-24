@@ -1,4 +1,4 @@
-package com.splitkit.splitkit
+package com.example.app
 
 import android.content.Context
 import android.os.Handler
@@ -10,7 +10,7 @@ import io.flutter.plugin.common.MethodChannel
 
 /**
  * Runs the app's own SMS parser on one message without the UI: a Dart engine starts on
- * `smsBackgroundMain` (lib/main.dart), describes the message over `splitkit/sms_bg`, and is
+ * `smsBackgroundMain` (lib/main.dart), describes the message over `app/sms_bg`, and is
  * destroyed. So the notification and the app read messages the same way. Gives up after 8 s.
  */
 object SmsBackground {
@@ -31,7 +31,7 @@ object SmsBackground {
                     engine.destroy()
                     done(result)
                 }
-                val channel = MethodChannel(engine.dartExecutor.binaryMessenger, "splitkit/sms_bg")
+                val channel = MethodChannel(engine.dartExecutor.binaryMessenger, "app/sms_bg")
                 channel.setMethodCallHandler { call, result ->
                     if (call.method != "ready") return@setMethodCallHandler result.notImplemented()
                     result.success(null)

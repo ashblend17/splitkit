@@ -1,7 +1,9 @@
-# Splitkit
+# Group expenses and personal finance
+
+The app is called whatever `APP_NAME` in `.env` says ("App" until it's set).
 
 Group expense splitting with a personal-finance area. The spec is in
-[splitkit-design/HANDOFF.md](splitkit-design/HANDOFF.md).
+[design/HANDOFF.md](design/HANDOFF.md).
 
 | Path | What |
 |---|---|
@@ -10,8 +12,8 @@ Group expense splitting with a personal-finance area. The spec is in
 | `api/app/seed/` | Sample data from the mockups (Goa Trip, Flatmates, personal finances) |
 | `app/` | Flutter client (Android, iOS, Web) |
 | `shared/split_vectors.json` | Split-engine test cases shared by the Python engine and the Dart port |
-| `tool/` | `gen_tokens.py` (tokens.json → Dart), `gen_api_client.sh` (OpenAPI → Dart client), `capture_api_fixtures.py` |
-| `splitkit-design/` | Design handoff: mockups, tokens |
+| `tool/` | `gen_tokens.py` (tokens.json → Dart), `gen_icons.py` (the app icons on every platform, from the brand mark), `gen_api_client.sh` (OpenAPI → Dart client), `capture_api_fixtures.py` |
+| `design/` | Design handoff: mockups, tokens |
 
 Checking the data and recovering from problems (server, devices, backups): [validation.md](validation.md).
 Running it on a server: [deploy.md](deploy.md).
@@ -26,7 +28,7 @@ docker compose exec api python -m app.seed --reset
 
 - Web app: http://localhost:8080 (log in as a seeded user; the component gallery is at `/gallery`)
 - API docs: http://localhost:8000/api/v1/docs (OpenAPI JSON at `/api/v1/openapi.json`)
-- Seeded logins: any seeded email with password `dev-password`, e.g. `admin@example.com` (admin)
+- Seeded logins: any seeded email with `.env`'s `SEED_PASSWORD`, e.g. `admin@example.com` (admin)
 
 The API container runs `alembic upgrade head` on start. Seeding never runs automatically.
 The system categories and default dashboards are reference data, added by migration 0009 to
@@ -38,26 +40,54 @@ every database (the seed has the same rows; `tests/api/test_reference_data.py` k
 option):
 
 ```sh
-tool/build.sh apk --api-origin https://splitkit.example.com     # Android APK to install
-tool/build.sh aab --api-origin https://splitkit.example.com     # App Bundle for Google Play
+tool/build.sh apk --api-origin https://api.example.com     # Android APK to install
+tool/build.sh aab --api-origin https://api.example.com     # App Bundle for Google Play
 tool/build.sh web                                               # static web bundle
 tool/build.sh images                                            # api, tricount and web images
 tool/build.sh ios --api-origin https://…                        # on a Mac
-tool/build.sh all --api-origin https://splitkit.example.com --check
+tool/build.sh all --api-origin https://api.example.com --check
 ```
 
-- Files land in `dist/` (gitignored) as `splitkit-<version>-<build>-<commit>-<mode>.<ext>`, with
+- Files land in `dist/` (gitignored) as `<project>-<version>-<build>-<commit>-<mode>.<ext>` (`<project>` is `COMPOSE_PROJECT_NAME`), with
   `dist/SHA256SUMS`. A build with uncommitted changes in `app/` or `api/` is marked `-dirty`.
 - The build number is the number of commits, so every build is newer than the one before
   (Android won't install an "update" with a lower one). `--build-name` / `--build-number`
   override it.
 - Images are tagged `:latest` (what `docker compose up -d --no-build` runs) and
   `:<version>-<build>-<commit>`. The image `:latest` pointed at before keeps a tag of its own,
-  so going back is `docker tag splitkit-api:<old tag> splitkit-api:latest` (and the same for
+  so going back is `docker tag <project>-api:<old tag> <project>-api:latest` (and the same for
   `tricount` and `web`). `--push <user>/<repo>` also pushes them as the `split-*` tags
   `docker-compose.prod.yml` pulls, plus one tag per version.
 - Phone builds need `--api-origin` (or `--dev-tools`, to type the server on the phone). `--check`
   runs analyze and the tests first.
+
+## Versions and releases
+
+The UI and the backend are released on their own, each with its own
+[semantic version](https://semver.org) and changelog. Both started at 1.0.0 on 2026-10-24.
+
+| Part | What | Version kept in | Changelog | Tags |
+|---|---|---|---|---|
+| UI | `app/`: Android, iOS, the web bundle and the `web` image | `app/pubspec.yaml` (and `lib/core/version.dart`) | `app/CHANGELOG.md` | `ui-v1.0.0` |
+| Backend | `api/`: the API and the Tricount worker (the `api` and `tricount` images) | `api/app/__init__.py` (and `pyproject.toml`, `uv.lock`, `openapi.json`) | `api/CHANGELOG.md` | `api-v1.0.0` |
+
+- **Every change** to `app/` or `api/` adds a line under `## Unreleased` in that part's
+  changelog.
+- **A release:** `python3 tool/version.py bump ui minor` (or `api`; `patch`, `minor`, `major`, or
+  a version) writes the new version everywhere that part keeps it and turns Unreleased into that
+  version. Commit, then `python3 tool/version.py tag ui` tags the commit (`--no-sign` where git
+  signs tags and can't here); `git push origin ui-v1.1.0` publishes the tag.
+  `python3 tool/version.py` shows both versions and their latest tags, and `check` that the files
+  agree (tests check it too).
+- **Which number:** a backend major is a change an app that's already out there can't take (it
+  would need `/api/v2`, or every app updated first); a minor adds what older apps can ignore (an
+  endpoint, a field, a migration that only adds); a patch fixes. A UI major needs people to do
+  something (sign in again, a newer backend); a minor adds; a patch fixes. A UI release that needs
+  a newer backend says which in its changelog, and the backend goes first.
+- **Where it shows:** `tool/build.sh` names app files and the `web` image with the UI's version,
+  and the `api` and `tricount` images with the backend's (`<version>-<build>-<commit>`, `-dirty`
+  for uncommitted changes in that part), and gives the app its build number. `GET /api/v1/health`
+  and Admin say the backend's version; Profile says both ("App 1.0.0 (92) · server 1.0.0").
 
 ## Deploy
 
@@ -74,7 +104,7 @@ docker compose up -d db                 # from the repo root
 uv run alembic upgrade head
 uv run python -m app.seed --reset
 uv run uvicorn app.main:app --reload
-uv run pytest                           # API tests use the compose db (a separate splitkit_test database)
+uv run pytest                           # API tests use the compose db (a separate `<DB_NAME>_test` database, found through `.env`)
 uv run ruff check . && uv run ruff format --check .
 ```
 
@@ -240,9 +270,14 @@ file, and confirm with `uv run alembic check`.
     from zero, "—" without income) and Needs and wants (`personal_need_want`, by category `kind`,
     with "Not sorted" when there is some) are default cards from migration 0018. Run
     `python -m app.recover reset-stream global` when it deploys.
+  - Spending by category also has `averages` (no other card does): each category's usual week
+    or month next to the one under way. On Week that's the 8 weeks before the last 7 days; on
+    Month and Year, the 6 or 12 whole months before this one, against this month so far. Only
+    weeks or months from your first spending on count ("Average of 5 months"); with none yet
+    there are no rows ("No full month yet"). The app shows them under the card's Total /
+    Average switch, and leaves the switch out when a server sends none.
   - Personal Insights still come from this endpoint: moving them onto the device was cut from
-    the finance revamp. So they leave out the group share that Overview's cash flow counts
-    (ISS-105).
+    the finance revamp, so they need a connection.
 - Deletes are soft: `DELETE /expenses/{id}` then `POST /expenses/{id}/restore` (same for settlements).
 - Every write is recorded in `audit_logs`, and group writes in `activity_events`, with
   `acting_admin_id` ready for admin impersonation. Every write also lands in the sync change log
@@ -349,7 +384,7 @@ flutter test                               # widgets, split engine (shared vecto
 flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
 ```
 
-- Theme values come from `splitkit-design/tokens.json`. After editing it, run
+- Theme values come from `design/tokens.json`. After editing it, run
   `python3 tool/gen_tokens.py` (a test fails if `tokens.g.dart` is stale).
 - Light and dark: `tokens.json` has `color` and `colorDark` (the same names), generated into
   `skLightColors` and `skDarkColors`. `SkColors.x` reads the set in use, which `SkThemedApp`
@@ -360,6 +395,12 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   - Text and icons on a solid ink, brand or accent fill use `SkColors.onFill`, not white.
   - `SkPalette` (mockup colours outside the tokens) and the avatar pairs have both values too.
 - Design-system widgets live in `app/lib/design_system/`; `/gallery` shows them all.
+- Motion goes through `SkMotion` (`design_system/src/motion.dart`): take durations from
+  `SkMotion.of`, which gives none when the phone asks for no animations. Insights uses it: cards
+  come in one after another, bars grow and figures count up, the period tabs' thumb slides, and
+  switching period keeps the cards up (dimmed) until the new figures come, then moves to them.
+  Personal's three breakdowns share a `BreakdownCarousel` (one card at a time on a phone, side
+  by side where they fit).
 - Layout follows `SkLayout` (`app/lib/core/layout/layout.dart`): tab bar under 600px, NavRail up
   to 1279px, WebSidebar from 1280px. Only phones show the floating add button. Home and group
   detail have their own tablet and desktop layouts; other pages stay phone-width and centred.
@@ -419,7 +460,7 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
     transfers the finance engine suggests.
   - A linked entry says what it became and can be unlinked. The split shows its owner, and only
     its owner, which account paid.
-- The API client in `app/packages/splitkit_api` is generated: after API changes run
+- The API client in `app/packages/api_client` is generated: after API changes run
   `(cd api && uv run python -m app.openapi) && tool/gen_api_client.sh` (needs Docker).
   Use `apiDate()` for date fields: the generated client converts dates to UTC.
 - Admin pages (`features/admin/`) read the API directly, not the synced data. Every "View as"
@@ -431,12 +472,13 @@ flutter run -d chrome --dart-define=API_ORIGIN=http://localhost:8000
   `tool/capture_api_fixtures.py`'s docstring says:
 
   ```sh
-  docker compose exec db createdb -U splitkit splitkit_fixtures
-  cd api && export DATABASE_URL=postgresql+psycopg://splitkit:splitkit@localhost:5433/splitkit_fixtures
+  set -a; . ./.env; set +a                         # DB_USER, DB_NAME, POSTGRES_PASSWORD, SEED_PASSWORD
+  docker compose exec db createdb -U "$DB_USER" "${DB_NAME}_fixtures"
+  cd api && export DATABASE_URL="postgresql+psycopg://$DB_USER:$POSTGRES_PASSWORD@localhost:5433/${DB_NAME}_fixtures"
   uv run alembic upgrade head && uv run python -m app.seed --reset
   uv run uvicorn app.main:app --port 8001          # in another terminal, with the same DATABASE_URL
   API=http://localhost:8001 python3 ../tool/capture_api_fixtures.py
-  docker compose exec db dropdb -U splitkit splitkit_fixtures   # after stopping uvicorn
+  docker compose exec db dropdb -U "$DB_USER" "${DB_NAME}_fixtures"   # after stopping uvicorn
   ```
 
   Revert the admin fixtures if only their random audit ids changed.
@@ -452,13 +494,13 @@ To try a build on a phone without updating the installed app, give it another ap
 tool/build.sh apk --beta --api-origin http://<laptop's LAN IP>:8000 --dev-tools
 ```
 
-(`--beta` sets `SPLITKIT_APP_ID_SUFFIX=.beta` for Gradle; `flutter build apk` with that variable
+(`--beta` sets `APP_ID_SUFFIX=.beta` for Gradle; `flutter build apk` with that variable
 does the same.)
 
-It installs as "Splitkit Beta" (`com.splitkit.splitkit.beta`), with its own data and login, and
+It installs as "<APP_NAME> Beta" (`<APP_ID>.beta`), with its own data and login, and
 it may use plain HTTP, so it can talk to the compose stack on a laptop on the same Wi-Fi
 (`DEV_TOOLS` keeps the login screen's Server link, should the laptop's address change). Without
-`SPLITKIT_APP_ID_SUFFIX` the build is the normal app, which refuses plain HTTP. Both apps read
+`APP_ID_SUFFIX` the build is the normal app, which refuses plain HTTP. Both apps read
 bank SMS, so turn notifications off in one of them.
 
 ### iOS
@@ -470,8 +512,8 @@ Without a Mac, `.github/workflows/ios.yml` builds on a GitHub macOS runner. It r
 touch `app/`, or by hand from Actions → iOS build (inputs: `api_origin`, `dev_tools`). It uploads
 nothing signed:
 
-- `splitkit-simulator.zip`: a debug `Runner.app` for the iOS Simulator (`xcrun simctl install booted Runner.app`).
-- `splitkit-unsigned.ipa`: a release build. Re-sign it with your Apple ID (Sideloadly, AltStore) to put it on a phone.
+- `app-simulator.zip`: a debug `Runner.app` for the iOS Simulator (`xcrun simctl install booted Runner.app`).
+- `app-unsigned.ipa`: a release build. Re-sign it with your Apple ID (Sideloadly, AltStore) to put it on a phone.
 
 With no `api_origin`, choose the server under "Server" on the login screen. Use an HTTPS server:
 `Info.plist` allows plain `http://` only for local-network hosts (`NSAllowsLocalNetworking`), and
@@ -502,9 +544,14 @@ that `TodayTicker` moves at midnight and on resume.
   then the SMS time (else `created_at`), then id. The bank's latest reported balance is a
   checkpoint: Accounts shows "Bank said ₹X on 21 Sep · ₹Y off", and **Reconcile** records a
   balance correction (an `adjustment`) dated that day, which closes the gap there. Without a
-  checkpoint the correction is against today's balance. Cards and loans have none (their SMS
+  checkpoint ("The bank says…", Reconcile now, closing at zero) the correction also carries the
+  balance you set (`balance_minor`): from it on the balance is that, so an entry added or
+  edited later with an older date or time doesn't move it, and one after it moves it from there
+  (`setsBalance`, ISS-130). Such a correction sorts where it was made in its day, and the
+  account says "Balance set to ₹X on <day>". Cards and loans have no checkpoint (their SMS
   report a limit), and nor do accounts valued by holdings. Closing an account can zero it first
-  with a correction. An account made from bank SMS starts reconciled: its opening makes the
+  with a correction; one whose holdings are worth something isn't closed until they're zero or
+  deleted (ISS-113). An account made from bank SMS starts reconciled: its opening makes the
   balance after the first reported one equal it (0013's backfill rule,
   `shared/ledger_vectors.json`). A balance read from SMS that nothing ever checked (no reported
   balance, no correction: every card, and banks whose alerts give none) says so on Accounts,
@@ -527,7 +574,11 @@ that `TodayTicker` moves at midnight and on resume.
 - **Refunds** (`refunds.dart`): money back for a spend, in its category and, by default, its
   account. It comes off spending in the month it's dated. It finds its spend by the bank
   reference, else the same merchant up to `refundMatchDays` (60) before, with enough left to
-  refund; of several, the same account first, then the exact amount, then the newest.
+  refund; of several, the same account first, then the exact amount, then the newest. A bank
+  often sends a merchant's refund as a plain credit: an income from a merchant you spent at, with
+  a spend that fits, offers "This was a refund", which makes it a refund of that spend
+  (`refundSuggestionProvider`, `markAsRefund`). Only offered: money back from a friend you paid
+  looks the same (ISS-089).
 - **Cash flow** (`cash_flow.dart`, Overview, the month picked). Income is counted income.
   Spending is expenses less refunds, plus your share of the month's group expenses while
   `groupShareInCashFlow` (and `groupShareInPersonal`) are on. Entries a group already covers are
@@ -644,7 +695,11 @@ messages.
   - A short-lived Dart engine runs `smsBackgroundMain` (in `main.dart`) to describe the
     message with the same parser, e.g. "₹450 at Swiggy · HDFC ··4821 · UPI".
   - A spend's notification has Split (`Integrations.notificationSplitAction`). Opening from it
-    adds the payment and opens Add split, or Personal.
+    adds the payment and opens Add split, or the entry over Personal (Personal alone when the
+    message isn't an entry).
+  - A locked phone shows "A payment from your bank · Unlock to see it" (a private notification
+    with a public version), unless "Show amounts on the lock screen" is on (setup page, off by
+    default; spec §5.7, ISS-123).
   - The phone only knows what `SmsImporter.configureNotifications` tells it: whether to notify
     (switch on the setup page), whether to offer Split, and the sender pattern.
   - It stores nothing itself; the app reads the inbox when it's opened. Signing out turns it
@@ -665,7 +720,7 @@ both ways, from the group's menu → Sync with Tricount (`/groups/{id}/tricount`
   once as an anonymous device and joins tricounts by their share link. Writes are only accepted
   with the Android app's User-Agent (`TRICOUNT_USER_AGENT`). It may break or be blocked at any
   time, and may not be allowed by Tricount's terms. `TRICOUNT_API_URL` points it elsewhere.
-- **Server-side.** Apps and the website never call Tricount: they write to Splitkit as always
+- **Server-side.** Apps and the website never call Tricount: they write to the API as always
   (offline queue included), and the server mirrors. Turning the sync off is stopping the
   `tricount` service.
 - `POST /groups/{id}/tricount/preview {link}` reads a tricount without joining it and suggests
@@ -674,24 +729,32 @@ both ways, from the group's menu → Sync with Tricount (`/groups/{id}/tricount`
   the tricount's name. `GET …/tricount` is the status, `POST …/tricount/sync` syncs now,
   `DELETE …/tricount` stops (nothing is deleted).
 - **A pass** (`reconcile.py`) reads the whole tricount and compares each entry three ways:
-  Splitkit's, Tricount's, and the version both last agreed on (`tricount_entries.base`, in the
+  the app's, Tricount's, and the version both last agreed on (`tricount_entries.base`, in the
   form `mapping.py` defines). One side changed: it goes to the other. Both changed: a
   `tricount_conflicts` row, shown in the app as "N changes from Tricount need a decision",
   resolved with `POST /tricount/conflicts/{id}/resolve {keep}`. New people on either side
   are added to the other (Tricount people become placeholders). There's no retry queue: what
   still has to go is whatever differs from its base, so a failed pass just leaves work for the
   next one, and creates use ids derived from the other side so a redo never duplicates.
-- **When** (`worker.py`): within seconds of a Splitkit change, every
+- **When** (`worker.py`): within seconds of a change here, every
   `TRICOUNT_POLL_SECONDS` (60) while someone in the group uses the app
   (`ActivityMiddleware` sets `last_active_at`), with exponential backoff after failures.
   `python -m app.modules.tricount_sync --once` runs one round.
 - Changes from Tricount are recorded as the "Tricount" system user (`role = 'system'`), so
-  history says "Edited by Tricount".
+  history says "Edited by Tricount". The other way, Tricount says whoever its device counts as
+  (`membership_uuid_active`) added what the server sends, so each change goes as the person
+  who made it here: the newest activity on it, else whoever made it (ISS-052).
+- **Times.** Tricount keeps an entry's moment in UTC; its app dates an entry the moment it's
+  made and lists the newest first. The app has only days, in `TRICOUNT_TIME_ZONE`
+  (Asia/Kolkata): an entry made today goes as the moment it was made, one dated another day
+  goes on that day at the time of day it was made, and an edit on the same day keeps
+  Tricount's moment (`wire.entry_time`). Tricount's moments come back as that zone's day.
 - Not carried over: Tricount income entries (shown as a warning with the amount, since
   balances then differ), payment methods and expense notes (Tricount has neither), member
   removals and renames after linking. Categories map coarsely (`mapping.py`).
-- Tests use an in-memory Tricount (`api/tests/tricount_fake.py`). Nothing here has run
-  against the real service: try it on a throwaway tricount first.
+- Tests use an in-memory Tricount (`api/tests/tricount_fake.py`). It has run against the real
+  service (linking, pulls, creates and deletes, entry times and who added what), but try changes
+  on a throwaway tricount first.
 
 ## Tricount import
 
@@ -704,7 +767,9 @@ the router entry, the Profile link and the `import_batch_id` columns.
   its issues, and totals. It is stateless; the client keeps the file.
 - `POST /import/tricount/commit` (the same `file` plus `options` JSON: target, people, categories)
   imports everything in one transaction as one `import_batches` row. Expenses become exact splits,
-  money transfers become payments (one per recipient), income rows are skipped. The group, the
+  money transfers become payments (one per recipient), and income (money one person received for
+  the group) becomes payments to them, one from each other person it was for, of their share. A
+  row paid by several people becomes one expense per payer, shares in proportion. The group, the
   memberships, expenses and payments it creates carry `import_batch_id`, and every write goes
   through `record()`.
 - `GET /import/batches`, `GET /import/batches/{id}` and `POST /import/batches/{id}/undo`. Undo
@@ -716,7 +781,10 @@ the router entry, the Profile link and the `import_batch_id` columns.
   Transaction type, Category, Impacted to <name>…`, plus `Paid for`/`Share <name>`, `Paid by <name>`
   (Sesterce layout), `Who paid`, `Description`, `Total`. It reads CSV (`,` `;` tab `|`, BOM,
   UTF-8/16 or cp1252) and XLSX, decimal commas and thousands separators, and ISO, d/m/y, m/d/y
-  (decided per file) and text dates. `plan.py` turns rows into minor units: shares that add up are
-  kept; a few paise of Tricount rounding, or a converted row, is re-spread with the split engine's
-  largest remainder; a bigger gap is a row error ("₹100 still needs to be allocated").
+  (decided per file) and text dates. With no type column (Sesterce's layout) a row's kind comes
+  from its category ("Money Transfer" is a payment). `plan.py` turns rows into minor units: shares
+  that add up are kept; a few paise of Tricount rounding, or a converted row, is re-spread with
+  the split engine's largest remainder; a bigger gap is a row error ("₹100 still needs to be
+  allocated"). A converted row is refused when the header says the converted amounts are in
+  another currency than the group's ("Amount in default currency (EUR)").
 - Sample exports are in `api/tests/fixtures/tricount/` (the mockup's Goa Trip).

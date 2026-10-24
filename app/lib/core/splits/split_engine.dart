@@ -137,7 +137,8 @@ class EqualSplit extends _Base {
   @override
   String get symbol => '=';
   @override
-  String get hint => 'Everyone ticked pays the same. Untick anyone who is not involved.';
+  String get hint =>
+      'Everyone ticked pays the same. Tap a name to split with only them, or untick anyone who is not involved.';
 
   @override
   SplitValidation validate(int totalMinor, List<SplitInput> inputs, {String currency = 'INR'}) {

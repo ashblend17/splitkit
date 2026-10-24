@@ -12,6 +12,7 @@ from app.modules.analytics.periods import (
     Period,
     Span,
     adaptive_buckets,
+    average_spans,
     bucket_kind,
     current,
     previous,
@@ -19,6 +20,7 @@ from app.modules.analytics.periods import (
     trend_buckets,
     trend_label,
 )
+from app.modules.analytics.schemas import ChartAverage, ChartAverages
 from app.modules.analytics.schemas import ChartBar as Bar
 from app.modules.analytics.schemas import ChartRow as Row
 from app.modules.analytics.schemas import ChartStat as Stat
@@ -85,6 +87,7 @@ class CardData:
     bars: list[Bar] = field(default_factory=list)
     rows: list[Row] = field(default_factory=list)
     stat: Stat | None = None
+    averages: ChartAverages | None = None
 
 
 def _sum(entries: list[Entry], span: Span) -> int:
@@ -136,7 +139,47 @@ def personal_monthly(ctx: Context) -> CardData:
 
 def personal_by_category(ctx: Context) -> CardData:
     span = current(ctx.period, ctx.on)
-    return CardData(period_label=span.label, rows=_rows(ctx.spending, span, lambda e: e.category))
+    return CardData(
+        period_label=span.label,
+        rows=_rows(ctx.spending, span, lambda e: e.category),
+        averages=_category_averages(ctx),
+    )
+
+
+def _category_averages(ctx: Context) -> ChartAverages:
+    """Each category's usual week or month (periods.average_spans), next to the one under way.
+    Only weeks or months from your first spending on count, so a short history isn't averaged
+    with empty months; with none yet there are no rows."""
+    past, now = average_spans(ctx.period, ctx.on)
+    unit = "week" if ctx.period == "week" else "month"
+    first = min((e.day for e in ctx.spending), default=None)
+    counted = [s for s in past if first is not None and s.end >= first]
+    if not counted:
+        return ChartAverages(label=f"No full {unit} yet", now_label=now.label, unit=unit, rows=[])
+    window = Span(counted[0].start, counted[-1].end, "")
+    usual: dict[str, int] = defaultdict(int)
+    so_far: dict[str, int] = defaultdict(int)
+    for e in ctx.spending:
+        if window.contains(e.day):
+            usual[e.category] += e.amount_minor
+        if now.contains(e.day):
+            so_far[e.category] += e.amount_minor
+    # Refunds can take either below zero: it shows as nothing, as in the other breakdowns.
+    rows = [
+        ChartAverage(
+            label=k,
+            average_minor=max(_whole(usual[k] // len(counted)), 0),
+            now_minor=max(so_far[k], 0),
+        )
+        for k in usual.keys() | so_far.keys()
+    ]
+    rows = sorted(
+        (r for r in rows if r.average_minor > 0 or r.now_minor > 0),
+        key=lambda r: (-r.average_minor, -r.now_minor, r.label),
+    )
+    n = len(counted)
+    label = f"Average of {n} {unit}{'' if n == 1 else 's'}"
+    return ChartAverages(label=label, now_label=now.label, unit=unit, rows=rows)
 
 
 def scope_split(ctx: Context) -> CardData:

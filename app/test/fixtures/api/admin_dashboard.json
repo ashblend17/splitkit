@@ -188,7 +188,7 @@
     }
   ],
   "system": {
-    "api_version": "0.1.0",
+    "api_version": "1.0.0",
     "database": "PostgreSQL 16.14",
     "database_bytes": 9337879,
     "last_import_at": "2026-09-22T04:30:00Z",

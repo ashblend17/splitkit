@@ -16,7 +16,7 @@ class ImportTarget {
 }
 
 /// Everything the upload and review screens decide, kept until the import is committed.
-/// `people` maps a Tricount name to a Splitkit user id; null means "create a placeholder".
+/// `people` maps a Tricount name to a user id here; null means "create a placeholder".
 /// `categories` maps a Tricount category to a category key.
 class ImportDraft {
   const ImportDraft({

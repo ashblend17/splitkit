@@ -1,7 +1,7 @@
-name: splitkit
-description: "A new Flutter project."
+name: app
+description: "Split group expenses and keep track of your own money."
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0
 
 environment:
   sdk: ^3.8.1
@@ -16,8 +16,8 @@ dependencies:
   go_router: ^17.0.0
   intl: ^0.20.2
   path_drawing: ^1.0.1
-  splitkit_api:
-    path: packages/splitkit_api
+  api_client:
+    path: packages/api_client
   rational: ^2.2.3
   flutter_riverpod: ^3.3.2
   shared_preferences: ^2.5.3

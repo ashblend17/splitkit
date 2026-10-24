@@ -32,7 +32,7 @@ const snackBarWidth = 480.0;
 
 /// One line above every signed-in screen when something needs saying: offline (and how many
 /// changes are waiting), changes the server refused ("Needs your attention"), or entries
-/// changed in both Splitkit and a linked tricount.
+/// changed in both this app and a linked tricount.
 class SyncBanner extends ConsumerWidget {
   const SyncBanner({super.key, required this.child});
 

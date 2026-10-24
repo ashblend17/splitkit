@@ -1,6 +1,6 @@
 """Runs sync passes when they're due:
 
-- right away when someone changed the group in Splitkit (its sync stream has entries past
+- right away when someone changed the group here (its sync stream has entries past
   `seen_seq` not written by the sync itself), so writes reach Tricount within seconds;
 - every `tricount_poll_seconds` while someone in the group is using the app
   (`last_active_at`, set by ActivityMiddleware), to pick up changes made in Tricount;
@@ -42,7 +42,7 @@ def due(now: datetime | None = None) -> list[uuid.UUID]:
                     l.state = 'syncing'
                     OR l.last_synced_at IS NULL
                     OR EXISTS (
-                      -- Changed in Splitkit since the last pass began (not by the sync itself)
+                      -- Changed here since the last pass began (not by the sync itself)
                       SELECT 1 FROM change_log c
                       WHERE c.stream_id = 'group:' || l.group_id::text AND c.seq > l.seen_seq
                         AND c.actor_id IS DISTINCT FROM :system

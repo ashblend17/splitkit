@@ -182,7 +182,7 @@ def test_user_search_and_paging(client, seeded):
         ]
 
     assert names(q="priya") == ["Priya Nair"]
-    assert names(q="EXAMPLE.COM") == sorted(u.name for u in data.USERS if u.role == "user")
+    assert sorted(names(q="EXAMPLE.COM")) == sorted(u.name for u in data.USERS)  # the admin's too
     assert names(q="100%") == []  # LIKE wildcards are literal
     assert names(role="admin") == ["John Doe"]
     first = client.get(f"{API}/admin/users", headers=h, params={"limit": 2}).json()

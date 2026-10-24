@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:clock/clock.dart';
-import 'package:splitkit/core/clock.dart';
+import 'package:app/core/clock.dart';
 
 /// The day the fixtures in test/fixtures were captured. Screens default to "this month" and
 /// "today", so every test runs on this day whatever the real date is.

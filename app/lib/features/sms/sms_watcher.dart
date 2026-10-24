@@ -4,7 +4,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/data/providers.dart';
 import '../../core/integrations.dart';
+import '../personal/personal_txn_sheet.dart';
 
 import 'sms_importer.dart';
 import 'sms_source.dart';
@@ -14,7 +16,7 @@ import 'sms_source.dart';
 /// it reads nothing when off, in view-as, or off Android.
 ///
 /// Opened from a bank SMS notification, it adds that payment and opens it: Add split for
-/// "Split", Personal otherwise.
+/// "Split", otherwise the entry over Personal.
 class SmsWatcher extends ConsumerStatefulWidget {
   const SmsWatcher({super.key, required this.child});
   final Widget child;
@@ -71,9 +73,15 @@ class _SmsWatcherState extends ConsumerState<SmsWatcher> with WidgetsBindingObse
     final router = GoRouter.of(context);
     if (spend && launch.split && links.splitFromTransaction && links.notificationSplitAction) {
       router.push('/expenses/new?from_txn=$id');
-    } else {
-      router.go('/personal');
+      return;
     }
+    // The entry itself, over Personal (where Just in lists it); Personal alone when the message
+    // isn't an entry, or you deleted the one it was.
+    router.go('/personal');
+    if (id == null) return;
+    final txn = await ref.read(personalTxnProvider(id).future);
+    if (!mounted || txn.deletedAt != null) return;
+    showPersonalTxnSheet(context, existing: txn).ignore();
   }
 
   void _read() {

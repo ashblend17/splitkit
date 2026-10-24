@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/integrations.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/personal/personal_txn_sheet.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/integrations.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/writes.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/personal/personal_txn_sheet.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';
@@ -197,6 +198,26 @@ void main() {
       await _tap(tester, find.textContaining('Today'));
       final picker = tester.widget<CalendarDatePicker>(find.byType(CalendarDatePicker));
       expect(picker.lastDate, DateTime(2026, 9, 25));
+    });
+
+    testWidgets("an account isn't closed while its holdings are worth something (ISS-113)", (tester) async {
+      final be = await pumpApp(tester, location: '/personal/accounts', size: tall);
+      be.offline = true;
+      final writes = appContainer(tester).read(writesProvider);
+      Object? refused;
+      try {
+        await runWrite(tester, writes.closeAccount(zerodha, zeroFirst: true));
+      } on WriteRefused catch (e) {
+        refused = e;
+      }
+      // Nifty and Tata: ₹80,750 (the account's ₹85,750 is them and its own balance).
+      expect(apiErrorMessage(refused!), 'Its holdings are still worth ₹80,750. Set them to zero or delete them first');
+      expect(_ledger(tester).rawAccount(zerodha)!['status'], 'active');
+      for (final h in [nifty, tata]) {
+        await runWrite(tester, writes.updateValue(h, 0, DateTime(2026, 9, 25)));
+      }
+      await runWrite(tester, writes.closeAccount(zerodha, zeroFirst: true));
+      expect(_ledger(tester).rawAccount(zerodha)!['status'], 'closed');
     });
 
     testWidgets('deleting a holding, and Undo; one an entry names is refused', (tester) async {

@@ -51,6 +51,25 @@ def test_personal_dashboard_matches_personal_analytics_mockup(client, seeded):
     )
 
 
+def test_spending_by_category_has_each_categorys_usual_month(client, seeded):
+    """Only the category card has averages: April to August (the seed starts in April), against
+    September so far; the Week tab averages weeks."""
+    h = login(client, "john")
+    c = cards(client, h, "/analytics/personal?period=month&on=2026-09-23&group_share=false")
+    a = c["spending_by_category"]["averages"]
+    assert (a["label"], a["now_label"], a["unit"]) == (
+        "Average of 5 months",
+        "September so far",
+        "month",
+    )
+    rent = next(r for r in a["rows"] if r["label"] == "Rent")
+    assert (rent["average_minor"], rent["now_minor"]) == (1800000, 1800000)  # ₹18,000 a month
+    assert a["rows"][0]["label"] == "Rent"  # the largest usual month first
+    assert all(card["averages"] is None for t, card in c.items() if t != "spending_by_category")
+    week = cards(client, h, "/analytics/personal?period=week&on=2026-09-23")
+    assert week["spending_by_category"]["averages"]["label"] == "Average of 8 weeks"
+
+
 def test_savings_rate_and_needs_and_wants(client, seeded):
     """September: ₹85,000 salary, ₹32,450 spent (transfers and the SIP aren't spending), group
     shares left out."""

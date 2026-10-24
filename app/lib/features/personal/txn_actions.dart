@@ -42,9 +42,11 @@ class TxnInSplit extends ConsumerWidget {
 
 /// What [txn] can become among your own money, as the features allow: "Track this cash" for a
 /// cash withdrawal on one of your accounts (it becomes a transfer into Cash), "This was a
-/// transfer" when a suggested pair has it, and "Record a refund" for a spend. [likely] (the short
-/// list on "Just in", which shows suggested pairs itself) keeps to Track this cash. [leave] is
-/// called when the entry is about to change into something else, so a sheet showing it can close.
+/// transfer" when a suggested pair has it, "Record a refund" for a spend, and "This was a
+/// refund" for money in from a merchant you spent at (refundSuggestionProvider). [likely] (the
+/// short list on "Just in", which shows suggested pairs itself) keeps to Track this cash. [leave]
+/// is called when the entry is about to change into something else, so a sheet showing it can
+/// close.
 List<Widget> entryActions(
   BuildContext context,
   WidgetRef ref,
@@ -67,6 +69,9 @@ List<Widget> entryActions(
       : (ref.watch(transferSuggestionsProvider).value ?? const <TransferSuggestion>[])
             .where((p) => p.outflow.id == txn.id || p.inflow.id == txn.id)
             .firstOrNull;
+  final refundOf = likely || pair != null || txn.type != PersonalTxnOutTypeEnum.income
+      ? null
+      : ref.watch(refundSuggestionProvider(txn.id)).value;
   return [
     if (cash)
       SkButton(
@@ -87,6 +92,27 @@ List<Widget> entryActions(
           ref,
           () => ref.read(writesProvider).pairAsTransfer(pair.outflow.id, pair.inflow.id),
           then: leave,
+        ),
+      ),
+    if (refundOf != null)
+      Semantics(
+        hint: 'Of ${refundOf.description}, ${dayLabel(DateTime.parse(refundOf.date))}',
+        child: SkButton(
+          'This was a refund',
+          icon: 'refresh',
+          size: SkButtonSize.small,
+          variant: SkButtonVariant.secondary,
+          onPressed: () => _run(
+            context,
+            ref,
+            () => ref.read(writesProvider).markAsRefund(txn.id, refundOf.id),
+            then: () {
+              leave?.call();
+              if (context.mounted) {
+                showMessage(context, 'Now a refund of ${refundOf.description}');
+              }
+            },
+          ),
         ),
       ),
     if (spend && features.refunds && !likely)

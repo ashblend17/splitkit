@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app import __version__
 from app.core.config import get_settings
 from app.core.errors import ApiError, not_found
+from app.core.fixed_names import KEPT_HERE
 from app.core.money import format_minor
 from app.modules.admin.models import AdminSession, AuditLog
 from app.modules.admin.schemas import (
@@ -551,7 +552,8 @@ def _summary(
         member = name(diff.get("user_id"))
         archived = diff.get("archived")
         archived = archived.get("to") if isinstance(archived, dict) else None
-        keep = {"splitkit": "kept the Splitkit version", "tricount": "kept the Tricount version"}
+        here = f"kept the {get_settings().app_name} version"
+        keep = {"local": here, KEPT_HERE: here, "tricount": "kept the Tricount version"}
         return {
             "group.create": f"Created {group_name}",
             "group.update": f"Archived {group_name}"

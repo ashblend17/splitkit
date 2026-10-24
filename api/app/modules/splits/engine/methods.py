@@ -72,7 +72,10 @@ class EqualSplit(_Base):
     key = "equal"
     label = "Equal"
     symbol = "="
-    hint = "Everyone ticked pays the same. Untick anyone who is not involved."
+    hint = (
+        "Everyone ticked pays the same. Tap a name to split with only them, "
+        "or untick anyone who is not involved."
+    )
 
     def validate(self, total_minor, inputs, currency="INR"):
         if failed := _check_common(total_minor, inputs, currency):

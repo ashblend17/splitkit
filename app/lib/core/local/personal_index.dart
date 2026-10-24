@@ -363,6 +363,16 @@ int compareDates(String a, int aKey, String b, int bKey) =>
 /// Local midnight of [day] (a [dayKey]): what DateTime.parse makes of the date.
 DateTime localDay(int day) => DateTime(day ~/ 10000, day ~/ 100 % 100, day % 100);
 
+/// How many calendar days apart [a] and [b] (dayKeys) are. Counted on UTC dates: across a
+/// daylight-saving change two local midnights are 47 or 49 hours apart, which inDays reads as
+/// one day or two (ISS-074).
+int daysApart(int a, int b) => _utcDay(a).difference(_utcDay(b)).inDays.abs();
+
+DateTime _utcDay(int day) => DateTime.utc(day ~/ 10000, day ~/ 100 % 100, day % 100);
+
+/// [day]'s date as a [dayKey].
+int dayKeyOf(DateTime day) => day.year * 10000 + day.month * 100 + day.day;
+
 const _dash = 0x2D, _colon = 0x3A, _dot = 0x2E, _plus = 0x2B, _space = 0x20, _t = 0x54, _z = 0x5A;
 
 /// The number in [s]'s [length] characters from [start], or -1 if one isn't a digit.

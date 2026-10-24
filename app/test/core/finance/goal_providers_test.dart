@@ -2,15 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sembast/sembast_memory.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/finance/goal_providers.dart';
-import 'package:splitkit/core/finance/today.dart';
-import 'package:splitkit/core/integrations.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/outbox.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/store.dart';
-import 'package:splitkit/core/local/sync_engine.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/finance/goal_providers.dart';
+import 'package:app/core/finance/today.dart';
+import 'package:app/core/integrations.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/outbox.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/store.dart';
+import 'package:app/core/local/sync_engine.dart';
 
 import '../../fake_backend.dart';
 

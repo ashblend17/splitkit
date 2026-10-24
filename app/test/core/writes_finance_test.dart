@@ -1,10 +1,12 @@
+import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/finance/finance.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/outbox.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/writes.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/clock.dart';
+import 'package:app/core/finance/finance.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/outbox.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/writes.dart';
 
 import '../fake_backend.dart';
 
@@ -544,20 +546,49 @@ void main() {
       ('adjustment', 'in', 7000, hdfc, day),
     );
     expect(op.body!['category_id'], isNull);
+    expect(op.body!['balance_minor'], isNull, reason: 'it closes the gap at the report, by how much');
     l = _ledger(tester);
     expect(l.finance.balanceOf(hdfc)!.lastReported!.derivedMinor, report.derivedMinor + 7000);
 
+    // Each write a few minutes after the one before, as on a phone: a balance you set sorts by
+    // when it was made (ISS-130), and the tests' clock otherwise stands still.
+    final pinned = appClock;
+    addTearDown(() => appClock = pinned);
+    var minute = 0;
+    void later() => appClock = Clock.fixed(DateTime(2026, 9, 25, 12, minute += 5));
+
     // An asset now: more money than the entries say is money in, less is money out.
     final balance = l.finance.balanceOf(hdfc)!.balanceMinor;
+    later();
     await runWrite(tester, w.reconcile(hdfc, bankSaysMinor: balance - 2000));
     op = _ops(tester).last;
     expect((op.body!['direction'], op.body!['amount_minor'], op.body!['date']), ('out', 2000, '2026-09-25'));
+    expect(op.body!['balance_minor'], balance - 2000, reason: 'what the balance is from now on');
     expect(_ledger(tester).finance.balanceOf(hdfc)!.balanceMinor, balance - 2000);
+    // ISS-130: an entry dated before it, added afterwards, leaves the balance you set; one made
+    // after it moves it from there.
+    PersonalTxnIn spend(DateTime day) => PersonalTxnIn(
+      type: PersonalTxnInTypeEnum.expense,
+      amountMinor: 30000,
+      description: 'Lunch',
+      date: day,
+      accountId: hdfc,
+      source_: PersonalTxnInSource_Enum.manual,
+    );
+    later();
+    await runWrite(tester, w.createPersonal(spend(DateTime(2026, 9, 20))));
+    expect(_ledger(tester).finance.balanceOf(hdfc)!.balanceMinor, balance - 2000);
+    later();
+    await runWrite(tester, w.createPersonal(spend(DateTime(2026, 9, 25))));
+    expect(_ledger(tester).finance.balanceOf(hdfc)!.balanceMinor, balance - 2000 - 30000);
+    expect(_ledger(tester).finance.balanceOf(hdfc)!.setTo!.minor, balance - 2000);
 
     // A card: owing more is money out of it, owing less is money in.
     final owed = _ledger(tester).finance.balanceOf(card)!.balanceMinor;
+    later();
     await runWrite(tester, w.reconcile(card, bankSaysMinor: owed + 1000));
     expect((_ops(tester).last.body!['direction'], _ops(tester).last.body!['amount_minor']), ('out', 1000));
+    later();
     await runWrite(tester, w.reconcile(card, bankSaysMinor: owed - 500));
     expect((_ops(tester).last.body!['direction'], _ops(tester).last.body!['amount_minor']), ('in', 1500));
     expect(_ledger(tester).finance.balanceOf(card)!.balanceMinor, owed - 500);
@@ -584,8 +615,8 @@ void main() {
       [('transaction', 'create', null), ('account', 'update', 1)],
     );
     expect(
-      (_txn(items[0])['type'], _txn(items[0])['direction'], _txn(items[0])['amount_minor']),
-      ('adjustment', 'out', balance),
+      (_txn(items[0])['type'], _txn(items[0])['direction'], _txn(items[0])['amount_minor'], _txn(items[0])['balance_minor']),
+      ('adjustment', 'out', balance, 0),
     );
     expect((items[1]['account'] as Map)['status'], 'closed');
     expect((_entity(op, cash).version, _entity(op, cash).data['status']), (2, 'closed'));

@@ -22,9 +22,30 @@ class ChartStat(Schema):
     note: str | None = None
 
 
+class ChartAverage(Schema):
+    label: str
+    average_minor: int
+    """What a usual week or month came to."""
+    now_minor: int
+    """The week or month under way, so far."""
+
+
+class ChartAverages(Schema):
+    """A breakdown's averages: each key's usual week or month next to the one under way."""
+
+    label: str
+    """What they're averaged over: "Average of 6 months", or "No full month yet" (no rows)."""
+    now_label: str
+    """What `now_minor` covers: "October so far", "Last 7 days"."""
+    unit: Literal["week", "month"]
+    rows: list[ChartAverage]
+    """Largest average first. A key with nothing usual and nothing now is left out."""
+
+
 class AnalyticsCardOut(Schema):
     """One dashboard card. The client picks a renderer by `type` and reads the matching field:
-    trends use `bars`, breakdowns use `rows`, splits use two `rows`, stats use `stat`."""
+    trends use `bars`, breakdowns use `rows`, splits use two `rows`, stats use `stat`.
+    Spending by category also has `averages`."""
 
     id: uuid.UUID
     type: str
@@ -35,6 +56,7 @@ class AnalyticsCardOut(Schema):
     bars: list[ChartBar] = []
     rows: list[ChartRow] = []
     stat: ChartStat | None = None
+    averages: ChartAverages | None = None
 
 
 class DashboardOut(Schema):

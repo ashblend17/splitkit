@@ -14,6 +14,7 @@ import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import 'sms_importer.dart';
 import 'sms_source.dart';
+import '../../core/config.dart';
 
 /// Whether this phone reads bank SMS for you, and the skipped ones (Profile → Bank SMS and
 /// Overview's prompt read it).
@@ -82,10 +83,15 @@ class _SmsSetupPageState extends ConsumerState<SmsSetupPage> {
   Future<void> _setNotify(bool on) async {
     final source = ref.read(smsSourceProvider);
     if (on && !await source.hasNotificationAccess() && !await source.requestNotificationAccess()) {
-      if (mounted) showMessage(context, "Notifications are off for Splitkit. You can allow them in the phone's settings.");
+      if (mounted) showMessage(context, "Notifications are off for ${AppConfig.appName}. You can allow them in the phone's settings.");
       return;
     }
     await ref.read(smsImporterProvider).setNotify(on);
+    ref.invalidate(smsSetupProvider);
+  }
+
+  Future<void> _setLockScreenAmounts(bool show) async {
+    await ref.read(smsImporterProvider).setLockScreenAmounts(show);
     ref.invalidate(smsSetupProvider);
   }
 
@@ -175,7 +181,7 @@ class _SmsSetupPageState extends ConsumerState<SmsSetupPage> {
     if (_refused) ...[
       const SizedBox(height: 12),
       Text(
-        "Splitkit isn't allowed to read SMS. You can allow it in the phone's settings.",
+        "${AppConfig.appName} isn't allowed to read SMS. You can allow it in the phone's settings.",
         style: SkText.body(13, 400, color: SkColors.ink2),
       ),
       const SizedBox(height: 8),
@@ -226,6 +232,35 @@ class _SmsSetupPageState extends ConsumerState<SmsSetupPage> {
           ],
         ),
       ),
+      if (settings.notify) ...[
+        const SizedBox(height: 8),
+        SkCard(
+          padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Show amounts on the lock screen', style: SkText.body(15, 600)),
+                    Text(
+                      settings.lockScreenAmounts
+                          ? 'Anyone holding your phone sees "₹450 at Swiggy".'
+                          : 'A locked phone says "A payment from your bank" until you unlock it.',
+                      style: SkText.body(12, 400, color: SkColors.ink2),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: settings.lockScreenAmounts,
+                activeColor: SkColors.personal,
+                onChanged: _busy ? null : _setLockScreenAmounts,
+              ),
+            ],
+          ),
+        ),
+      ],
     ],
     const SizedBox(height: 12),
     SkButton(
@@ -285,7 +320,7 @@ class _Disclosure extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         for (final line in const [
-          "Splitkit reads the SMS your bank sends to this phone and adds what you spend and receive to Personal: the amount, who was paid, the account, how it was paid and the balance.",
+          "${AppConfig.appName} reads the SMS your bank sends to this phone and adds what you spend and receive to Personal: the amount, who was paid, the account, how it was paid and the balance.",
           'Only those details are saved to your account. The messages stay on this phone, and OTPs and messages from people are never read into the app.',
           "Each payment is added once. You can split it, mark it as a payment to a friend, or remove it.",
         ]) ...[

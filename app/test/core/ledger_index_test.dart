@@ -1,9 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/categorise/category_rules.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/personal_index.dart';
+import 'package:app/core/categorise/category_rules.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/personal_index.dart';
 
 import '../perf/heavy_data.dart';
 
@@ -28,6 +28,16 @@ void main() {
   });
 
   group('isoMicros, dayKey', () {
+    test('daysApart counts calendar days, daylight saving or not (ISS-074)', () {
+      // 8 March 2026 is a 23-hour day in the US: local midnights 7 → 9 March are 47 hours.
+      expect(daysApart(20260307, 20260309), 2);
+      expect(daysApart(20260309, 20260307), 2);
+      expect(daysApart(20261031, 20261101), 1);
+      expect(daysApart(20261231, 20270101), 1);
+      expect(daysApart(20240228, 20240301), 2); // a leap year
+      expect(dayKeyOf(DateTime(2026, 9, 5, 23, 59)), 20260905);
+    });
+
     test('read times exactly as DateTime.parse does', () {
       final r = Random(3);
       String two(int n) => n.toString().padLeft(2, '0');

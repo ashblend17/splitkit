@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.core.fixed_names import ID_SEED
 from app.modules.auth.deps import Actor
 from app.modules.categories.models import CategoryRule
 from app.modules.sync import log as sync_log
@@ -29,7 +30,7 @@ def pattern_of(text: str | None) -> str:
 def rule_id(user_id: uuid.UUID, income: bool, pattern: str) -> uuid.UUID:
     """The same on the device (rule.dart ruleId)."""
     kind = "income" if income else "spend"
-    return uuid.uuid5(uuid.NAMESPACE_URL, f"splitkit:category-rule:{user_id}:{kind}:{pattern}")
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"{ID_SEED}:category-rule:{user_id}:{kind}:{pattern}")
 
 
 def learn(

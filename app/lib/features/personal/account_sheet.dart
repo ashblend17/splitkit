@@ -10,6 +10,7 @@ import '../../core/finance/finance.dart';
 import '../../core/finance/finance_providers.dart';
 import '../../core/finance/holding_providers.dart';
 import '../../core/integrations.dart';
+import '../../core/local/personal_index.dart' show localDay;
 import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
@@ -387,10 +388,21 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
         const SizedBox(height: 4),
         Text(
           a.type.isLiability
-              ? 'Type what the statement says you owe. A correction dated today makes this match.'
-              : 'Type the balance your bank shows now. A correction dated today makes this match.',
+              ? 'Type what the statement says you owe. A correction dated today makes this match, and '
+                    'entries dated before it won\'t change it.'
+              : 'Type the balance your bank shows now. A correction dated today makes this match, and '
+                    'entries dated before it won\'t change it.',
           style: SkText.body(12, 400, color: SkColors.ink2),
         ),
+        if (b.setTo case final set?) ...[
+          const SizedBox(height: 4),
+          Text(
+            '${a.type.isLiability ? 'Owed' : 'Balance'} set to ${money(set.minor, a.currency)} on '
+            '${dayLabel(localDay(set.day))}.',
+            key: const ValueKey('account:set-to'),
+            style: SkText.body(12, 600, color: SkColors.ink2),
+          ),
+        ],
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -723,6 +735,17 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
 
   /// Closing an account with a balance zeroes it first, with a correction, so it stops counting.
   Future<void> _close(FinAccount a, AccountBalance? b) async {
+    // Holdings keep counting in net worth when it's closed: they go first (ISS-113).
+    final held = (ref.read(financeEngineProvider).value?.holdings ?? const <FinHolding>[])
+        .where((h) => h.accountId == a.id)
+        .fold(0, (sum, h) => sum + h.marketValueMinor);
+    if (held != 0) {
+      showMessage(
+        context,
+        'Its holdings are still worth ${money(held, a.currency)}. Set them to zero or delete them first.',
+      );
+      return;
+    }
     final left = b?.balanceMinor ?? 0;
     final ok = await showConfirmDialog(
       context,

@@ -3,18 +3,18 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/categorise/category_guesser.dart';
-import 'package:splitkit/core/clock.dart';
-import 'package:splitkit/core/finance/finance.dart';
-import 'package:splitkit/core/integrations.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/sms/merchant_names.dart';
-import 'package:splitkit/core/sms/sms.dart';
-import 'package:splitkit/core/sms/sms_ids.dart';
-import 'package:splitkit/core/sms/sms_parser.dart';
-import 'package:splitkit/core/sms/sms_scan.dart';
-import 'package:splitkit/features/sms/sms_importer.dart' show smsScanInput, runSmsScan, smsScanInlineUpTo;
+import 'package:app/core/api/api.dart';
+import 'package:app/core/categorise/category_guesser.dart';
+import 'package:app/core/clock.dart';
+import 'package:app/core/finance/finance.dart';
+import 'package:app/core/integrations.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/sms/merchant_names.dart';
+import 'package:app/core/sms/sms.dart';
+import 'package:app/core/sms/sms_ids.dart';
+import 'package:app/core/sms/sms_parser.dart';
+import 'package:app/core/sms/sms_scan.dart';
+import 'package:app/features/sms/sms_importer.dart' show smsScanInput, runSmsScan, smsScanInlineUpTo;
 
 import '../perf/heavy_data.dart';
 

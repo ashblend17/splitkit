@@ -248,7 +248,7 @@ class TricountApi {
 
   /// Resolve Tricount Conflict
   ///
-  /// Keep Splitkit's or Tricount's version. The other app is updated before this returns (unless Tricount can't be reached; then the worker retries).
+  /// Keep the app's or Tricount's version. The other app is updated before this returns (unless Tricount can't be reached; then the worker retries).
   ///
   /// Note: This method returns the HTTP [Response].
   ///
@@ -285,7 +285,7 @@ class TricountApi {
 
   /// Resolve Tricount Conflict
   ///
-  /// Keep Splitkit's or Tricount's version. The other app is updated before this returns (unless Tricount can't be reached; then the worker retries).
+  /// Keep the app's or Tricount's version. The other app is updated before this returns (unless Tricount can't be reached; then the worker retries).
   ///
   /// Parameters:
   ///

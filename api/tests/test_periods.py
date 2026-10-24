@@ -2,6 +2,7 @@ from datetime import date
 
 from app.modules.analytics.periods import (
     adaptive_buckets,
+    average_spans,
     bucket_kind,
     current,
     previous,
@@ -38,6 +39,19 @@ def test_trend_buckets():
     assert len(trend_buckets("year", ON)) == 12
     week = trend_buckets("week", ON)
     assert [b.start for b in week][-1] == ON and len(week) == 7
+
+
+def test_average_spans_are_the_whole_weeks_or_months_before_the_one_under_way():
+    past, now = average_spans("month", ON)
+    assert [s.label for s in past] == ["Mar", "Apr", "May", "Jun", "Jul", "Aug"]
+    assert (past[0].start, past[-1].end) == (date(2026, 3, 1), date(2026, 8, 31))
+    assert (now.start, now.end, now.label) == (date(2026, 9, 1), ON, "September so far")
+    past, now = average_spans("year", ON)
+    assert len(past) == 12 and past[0].start == date(2025, 9, 1) and now.label == "September so far"
+    past, now = average_spans("week", ON)
+    assert len(past) == 8 and all(s.days == 7 for s in past)
+    assert (past[-1].start, past[-1].end) == (date(2026, 9, 10), date(2026, 9, 16))
+    assert (past[0].start, now.start, now.end) == (date(2026, 7, 23), date(2026, 9, 17), ON)
 
 
 def test_adaptive_buckets():

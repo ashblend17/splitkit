@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/splits/split_engine.dart';
-import 'package:splitkit/core/money/money.dart';
-import 'package:splitkit/core/theme/theme.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/gallery/components_gallery_page.dart';
+import 'package:app/core/splits/split_engine.dart';
+import 'package:app/core/money/money.dart';
+import 'package:app/core/theme/theme.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/gallery/components_gallery_page.dart';
 
 import '../helpers.dart';
 
@@ -22,7 +22,7 @@ void main() {
   for (final size in const [Size(1440, 3600), Size(834, 5000), Size(390, 9000)]) {
     testWidgets('gallery renders without overflow at ${size.width.toInt()}px', (tester) async {
       setViewport(tester, size);
-      await tester.pumpWidget(MaterialApp(theme: buildSplitkitTheme(), home: const ComponentsGalleryPage()));
+      await tester.pumpWidget(MaterialApp(theme: buildAppTheme(), home: const ComponentsGalleryPage()));
       await tester.pump(const Duration(milliseconds: 500));
       expect(tester.takeException(), isNull);
       expect(find.text('Components'), findsOneWidget);
@@ -86,6 +86,57 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '2');
     await tester.pump();
     expect(controller.shares!.map((s) => s.shareMinor), [90000, 45000, 45000, 0]);
+  });
+
+  testWidgets('tapping a name with everyone ticked splits with only them; the checkbox still ticks one', (tester) async {
+    setViewport(tester, const Size(430, 1400));
+    final controller = SplitController(people: const [_you, _rahul, _aman, _vivek], totalMinor: 180000);
+    await tester.pumpWidget(wrap(SplitSelector(controller: controller)));
+    final ticked = [_you, _rahul, _aman, _vivek].where((p) => controller.isIncluded(p.id)).map((p) => p.id);
+
+    await tester.tap(find.text('Rahul'));
+    await tester.pump();
+    expect(ticked, ['rahul']);
+    expect(find.text('₹1,800'), findsOneWidget);
+    expect(find.text('Not involved'), findsNWidgets(3));
+
+    // From there each tap adds or removes one person.
+    await tester.tap(find.text('You'));
+    await tester.pump();
+    expect(ticked, ['you', 'rahul']);
+    await tester.tap(find.text('Rahul'));
+    await tester.pump();
+    expect(ticked, ['you']);
+
+    // Everyone ticked again: a name tap narrows it down again.
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.tap(find.byType(Checkbox).at(3));
+    await tester.pump();
+    expect(ticked, ['you', 'rahul', 'aman', 'vivek']);
+    await tester.tap(find.text('Aman'));
+    await tester.pump();
+    expect(ticked, ['aman']);
+
+    // A checkbox first leaves the others ticked, and a name tap after it ticks or unticks one.
+    for (final p in const [_you, _rahul, _vivek]) {
+      controller.toggle(p.id);
+    }
+    await tester.pump();
+    expect(ticked, ['you', 'rahul', 'aman', 'vivek']);
+    await tester.tap(find.byType(Checkbox).last); // untick Vivek
+    await tester.pump();
+    expect(ticked, ['you', 'rahul', 'aman']);
+    await tester.tap(find.text('Rahul'));
+    await tester.pump();
+    expect(ticked, ['you', 'aman']);
+
+    // The other methods' rows are for typing: a tap there changes nothing.
+    await tester.tap(find.text('Shares'));
+    await tester.pump();
+    await tester.tap(find.text('Vivek'));
+    await tester.pump();
+    expect(ticked, ['you', 'aman']);
   });
 
   testWidgets("the highlighted bar's figure stays inside a narrow chart", (tester) async {
@@ -192,8 +243,8 @@ void main() {
     }
   });
 
-  testWidgets('breakdown amounts stay on one line, all the same width', (tester) async {
-    setViewport(tester, const Size(360, 400));
+  testWidgets('breakdown amounts stay on one line, over bars that are all the same length', (tester) async {
+    setViewport(tester, const Size(300, 400)); // a card in the carousel on a phone
     await tester.pumpWidget(
       wrap(
         BreakdownBars(
@@ -202,11 +253,74 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
     final big = tester.getSize(find.text('₹4,10,945.05'));
     expect(big.height, lessThan(24), reason: 'one line');
-    expect(tester.getSize(find.text('₹5')).width, big.width);
     final label = tester.renderObject<RenderParagraph>(find.text('Uncategorised'));
     expect(label.didExceedMaxLines, isFalse, reason: 'not cut short');
+    // Each bar's track runs the whole row, whatever its amount, so the bars compare.
+    final tracks = find.byWidgetPredicate((w) => w is FractionallySizedBox).evaluate().map((e) {
+      return tester.getSize(find.byWidget(e.widget).first).width;
+    });
+    expect(tracks.first, greaterThan(200));
+    expect(tracks.last, closeTo(tracks.first * 500 / 41094505, 1));
+  });
+
+  testWidgets('figures count up to their amount, at once when the phone asks for no animations', (tester) async {
+    String fmt(int v) => formatMinor(v, currency: 'INR');
+    Widget money(int v, {bool still = false}) => MediaQuery(
+      data: MediaQueryData(disableAnimations: still),
+      child: wrap(AnimatedMoney(value: v, format: fmt, style: const TextStyle())),
+    );
+    await tester.pumpWidget(money(220300));
+    expect(find.text('₹2,203'), findsNothing, reason: 'still counting');
+    await tester.pumpAndSettle();
+    expect(find.text('₹2,203'), findsOneWidget);
+    expect(find.bySemanticsLabel('₹2,203'), findsOneWidget);
+    // Another period: from the old figure to the new one.
+    await tester.pumpWidget(money(119100));
+    await tester.pump(const Duration(milliseconds: 100));
+    final midway = tester.widget<Text>(find.byType(Text)).data!;
+    expect(midway, isNot(anyOf('₹1,191', '₹0')));
+    await tester.pumpAndSettle();
+    expect(find.text('₹1,191'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(money(220300, still: true));
+    await tester.pump();
+    expect(find.text('₹2,203'), findsOneWidget);
+    expect(tester.binding.hasScheduledFrame, isFalse, reason: 'nothing moving');
+  });
+
+  testWidgets('averages: so far against usual, and how much more when it is over', (tester) async {
+    setViewport(tester, const Size(320, 600));
+    await tester.pumpWidget(
+      wrap(
+        AverageBars(
+          rows: const [
+            (label: 'Food', average: 421800, now: 820800),
+            (label: 'Rent', average: 2000000, now: 1500000),
+            (label: 'Travel', average: 0, now: 436100),
+          ],
+          format: (v) => formatMinor(v, currency: 'INR'),
+          unit: 'month',
+          nowLabel: 'September so far',
+          glyphs: (label) => label == 'Food' ? 'food' : null,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('September so far'), findsOneWidget);
+    expect(find.text('Usual month'), findsOneWidget);
+    expect(find.text('₹8,208'), findsOneWidget);
+    expect(find.text('Usually ₹4,218 · ₹3,990 more', findRichText: true), findsOneWidget);
+    expect(find.text('Usually ₹20,000', findRichText: true), findsOneWidget); // under: no "more"
+    expect(find.text('Nothing in a usual month', findRichText: true), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Food: ₹8,208 September so far, ₹4,218 in a usual month, ₹3,990 more'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('split tabs come from the registry', (tester) async {

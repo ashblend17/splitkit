@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/session/session.dart';
-import 'package:splitkit/core/sms/sms.dart';
-import 'package:splitkit/core/sms/sms_notification.dart';
-import 'package:splitkit/core/sms/sms_parser.dart';
-import 'package:splitkit/features/expenses/add_expense_page.dart';
-import 'package:splitkit/features/sms/sms_importer.dart';
-import 'package:splitkit/features/sms/sms_source.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/session/session.dart';
+import 'package:app/core/sms/sms.dart';
+import 'package:app/core/sms/sms_notification.dart';
+import 'package:app/core/sms/sms_parser.dart';
+import 'package:app/features/expenses/add_expense_page.dart';
+import 'package:app/features/sms/sms_importer.dart';
+import 'package:app/features/sms/sms_source.dart';
 
 import '../fake_backend.dart';
 import '../fake_sms.dart';
@@ -114,12 +114,28 @@ void main() {
     expect(RegExp(sms.configured!.pattern).hasMatch('VM-HDFCBK-S'), isTrue);
     expect(RegExp(sms.configured!.pattern).hasMatch('+919876543210'), isFalse);
 
-    await _tap(tester, find.byType(Switch));
+    await _tap(tester, find.byType(Switch).first);
     expect(sms.configured!.notify, isFalse);
-    await _tap(tester, find.byType(Switch));
+    await _tap(tester, find.byType(Switch).first);
     expect(sms.configured!.notify, isTrue);
     await _tap(tester, find.text('Turn off'));
     expect(sms.configured!.notify, isFalse);
+  });
+
+  testWidgets('a locked phone hides what a notification says unless you choose to show it', (tester) async {
+    final sms = FakeSmsSource(available: true, inbox: [_swiggy]);
+    await _turnOn(tester, sms);
+    expect(sms.configured!.amounts, isFalse, reason: 'hidden unless asked for (spec §5.7)');
+    expect(find.text('A locked phone says "A payment from your bank" until you unlock it.'), findsOneWidget);
+
+    await _tap(tester, find.byType(Switch).last);
+    expect((sms.configured!.notify, sms.configured!.amounts), (true, true));
+    expect(find.text('Anyone holding your phone sees "₹450 at Swiggy".'), findsOneWidget);
+    // Kept when notifications go off and on again; no choice to make while they're off.
+    await _tap(tester, find.byType(Switch).first);
+    expect(find.text('Show amounts on the lock screen'), findsNothing);
+    await _tap(tester, find.byType(Switch).first);
+    expect(sms.configured!.amounts, isTrue);
   });
 
   test('signing out stops the notifications', () async {
@@ -151,15 +167,37 @@ void main() {
     expect(sms.cancelled, [7]);
   });
 
-  testWidgets('tapping the notification itself opens Personal', (tester) async {
+  testWidgets('tapping the notification itself opens its entry, over Personal', (tester) async {
     final sms = FakeSmsSource(available: true);
     await _turnOn(tester, sms);
     sms.messages.add(_swiggy);
     sms.launch = (sms: _swiggy, split: false, notification: 8);
     await _resume(tester);
     expect(find.byType(AddExpensePage), findsNothing);
+    expect(find.text('Edit expense'), findsOneWidget);
+    expect(find.text('Save changes'), findsOneWidget);
+    expect(sms.cancelled, [8]);
+    Navigator.of(tester.element(find.text('Edit expense'))).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('Edit expense'), findsNothing);
     expect(find.text('Just in'), findsOneWidget);
     expect(find.text('Swiggy'), findsWidgets);
+  });
+
+  testWidgets('a notification about a message that is no entry opens Personal', (tester) async {
+    final sms = FakeSmsSource(available: true);
+    await _turnOn(tester, sms);
+    final otp = RawSms(
+      address: 'VM-HDFCBK-S',
+      body: '123456 is the OTP for txn of INR 99.00 at AMAZON. Do not share OTP.',
+      receivedAt: DateTime(2026, 9, 25, 11, 30),
+    );
+    sms.messages.add(otp);
+    sms.launch = (sms: otp, split: false, notification: 9);
+    await _resume(tester);
+    expect(find.text('Edit expense'), findsNothing);
+    expect(find.text('Just in'), findsOneWidget);
+    expect(sms.cancelled, [9]);
   });
 }
 

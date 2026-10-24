@@ -8,10 +8,10 @@ export 'palette.dart';
 export 'tokens.g.dart';
 export 'typography.dart';
 
-/// Material theme built from the colour set in use ([SkColors.current]). Splitkit widgets style
+/// Material theme built from the colour set in use ([SkColors.current]). The design system's widgets style
 /// themselves from the tokens directly; this makes stock Material pieces (text fields, dialogs,
 /// pickers) match.
-ThemeData buildSplitkitTheme() {
+ThemeData buildAppTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: SkColors.brand,
     brightness: SkColors.isDark ? Brightness.dark : Brightness.light,

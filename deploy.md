@@ -1,15 +1,15 @@
 # Deploying
 
-How Splitkit runs on a server (an AWS EC2 instance), how to set one up, and how to ship a new
+How the app runs on a server (an AWS EC2 instance), how to set one up, and how to ship a new
 version. Checking the data and restoring backups are in [validation.md](validation.md).
 
 ## How it fits together
 
 - Images are built on a developer machine and pushed to Docker Hub. The server only pulls: the
   Flutter web build needs more disk and memory than a small instance has.
-- All three images are tags in one private repo, `<user>/<repo>` (a free account has a
-  single private repo, shared with another project's `web`, `backend` and `frontend` tags):
-  `split-api`, `split-web` and `split-tricount` (the same image as `split-api`).
+- All three images are tags in one private Docker Hub repo, `<user>/<repo>` (a free account has a
+  single private repo, which other projects can share by using other tags): `split-api`,
+  `split-web` and `split-tricount` (the same image as `split-api`).
 - The server runs [docker-compose.prod.yml](docker-compose.prod.yml): `db` (stock
   `postgres:16-alpine`), `api`, `tricount` and `web`. Only `web` is published. Its nginx serves
   the web app at `/` and proxies `/api/` to the API, so the API is reached through the same port
@@ -21,21 +21,32 @@ version. Checking the data and restoring backups are in [validation.md](validati
 
 ## Shipping a new version
 
+The UI and the backend are released on their own (README "Versions and releases"): bump, commit
+and tag the part that changed, then push its image. `api` builds the api and tricount images
+with the backend's version, `web-image` the web image with the UI's, `images` both.
+
 ```sh
-tool/build.sh images --push <user>/<repo>   # on your machine, logged in to Docker Hub
+python3 tool/version.py bump api minor        # or ui; then commit
+python3 tool/version.py tag api               # api-v1.1.0 on that commit; git push origin api-v1.1.0
+tool/build.sh api --push <user>/<repo>   # on your machine, logged in to Docker Hub
 ```
 
 It pushes each image twice: `split-<svc>` (what the server runs) and
-`split-<svc>-<version>-<build>-<commit>` (to go back to). It refuses uncommitted changes in `app/`
-or `api/` unless you add `--allow-dirty`, and the tag then ends in `-dirty`.
-(`tool/push_images.sh` pushes only `split-<svc>`.)
+`split-<svc>-<version>-<build>-<commit>` (to go back to), with that part's version. It refuses
+uncommitted changes in the part it pushes (`app/` for web, `api/` for api and tricount) unless you
+add `--allow-dirty`, and the tag then ends in `-dirty`. (`tool/push_images.sh` pushes only
+`split-<svc>`.) After it's up, `curl -s https://<host>/api/v1/health` says the backend's version.
+
+Commands below that name the database read `$DB_USER` and `$DB_NAME` (and `$POSTGRES_PASSWORD`)
+from the server's `.env`: in its folder, run `. ./.env` first. Not `set -a`: Compose prefers
+variables your shell exports over `.env`, so an exported old value would win after `.env` changes.
 
 Then on the server, one image at a time (the box is small and shared):
 
 ```sh
-cd ~/splitkit
+cd ~/app
 # A release with a migration: back up first, and copy the file off the server
-docker compose exec -T db pg_dump -U splitkit -Fc splitkit > backups/splitkit-<revision>-pre-<what>-$(date +%Y%m%d-%H%M).dump
+docker compose exec -T db pg_dump -U "$DB_USER" -Fc "$DB_NAME" > backups/db-<revision>-pre-<what>-$(date +%Y%m%d-%H%M).dump
 # Keep what runs now under its version, so going back needs no pull
 for s in api tricount web; do docker tag <user>/<repo>:split-$s <user>/<repo>:split-$s-<running version>; done
 docker compose pull api && docker compose pull tricount && docker compose up -d api tricount   # migrates
@@ -80,25 +91,31 @@ build with anyway, which is how a build attempt fails there.)
 
 ### 3. Files
 
-The server needs only two files, in `~/splitkit`:
+The server needs only two files, in one folder (`~/app` below; compose names the project after
+it unless `.env` sets `COMPOSE_PROJECT_NAME`):
 
 ```sh
-ssh ec2-user@<host> mkdir -p splitkit
-scp docker-compose.prod.yml ec2-user@<host>:splitkit/
+ssh ec2-user@<host> mkdir -p app
+scp docker-compose.prod.yml ec2-user@<host>:app/
 ```
 
-and a `.env` written there (not copied from your machine):
+and a `.env` written there. Don't copy your machine's: it has no `COMPOSE_FILE`, its ports and
+secrets are the dev ones, and its `SEED_PASSWORD` has no use on a server.
 
 ```sh
 COMPOSE_FILE=docker-compose.prod.yml           # so a plain `docker compose` uses the prod file
 IMAGE=<user>/<repo>
+APP_NAME=<what the app is called>              # in what the API says to people
+DB_USER=app                                    # the database's user and name: fixed once the
+DB_NAME=app                                    # volume exists, so keep what it was made with
 POSTGRES_PASSWORD=<openssl rand -hex 32>       # hex: it goes into a database URL
 JWT_SECRET=<openssl rand -hex 32>              # changing it later signs everyone out
-WEB_PORT=80
+WEB_PORT=80                                    # where the proxy or tunnel in front sends traffic
+# TRICOUNT_TIME_ZONE=Asia/Kolkata              # where the app's days are, for the Tricount sync
 ```
 
 Postgres takes `POSTGRES_PASSWORD` only when its volume is first created. To change it later,
-also run `ALTER USER splitkit PASSWORD '…'` in the db container (see Troubleshooting).
+also run `ALTER USER` in the db container (see Troubleshooting).
 
 ### 4. Docker Hub login
 
@@ -114,7 +131,7 @@ docker login -u <user>
 With an empty database, start everything and the API creates the schema:
 
 ```sh
-cd ~/splitkit
+cd ~/app
 docker compose up -d
 ```
 
@@ -124,12 +141,12 @@ starts** (the API's migrations would otherwise create the tables first, and the 
 
 ```sh
 # where the data is now
-docker compose exec -T db pg_dump -U splitkit splitkit > dump.sql
-scp dump.sql ec2-user@<host>:splitkit/        # never commit it: it holds real users' data
+docker compose exec -T db pg_dump -U "$DB_USER" "$DB_NAME" > dump.sql
+scp dump.sql ec2-user@<host>:app/        # never commit it: it holds real users' data
 
 # on the server
 docker compose up -d db
-docker compose exec -T db psql -U splitkit -d splitkit -v ON_ERROR_STOP=1 < dump.sql
+docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 < dump.sql
 docker compose up -d
 docker compose exec api python -m app.validate
 ```
@@ -140,25 +157,25 @@ The app has no way to change a password yet (ISSUES.md ISS-061), so it's done wi
 one user's password:
 
 ```sh
-cd ~/splitkit
-hash() { docker compose exec -T -e PW="$1" api python -c "import os; from app.core.security import hash_password; print(hash_password(os.environ['PW']))"; }
+cd ~/app
+hash() { printf '%s' "$1" | docker compose exec -T api python -c "import sys; from app.core.security import hash_password; print(hash_password(sys.stdin.read()))"; }
 read -rs -p "New password: " NEWPW; echo
 H=$(hash "$NEWPW")
-docker compose exec -T db psql -U splitkit -d splitkit -c "UPDATE users SET password_hash = '$H' WHERE email = 'someone@example.com'"
+docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "UPDATE users SET password_hash = '$H' WHERE email = 'someone@example.com'"
 ```
 
-**A database restored from a development dump has seeded accounts with the password
-`dev-password`**, which this repo publishes. The seed gives them all one identical hash. With
+**A database restored from a development dump has seeded accounts whose password is the
+seed's `SEED_PASSWORD`**, which is only meant for development, and they all share one hash. With
 `hash` defined as above, this locks every account still using it except the admin's, then sets
 the admin's:
 
 ```sh
 read -rs -p "New admin password: " NEWPW; echo
 ADMIN=$(hash "$NEWPW"); LOCKED=$(hash "$(openssl rand -hex 32)")
-docker compose exec -T db psql -U splitkit -d splitkit -v ON_ERROR_STOP=1 <<SQL
+docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 <<SQL
 UPDATE users SET password_hash = '$LOCKED'
-  WHERE password_hash = (SELECT password_hash FROM users WHERE email = 'admin@example.com') AND email <> 'admin@example.com';
-UPDATE users SET password_hash = '$ADMIN' WHERE email = 'admin@example.com';
+  WHERE password_hash = (SELECT password_hash FROM users WHERE email = '<admin email>') AND email <> '<admin email>';
+UPDATE users SET password_hash = '$ADMIN' WHERE email = '<admin email>';
 SQL
 ```
 
@@ -171,12 +188,12 @@ Amazon Linux has no cron until it's installed:
 
 ```sh
 sudo dnf install -y cronie && sudo systemctl enable --now crond
-mkdir -p ~/splitkit/backups
+mkdir -p ~/app/backups
 crontab -e
 ```
 
 ```
-0 3 * * * cd /home/ec2-user/splitkit && docker compose exec -T db pg_dump -U splitkit -Fc splitkit > backups/splitkit-$(date +\%F).dump && find backups -name '*.dump' -mtime +14 -delete
+0 3 * * * cd /home/ec2-user/app && . ./.env && docker compose exec -T db pg_dump -U "$DB_USER" -Fc "$DB_NAME" > backups/db-$(date +\%F).dump && find backups -name '*.dump' -mtime +14 -delete
 ```
 
 That keeps two weeks on the instance's own disk, which goes if the instance does: copy them off
@@ -209,10 +226,12 @@ docker compose exec api python -m app.validate
 
 | What you see | Why | Fix |
 |---|---|---|
-| `compose build requires buildx 0.17 or later`, or `unable to prepare context: path ".../app" not found` | `docker compose` is reading the dev `docker-compose.yml`, which builds | Add `COMPOSE_FILE=docker-compose.prod.yml` to the server's `.env` |
+| `compose build requires buildx 0.17 or later`, or `unable to prepare context: path ".../app" not found` | `docker compose` is reading the dev `docker-compose.yml`, which builds (often a `.env` copied from your machine) | Add `COMPOSE_FILE=docker-compose.prod.yml` to the server's `.env` |
 | `required variable IMAGE is missing a value` | `.env` is missing a setting | Add it (the message names it) |
 | `pull access denied` or `requested access to the resource is denied` | Not logged in to Docker Hub; the repo is private | `docker login -u <user>` |
 | `exec format error` | The instance is arm64 (Graviton) and the images are amd64 | Use an x86_64 instance |
-| `function "check_expense_split_sum" already exists` while restoring | The database isn't empty: already restored, or the API already started | Compare row counts with the dump. To redo it: `docker compose exec -T db psql -U splitkit -d splitkit -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`, then restore again (this deletes the server's data) |
-| API keeps restarting, logs say `password authentication failed for user "splitkit"` | `POSTGRES_PASSWORD` changed after the volume was created | `PW=$(grep '^POSTGRES_PASSWORD=' .env \| cut -d= -f2); docker compose exec -T db psql -U splitkit -d splitkit -c "ALTER USER splitkit PASSWORD '$PW'"`, then `docker compose up -d` |
+| `function "check_expense_split_sum" already exists` while restoring | The database isn't empty: already restored, or the API already started | Compare row counts with the dump. To redo it: `docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"`, then restore again (this deletes the server's data) |
+| API keeps restarting, logs say `password authentication failed for user "<DB_USER>"` | `POSTGRES_PASSWORD` changed after the volume was created | `. ./.env; docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c "ALTER USER \"$DB_USER\" PASSWORD '$POSTGRES_PASSWORD'"`, then `docker compose up -d` |
+| `.env` was changed, but the containers got the old values (API: `password authentication failed`; web on the old port) | The shell exports the old values (`set -a; . ./.env`, or `export`), and Compose prefers them over `.env` | Recreate from a fresh shell: `ssh <host> 'cd ~/app && docker compose up -d --force-recreate'`, or `unset` them first |
 | `502 Bad Gateway` from the web address | The API isn't up yet, or is failing | `docker compose logs api` |
+| The site is down after a restart, but `docker compose ps` is fine | `WEB_PORT` isn't the port the tunnel or proxy sends to (a dev `.env` has 8080) | `docker compose ps` shows the published port; set `WEB_PORT` to the tunnel's, then `docker compose up -d web` |

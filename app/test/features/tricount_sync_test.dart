@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/design_system/design_system.dart';
+import 'package:app/design_system/design_system.dart';
 
 import '../fake_backend.dart';
 import '../flutter_test_config.dart';
@@ -29,7 +29,7 @@ Map<String, dynamic> _conflict(Map<String, dynamic> group) => {
   'group_id': group['id'],
   'group_name': group['name'],
   'entity': 'expense',
-  'splitkit': {'title': 'Dinner (Splitkit)', 'summary': '₹1,800 · paid by Rahul · split 4 ways · 23 Sep', 'deleted': false},
+  'local': {'title': 'Dinner (here)', 'summary': '₹1,800 · paid by Rahul · split 4 ways · 23 Sep', 'deleted': false},
   'tricount': {'title': 'Dinner (Tricount)', 'summary': '₹2,000 · paid by Rahul · split 4 ways · 23 Sep', 'deleted': false},
   'created_at': '2026-09-25T06:00:00Z',
 };
@@ -119,7 +119,7 @@ void main() {
     be.get[path] = {'linked': false, 'link': null};
     be.postResponses['$path/preview'] = (200, {
       'title': 'Paris', 'currency': 'EUR', 'expenses': 2, 'payments': 0, 'unsupported': 0, 'people': [],
-      'problem': "The tricount is in EUR and this group in INR. Splitkit can't convert between currencies.",
+      'problem': "The tricount is in EUR and this group in INR. App can't convert between currencies.",
     });
     await pumpApp(tester, backend: be, location: '/groups/${goa['id']}/tricount');
     await tester.enterText(find.byType(TextField).first, 'tPARIS');
@@ -134,13 +134,13 @@ void main() {
     final be = FakeBackend();
     final goa = be.goa;
     final path = '/api/v1/groups/${goa['id']}/tricount';
-    be.get[path] = _linked(goa, conflicts: [_conflict(goa)], warnings: ['1 entry in Tricount with income (₹100) can’t be shown in Splitkit, so balances can differ.']);
+    be.get[path] = _linked(goa, conflicts: [_conflict(goa)], warnings: ['1 entry in Tricount with income (₹100) can’t be shown in App, so balances can differ.']);
     be.postResponses['/api/v1/tricount/conflicts/${_conflict(goa)['id']}/resolve'] = (200, _linked(goa));
     await pumpApp(tester, backend: be, location: '/groups/${goa['id']}/tricount');
 
     expect(find.text('In sync'), findsOneWidget);
     expect(find.text('https://tricount.com/tGOA2026'), findsOneWidget);
-    expect(find.text('Dinner (Splitkit)'), findsOneWidget);
+    expect(find.text('Dinner (here)'), findsOneWidget);
     expect(find.text('Dinner (Tricount)'), findsOneWidget);
     expect(find.textContaining('with income (₹100)'), findsOneWidget);
 

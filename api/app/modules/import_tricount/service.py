@@ -143,16 +143,25 @@ def _category_options(session: Session, actor: Actor) -> dict[str, CategoryOptio
     }
 
 
+def _payments(r: PlannedRow) -> list[tuple[str, str, int]]:
+    """The payments transfer or income row `r` becomes, as (from, to, amount): a transfer is
+    paid by its payer to each recipient; income is paid to whoever received it by each other
+    person it was for, their share (ISS-019)."""
+    if r.kind == "income":
+        return [(name, r.payer, amount) for name, amount in r.shares if name != r.payer]
+    return [(r.payer, name, amount) for name, amount in r.shares]
+
+
 def _totals(rows: list[PlannedRow]) -> ImportTotalsOut:
     ok = [r for r in rows if r.ok]
     expenses = [r for r in ok if r.kind == "expense"]
-    transfers = [r for r in ok if r.kind == "transfer"]
+    transfers = [r for r in ok if r.kind in ("transfer", "income")]
     days = [r.date for r in ok if r.date]
     return ImportTotalsOut(
         expenses=len(expenses),
         expense_total_minor=sum(r.amount_minor for r in expenses),
         transfers=len(transfers),
-        transfer_total_minor=sum(r.amount_minor for r in transfers),
+        transfer_total_minor=sum(a for r in transfers for _, _, a in _payments(r)),
         skipped=len(rows) - len(ok),
         first_date=min(days, default=None),
         last_date=max(days, default=None),
@@ -175,7 +184,7 @@ def preview(
         fallback = actor.user.currency if actor.user.currency in SUPPORTED_CURRENCIES else "INR"
         target = currency if currency in SUPPORTED_CURRENCIES else None
         target = target or _main_currency(parsed) or fallback
-    rows = plan(parsed.rows, target)
+    rows = plan(parsed.rows, target, parsed.default_currency)
 
     candidates = _candidates(session, actor, group)
     matches = match_people(
@@ -183,7 +192,12 @@ def preview(
         [Candidate(u.id, u.name, ph, u.id == actor.user_id) for u, ph in candidates],
     )
     by_id = {u.id: u for u, _ in candidates}
-    in_rows = Counter(n for r in parsed.rows for n in {r.payer, *r.paid_by, *r.shares} if n)
+    # Who's in each line as imported: a zero share in an export that fills every column isn't
+    # being in it (ISS-029), and a line split by payer counts once.
+    by_line: dict[int, set[str]] = {}
+    for r in rows:
+        by_line.setdefault(r.line, set()).update(_names_in(r))
+    in_rows = Counter(n for names in by_line.values() for n in names)
 
     options = _category_options(session, actor)
     labels = {k: o.label for k, o in options.items()}
@@ -309,7 +323,7 @@ def commit(
     parsed = _parse(file_name, content)
     group = require_member(session, options.group_id, actor.user_id) if options.group_id else None
     currency = group.currency if group else options.new_group.currency
-    planned = plan(parsed.rows, currency)
+    planned = plan(parsed.rows, currency, parsed.default_currency)
     rows = [r for r in planned if r.ok]
     skipped = [r for r in planned if not r.ok]
     if not rows:
@@ -353,7 +367,7 @@ def commit(
         )
     batch.group_id = group.id
 
-    # People: everyone in an imported row gets a Splitkit person in the group.
+    # People: everyone in an imported row gets a person here in the group.
     needed = [n for n in parsed.people if any(n in _names_in(r) for r in rows)]
     person: dict[str, uuid.UUID] = {}
     placeholders: set[str] = set()
@@ -380,9 +394,9 @@ def commit(
     expense_total = transfer_total = transfers = 0
     expenses: list[Expense] = []
     for r in rows:
-        if r.kind == "transfer":
-            for name, amount in r.shares:
-                if person[name] == person[r.payer]:
+        if r.kind in ("transfer", "income"):
+            for frm, to, amount in _payments(r):
+                if person[frm] == person[to]:
                     review.append(
                         ReviewItemOut(
                             title=r.title,
@@ -393,8 +407,8 @@ def commit(
                     continue
                 s = Settlement(
                     group_id=group.id,
-                    from_user=person[r.payer],
-                    to_user=person[name],
+                    from_user=person[frm],
+                    to_user=person[to],
                     amount_minor=amount,
                     currency=currency,
                     date=r.date,

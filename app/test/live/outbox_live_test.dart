@@ -10,11 +10,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:sembast/sembast_memory.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/local/outbox.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/writes.dart';
-import 'package:splitkit/core/session/session.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/local/outbox.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/writes.dart';
+import 'package:app/core/session/session.dart';
 
 final _base = Platform.environment['LIVE_API'];
 
@@ -50,7 +50,7 @@ Future<String> _login(String email) async {
   final r = await http.post(
     Uri.parse('$_base/api/v1/auth/login'),
     headers: {'content-type': 'application/json'},
-    body: jsonEncode({'email': email, 'password': 'dev-password'}),
+    body: jsonEncode({'email': email, 'password': Platform.environment['SEED_PASSWORD'] ?? ''}),
   );
   return (jsonDecode(r.body) as Map)['access_token'] as String;
 }

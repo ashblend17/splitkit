@@ -6,8 +6,10 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.errors import ApiError, not_found
 from app.core.events import record
+from app.core.fixed_names import KEPT_HERE
 from app.core.money import format_minor
 from app.modules.auth.deps import Actor
 from app.modules.groups import repository as groups_repo
@@ -64,7 +66,7 @@ def _problem(group: Group, registry: wire.Registry) -> str | None:
     if registry.currency != group.currency:
         return (
             f"The tricount is in {registry.currency} and this group in {group.currency}. "
-            "Splitkit can't convert between currencies."
+            f"{get_settings().app_name} can't convert between currencies."
         )
     return None
 
@@ -339,7 +341,7 @@ def _conflicts_out(session: Session, group_ids: list[uuid.UUID]) -> list[Tricoun
             group_id=c.group_id,
             group_name=g.name,
             entity="expense" if e.entity == "expense" else "payment",
-            splitkit=_side(c.local, g.currency, names, g.id),
+            local=_side(c.local, g.currency, names, g.id),
             tricount=_side(c.remote, g.currency, names, g.id),
             created_at=c.created_at,
         )
@@ -360,7 +362,7 @@ def conflicts(session: Session, actor: Actor) -> list[TricountConflictOut]:
 def resolve(
     session: Session, actor: Actor, conflict_id: uuid.UUID, keep: str
 ) -> tuple[uuid.UUID, TricountStatusOut]:
-    """Pick a side: a pass right away sends Splitkit's version (keep="splitkit") or takes
+    """Pick a side: a pass right away sends this app's version (keep="local") or takes
     Tricount's (keep="tricount"), deletions included."""
     actor.require_write()
     c = session.get(TricountConflict, conflict_id)
@@ -368,8 +370,9 @@ def resolve(
         raise not_found("Conflict")
     require_member(session, c.group_id, actor.user_id)
     entry = session.get(TricountEntry, c.entry_id)
-    entry.force = "push" if keep == "splitkit" else "pull"
-    c.resolved_at, c.resolved_by, c.resolution = datetime.now(UTC), actor.user_id, keep
+    entry.force = "push" if keep == "local" else "pull"
+    stored = KEPT_HERE if keep == "local" else keep
+    c.resolved_at, c.resolved_by, c.resolution = datetime.now(UTC), actor.user_id, stored
     record(
         session,
         actor,

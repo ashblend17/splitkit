@@ -1,4 +1,4 @@
-package com.splitkit.splitkit
+package com.example.app
 
 import android.Manifest
 import android.app.Notification
@@ -11,14 +11,17 @@ import android.content.pm.PackageManager
 import android.os.Build
 
 /**
- * "₹450 at Swiggy · HDFC ··4821", with Split. Tapping opens Personal; Split opens Add split
+ * "₹450 at Swiggy · HDFC ··4821", with Split. Tapping opens the entry; Split opens Add split
  * with the payment filled in. The intent carries the message itself (SmsChannel "takeLaunch"),
  * which the app reads and adds before opening it.
+ *
+ * A locked phone shows "A payment from your bank" instead, with no amount, merchant or Split,
+ * unless you chose to show amounts there (spec §5.7).
  */
 object SmsNotifier {
     private const val CHANNEL = "bank_messages"
 
-    fun show(context: Context, sms: Map<String, Any>, described: Map<*, *>, splitAction: Boolean) {
+    fun show(context: Context, sms: Map<String, Any>, described: Map<*, *>, splitAction: Boolean, lockScreenAmounts: Boolean) {
         if (Build.VERSION.SDK_INT >= 33 &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
@@ -33,7 +36,7 @@ object SmsNotifier {
         val id = "${sms["address"]}|${sms["body"]}".hashCode()
         fun open(action: String, code: Int): PendingIntent {
             val intent = Intent(context, MainActivity::class.java).apply {
-                this.action = "com.splitkit.SMS_${action.uppercase()}"
+                this.action = "${context.packageName}.SMS_${action.uppercase()}"
                 flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra(MainActivity.SMS_ADDRESS, sms["address"] as String)
                 putExtra(MainActivity.SMS_BODY, sms["body"] as String)
@@ -45,12 +48,22 @@ object SmsNotifier {
             return PendingIntent.getActivity(context, code, intent, PendingIntent.FLAG_UPDATE_CURRENT or immutable)
         }
         @Suppress("DEPRECATION")
-        val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, CHANNEL) else Notification.Builder(context)
-        builder.setSmallIcon(R.drawable.ic_stat_splitkit)
+        fun builder() = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, CHANNEL) else Notification.Builder(context)
+        // What a locked phone shows unless amounts may show there.
+        val hidden = builder().setSmallIcon(R.drawable.ic_stat_notify)
+            .setContentTitle("A payment from your bank")
+            .setContentText("Unlock to see it")
+            .setAutoCancel(true)
+            .setContentIntent(open("open", id))
+            .build()
+        val builder = builder()
+        builder.setSmallIcon(R.drawable.ic_stat_notify)
             .setContentTitle(described["title"] as? String ?: "A bank payment")
             .setContentText(described["text"] as? String ?: "")
             .setAutoCancel(true)
             .setContentIntent(open("open", id))
+            .setVisibility(if (lockScreenAmounts) Notification.VISIBILITY_PUBLIC else Notification.VISIBILITY_PRIVATE)
+            .setPublicVersion(hidden)
         if (splitAction && described["split"] == true) {
             @Suppress("DEPRECATION")
             builder.addAction(Notification.Action.Builder(0, "Split", open("split", id + 1)).build())

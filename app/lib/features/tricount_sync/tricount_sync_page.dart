@@ -13,6 +13,7 @@ import '../../design_system/design_system.dart';
 import '../common/common.dart';
 import 'tricount_conflicts.dart';
 import 'tricount_providers.dart';
+import '../../core/config.dart';
 
 /// "Sync with Tricount" for one group: link a tricount (or make one), then see how the sync
 /// is going. The sync itself runs on the server (api/app/modules/tricount_sync).
@@ -404,7 +405,7 @@ class _NotLinkedState extends ConsumerState<_NotLinked> {
         const SizedBox(height: 24),
         Text(
           'Tricount has no official way for other apps to connect, so this uses the same private connection as the Tricount app. '
-          'If Tricount changes it, syncing stops until Splitkit is updated; nothing already here is lost.',
+          'If Tricount changes it, syncing stops until ${AppConfig.appName} is updated; nothing already here is lost.',
           style: SkText.body(12, 400, color: SkColors.ink3, height: 1.4),
         ),
       ],
@@ -445,7 +446,7 @@ class _NotLinkedState extends ConsumerState<_NotLinked> {
       if (p.unsupported > 0) ...[
         const SizedBox(height: 10),
         Text(
-          "${p.unsupported} ${p.unsupported == 1 ? 'entry' : 'entries'} (income) can't be shown in Splitkit and stay in Tricount only.",
+          "${p.unsupported} ${p.unsupported == 1 ? 'entry' : 'entries'} (income) can't be shown in ${AppConfig.appName} and stay in Tricount only.",
           style: SkText.body(13, 400, color: SkColors.pending),
         ),
       ],

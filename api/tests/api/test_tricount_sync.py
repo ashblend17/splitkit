@@ -4,6 +4,7 @@
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
@@ -90,7 +91,7 @@ def _tricount_positions(reg) -> dict[str, int]:
     return {k: v for k, v in pos.items() if v}
 
 
-def _splitkit_positions(client, h, group_id) -> dict[str, int]:
+def _local_positions(client, h, group_id) -> dict[str, int]:
     b = client.get(f"{API}/groups/{group_id}/balances", headers=h).json()
     return {m["user"]["name"]: m["net_minor"] for m in b["members"] if m["net_minor"]}
 
@@ -132,13 +133,13 @@ def test_link_pulls_everything_and_balances_match(client, seeded, tc):
 
     feed = client.get(f"{API}/feed?group_id={group_id}", headers=h).json()
     assert {i.get("title") or i["kind"] for i in feed} >= {"Tent", "Fuel"}
-    assert _splitkit_positions(client, h, group_id) == {
+    assert _local_positions(client, h, group_id) == {
         "John Doe": 300000 - 100000 - 50000 - 25000,
         "Aman Verma": 100000 - 100000 - 25000,
         "Rahul Sharma": -100000 - 25000 + 25000,
     }
     names = {"John": "John Doe", "Aman": "Aman Verma", "Rahul S": "Rahul Sharma"}
-    assert {names[k]: v for k, v in _tricount_positions(reg).items()} == _splitkit_positions(
+    assert {names[k]: v for k, v in _tricount_positions(reg).items()} == _local_positions(
         client, h, group_id
     )
 
@@ -206,7 +207,7 @@ def test_only_members_and_not_twice(client, seeded, tc):
     assert client.get(f"{API}/groups/{group_id}/tricount", headers=outsider).status_code == 404
 
 
-# ---- Splitkit -> Tricount ----
+# ---- here -> Tricount ----
 
 
 def _expense(
@@ -217,12 +218,13 @@ def _expense(
     amount=90000,
     payer="john",
     people=("john", "aman", "rahul"),
+    day="2026-09-25",
 ):
     body = {
         "description": description,
         "amount_minor": amount,
         "payer_id": uid(payer),
-        "date": "2026-09-25",
+        "date": day,
         "split": {"method": "equal", "inputs": [{"user_id": uid(p)} for p in people]},
     }
     r = client.post(f"{API}/groups/{group_id}/expenses", headers=h, json=body)
@@ -230,7 +232,7 @@ def _expense(
     return r.json()
 
 
-def test_splitkit_writes_reach_tricount(client, seeded, tc):
+def test_writes_here_reach_tricount(client, seeded, tc):
     h = login(client, "john")
     group_id = _new_group(client, h)
     reg = _trek(tc)
@@ -275,9 +277,140 @@ def test_splitkit_writes_reach_tricount(client, seeded, tc):
     assert back["uuid"] != first_uuid
 
     names = {"John": "John Doe", "Aman": "Aman Verma", "Rahul S": "Rahul Sharma"}
-    assert {names[k]: v for k, v in _tricount_positions(reg).items()} == _splitkit_positions(
+    assert {names[k]: v for k, v in _tricount_positions(reg).items()} == _local_positions(
         client, h, group_id
     )
+
+
+def _credits(tc) -> list[str]:
+    """Whom each registry PUT made the device count as, in order."""
+    return [
+        body["membership_uuid_active"]
+        for method, path, body in tc.writes
+        if method == "PUT" and "membership_uuid_active" in (body or {})
+    ]
+
+
+def test_tricount_says_whoever_made_a_change_here_made_it(client, seeded, tc):
+    """ISS-052: Tricount credits the server's writes to the member its device counts as, the
+    first member unless told otherwise. Each change goes as the person who made it."""
+    h, aman = login(client, "john"), login(client, "aman")
+    group_id = _new_group(client, h)
+    reg = _trek(tc)
+    _link(client, h, group_id, reg)
+    john_member, aman_member = tc.member(reg, "John"), tc.member(reg, "Aman")
+
+    _expense(client, aman, group_id, description="Snacks", payer="john")
+    _sync(group_id)
+    assert tc.added_by(reg, tc.by_description(reg, "Snacks")) == "Aman"  # not the payer, John
+    assert _credits(tc) == [aman_member]
+
+    # Two of John's at once: one switch for both, and none when nothing changes.
+    _expense(client, h, group_id, description="Dinner")
+    _expense(client, h, group_id, description="Taxi")
+    _sync(group_id)
+    _sync(group_id)
+    assert [tc.added_by(reg, tc.by_description(reg, d)) for d in ("Dinner", "Taxi")] == ["John"] * 2
+    assert _credits(tc) == [aman_member, john_member]
+
+    # An edit is credited to whoever edited it; so is a delete.
+    snacks = next(
+        i
+        for i in client.get(f"{API}/feed?group_id={group_id}", headers=h).json()
+        if i.get("title") == "Snacks"
+    )
+    local = client.get(f"{API}/expenses/{snacks['id']}", headers=h).json()
+    edit = {
+        "description": "Snacks and tea",
+        "amount_minor": local["amount_minor"],
+        "payer_id": local["payer"]["id"],
+        "date": local["date"],
+        "version": local["version"],
+        "split": {
+            "method": "equal",
+            "inputs": [{"user_id": x["user"]["id"]} for x in local["splits"]],
+        },
+    }
+    assert client.put(f"{API}/expenses/{local['id']}", headers=h, json=edit).status_code == 200
+    _sync(group_id)
+    assert tc.added_by(reg, tc.by_description(reg, "Snacks and tea")) == "John"
+    assert _credits(tc)[-1] == john_member  # already John: no switch needed
+    assert len(_credits(tc)) == 2
+
+
+def test_a_change_still_goes_when_tricount_wont_say_who_made_it(client, seeded, tc):
+    h, aman = login(client, "john"), login(client, "aman")
+    group_id = _new_group(client, h)
+    reg = _trek(tc)
+    _link(client, h, group_id, reg)
+    tc.refuse_active = True
+    _expense(client, aman, group_id, description="Snacks")
+    out = _sync(group_id)
+    assert out.pushed == 1 and tc.by_description(reg, "Snacks")
+    assert tc.added_by(reg, tc.by_description(reg, "Snacks")) == "John"  # Tricount's first member
+    assert any("who made the changes" in w for w in out.warnings)
+
+
+def test_entries_go_to_tricount_at_the_moment_they_were_made(client, seeded, tc):
+    """Tricount's app dates an entry the moment it's made (UTC) and lists the newest first, so an
+    entry made here goes the same way: not at noon, where it sorted among older ones."""
+    h = login(client, "john")
+    group_id = _new_group(client, h)
+    reg = _trek(tc)
+    _link(client, h, group_id, reg)
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).date()
+    e = _expense(client, h, group_id, description="Chai", day=today.isoformat())
+    _sync(group_id)
+    sent = tc.by_description(reg, "Chai")
+    made = datetime.fromisoformat(e["created_at"]).astimezone(UTC)
+    assert sent["date"] == made.strftime("%Y-%m-%d %H:%M:%S.%f")
+    assert sent["date"] > max(x["date"] for x in reg["entries"] if x["description"] != "Chai")
+
+    # Edited here on the same day: it keeps its place in Tricount.
+    def edit(**changes):
+        local = client.get(f"{API}/expenses/{e['id']}", headers=h).json()
+        body = {
+            "description": local["description"],
+            "amount_minor": local["amount_minor"],
+            "payer_id": local["payer"]["id"],
+            "date": local["date"],
+            "version": local["version"],
+            "split": {
+                "method": "equal",
+                "inputs": [{"user_id": x["user"]["id"]} for x in local["splits"]],
+            },
+            **changes,
+        }
+        assert client.put(f"{API}/expenses/{e['id']}", headers=h, json=body).status_code == 200
+        _sync(group_id)
+        return tc.by_description(reg, body["description"])["date"]
+
+    assert edit(description="Chai and samosa") == sent["date"]
+    # Moved to another day: that day, at the same time of day.
+    earlier = today - timedelta(days=3)
+    moved = datetime.strptime(edit(date=earlier.isoformat()), "%Y-%m-%d %H:%M:%S.%f")
+    assert moved.replace(tzinfo=UTC).astimezone(ZoneInfo("Asia/Kolkata")).date() == earlier
+    assert moved.time() == made.time()
+
+
+def test_an_entry_made_late_at_night_in_tricount_keeps_its_day(client, seeded, tc):
+    """19:00 UTC on the 20th is half past midnight on the 21st in India: the day it was made."""
+    h = login(client, "john")
+    group_id = _new_group(client, h)
+    reg = _trek(tc)
+    tc.add_expense(
+        reg,
+        "Midnight snack",
+        "300.00",
+        "John",
+        {"John": "150.00", "Aman": "150.00"},
+        at="2026-09-20 19:00:00.000000",
+    )
+    _link(client, h, group_id, reg)
+    _sync(group_id)
+    feed = client.get(f"{API}/feed?group_id={group_id}", headers=h).json()
+    snack = next(i for i in feed if i.get("title") == "Midnight snack")
+    assert client.get(f"{API}/expenses/{snack['id']}", headers=h).json()["date"] == "2026-09-21"
 
 
 def test_payments_go_both_ways(client, seeded, tc):
@@ -362,7 +495,7 @@ def test_tricount_refuses_other_apps(client, seeded, tc, monkeypatch):
     group_id = _new_group(client, h)
     reg = _trek(tc)
     _link(client, h, group_id, reg)
-    monkeypatch.setattr(get_settings(), "tricount_user_agent", "splitkit/1.0")
+    monkeypatch.setattr(get_settings(), "tricount_user_agent", "app/1.0")
     _expense(client, h, group_id, "Snacks", 30000)
     with pytest.raises(TricountError):
         _sync(group_id)
@@ -371,7 +504,7 @@ def test_tricount_refuses_other_apps(client, seeded, tc, monkeypatch):
     )
 
 
-# ---- Tricount -> Splitkit ----
+# ---- Tricount -> here ----
 
 
 def test_tricount_edits_and_deletes_arrive(client, seeded, tc):
@@ -441,7 +574,7 @@ def test_income_is_reported_not_synced(client, seeded, tc):
     _link(client, h, group_id, reg)
     warnings = _status(client, h, group_id)["link"]["warnings"]
     assert warnings == [
-        "1 entry in Tricount with income (₹100) can't be shown in Splitkit, so balances can differ."
+        "1 entry in Tricount with income (₹100) can't be shown in App, so balances can differ."
     ]
 
 
@@ -475,7 +608,7 @@ def test_changes_on_both_sides_wait_for_someone_to_pick(client, seeded, tc):
 
     tc.edit(reg, tent["id"], description="Tent (Tricount)")
     edit = {
-        "description": "Tent (Splitkit)",
+        "description": "Tent (here)",
         "amount_minor": local["amount_minor"],
         "payer_id": local["payer"]["id"],
         "date": local["date"],
@@ -490,9 +623,9 @@ def test_changes_on_both_sides_wait_for_someone_to_pick(client, seeded, tc):
     conflicts = client.get(f"{API}/tricount/conflicts", headers=h).json()
     assert len(conflicts) == 1
     c = conflicts[0]
-    assert (c["entity"], c["splitkit"]["title"], c["tricount"]["title"]) == (
+    assert (c["entity"], c["local"]["title"], c["tricount"]["title"]) == (
         "expense",
-        "Tent (Splitkit)",
+        "Tent (here)",
         "Tent (Tricount)",
     )
     assert c["tricount"]["summary"].startswith("₹3,000 · paid by John · split 3 ways")
@@ -506,17 +639,17 @@ def test_changes_on_both_sides_wait_for_someone_to_pick(client, seeded, tc):
         client.post(
             f"{API}/tricount/conflicts/{c['id']}/resolve",
             headers=login(client, "priya"),
-            json={"keep": "splitkit"},
+            json={"keep": "local"},
         ).status_code
         == 404
     )
     r = client.post(
         f"{API}/tricount/conflicts/{c['id']}/resolve",
         headers=login(client, "aman"),
-        json={"keep": "splitkit"},
+        json={"keep": "local"},
     )
     assert r.status_code == 200, r.text
-    assert tc.entry(reg, tent["id"])["description"] == "Tent (Splitkit)"
+    assert tc.entry(reg, tent["id"])["description"] == "Tent (here)"
     assert client.get(f"{API}/tricount/conflicts", headers=h).json() == []
 
 
@@ -539,7 +672,7 @@ def test_keeping_tricounts_version_of_something_deleted_here(client, seeded, tc)
     )
     _sync(group_id)
     [c] = client.get(f"{API}/tricount/conflicts", headers=h).json()
-    assert c["splitkit"]["deleted"] and c["tricount"]["summary"].startswith("₹3,300")
+    assert c["local"]["deleted"] and c["tricount"]["summary"].startswith("₹3,300")
     client.post(f"{API}/tricount/conflicts/{c['id']}/resolve", headers=h, json={"keep": "tricount"})
     back = client.get(f"{API}/expenses/{local_id}", headers=h).json()
     assert back["deleted_at"] is None and back["amount_minor"] == 330000
@@ -564,7 +697,7 @@ def test_a_new_tricount_from_a_group(client, seeded, tc):
         "Vivek Iyer",
     ]
     names = {"John Doe": "John Doe", "Aman Verma": "Aman Verma", "Vivek Iyer": "Vivek Iyer"}
-    assert {names[k]: v for k, v in _tricount_positions(reg).items()} == _splitkit_positions(
+    assert {names[k]: v for k, v in _tricount_positions(reg).items()} == _local_positions(
         client, h, gid("flat")
     )
 

@@ -3,16 +3,21 @@
 Every quirk of the API lives here: responses are {"Response": [{"Key": {...}}, ...]}; list
 items are wrapped in one-key objects ({"RegistryMembershipNonUser": {...}}); expenses carry
 negative amounts; responses nest members ("membership_owned") where requests send flat uuids
-("membership_uuid_owner"); timestamps look like "2026-03-02 12:00:00.000000".
+("membership_uuid_owner"); timestamps look like "2026-03-02 12:00:00.000000" and are UTC.
+
+An entry's "date" is a moment, not a day: Tricount's app writes when the entry was made, in UTC,
+lists entries newest first by it and shows it in the phone's zone. The app has only the day, in
+the server's zone (TRICOUNT_TIME_ZONE): `local_day` turns one into the other and `entry_time`
+picks the moment to send.
 """
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime, tzinfo
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 EXPONENT = 2
-"""Minor units per major unit, as a power of ten. Every currency Splitkit supports has two."""
+"""Minor units per major unit, as a power of ten. Every currency the app supports has two."""
 
 EXPENSE = "NORMAL"
 INCOME = "INCOME"
@@ -52,7 +57,10 @@ class Entry:
     description: str
     amount_minor: int
     """In the tricount's currency, always positive."""
+    at: datetime
+    """When it happened, as Tricount keeps it (UTC)."""
     day: date
+    """That moment's day here's zone."""
     payer_uuid: str
     allocations: list[Allocation]
     category: str | None = None
@@ -73,6 +81,8 @@ class Registry:
     members: list[Member]
     """Active and deleted alike (see Member.active)."""
     entries: list[Entry]
+    active_member_uuid: str | None = None
+    """Whom this device counts as in this tricount: who Tricount says added what it sends."""
 
     def active_members(self) -> list[Member]:
         return [m for m in self.members if m.active]
@@ -101,18 +111,35 @@ def from_minor(minor: int, currency: str, negative: bool = False) -> dict[str, s
     return {"value": f"{value:.{EXPONENT}f}", "currency": currency}
 
 
-def to_day(text: str | None) -> date:
+def to_instant(text: str | None) -> datetime:
+    """ "2026-03-02 12:00:00.000000" (UTC) -> an aware datetime."""
     if not text:
         raise WireError("An entry has no date")
     try:
-        return datetime.fromisoformat(text.replace(" ", "T")).date()
+        return datetime.fromisoformat(text.replace(" ", "T")).replace(tzinfo=UTC)
     except ValueError:
         raise WireError(f"Not a date: {text!r}") from None
 
 
-def from_day(day: date) -> str:
-    # Splitkit dates have no time; noon keeps the day the same in every time zone nearby.
-    return datetime(day.year, day.month, day.day, 12).strftime(TIME_FORMAT)
+def from_instant(at: datetime) -> str:
+    return at.astimezone(UTC).strftime(TIME_FORMAT)
+
+
+def local_day(at: datetime, zone: tzinfo) -> date:
+    return at.astimezone(zone).date()
+
+
+def entry_time(day: date, zone: tzinfo, made: datetime, kept: datetime | None = None) -> datetime:
+    """The moment to send for an entry the app dates `day` (in `zone`). `made` is when it was
+    made here; `kept` is the moment Tricount has for it now, if it has it.
+
+    An edit that keeps the day keeps Tricount's moment, so the entry doesn't move. Otherwise it
+    goes on `day` at the time of day it was made (or had in Tricount): one made today is the
+    moment it was made, so it comes first in Tricount, as one added in its app would."""
+    if kept is not None and local_day(kept, zone) == day:
+        return kept
+    clock = (kept or made).astimezone(zone)
+    return datetime.combine(day, clock.time(), tzinfo=zone).astimezone(UTC)
 
 
 # ---- responses ----
@@ -149,7 +176,7 @@ def _member(raw: dict[str, Any]) -> Member:
     return Member(uuid=raw["uuid"], id=raw.get("id"), name=name.strip(), active=status == "ACTIVE")
 
 
-def _entry(raw: dict[str, Any]) -> Entry:
+def _entry(raw: dict[str, Any], zone: tzinfo) -> Entry:
     payer = raw.get("membership_uuid_owner") or _unwrap(raw.get("membership_owned")).get("uuid")
     allocations = []
     for a in raw.get("allocations") or []:
@@ -160,6 +187,7 @@ def _entry(raw: dict[str, Any]) -> Entry:
         allocations.append(Allocation(who, to_minor(a.get("amount")), ratio))
     if not payer:
         raise WireError(f"Entry {raw.get('id')} has no payer")
+    at = to_instant(raw.get("date"))
     foreign = None
     if raw.get("amount_local"):
         foreign = {"amount_local": raw["amount_local"], "exchange_rate": raw.get("exchange_rate")}
@@ -169,7 +197,8 @@ def _entry(raw: dict[str, Any]) -> Entry:
         kind=raw.get("type_transaction") or EXPENSE,
         description=(raw.get("description") or "").strip(),
         amount_minor=to_minor(raw.get("amount")),
-        day=to_day(raw.get("date")),
+        at=at,
+        day=local_day(at, zone),
         payer_uuid=payer,
         allocations=allocations,
         category=raw.get("category") or None,
@@ -179,8 +208,8 @@ def _entry(raw: dict[str, Any]) -> Entry:
     )
 
 
-def registry(raw: dict[str, Any]) -> Registry:
-    """A Registry object (the inside of {"Registry": {...}})."""
+def registry(raw: dict[str, Any], zone: tzinfo) -> Registry:
+    """A Registry object (the inside of {"Registry": {...}}). Entries' days are in `zone`."""
     try:
         return Registry(
             id=int(raw["id"]),
@@ -191,10 +220,11 @@ def registry(raw: dict[str, Any]) -> Registry:
             public_token=raw.get("public_identifier_token") or "",
             members=[_member(_unwrap(m)) for m in raw.get("memberships") or []],
             entries=[
-                _entry(_unwrap(e))
+                _entry(_unwrap(e), zone)
                 for e in raw.get("all_registry_entry") or []
                 if (_unwrap(e).get("status") or "ACTIVE") == "ACTIVE"
             ],
+            active_member_uuid=raw.get("membership_uuid_active") or None,
         )
     except (KeyError, TypeError) as e:
         raise WireError(f"Tricount sent a tricount this module can't read ({e})") from None
@@ -210,7 +240,7 @@ def entry_body(
     description: str,
     amount_minor: int,
     currency: str,
-    day: date,
+    at: datetime,
     payer_uuid: str,
     allocations: list[Allocation],
     category: str | None,
@@ -218,7 +248,7 @@ def entry_body(
     attachment_ids: list[int] | None = None,
 ) -> dict[str, Any]:
     """A registry-entry request. Updates replace the whole entry, so callers carry over what
-    Splitkit doesn't track (attachments, a custom category). Tricount's own "type" field is
+    the app doesn't track (attachments, a custom category). Tricount's own "type" field is
     left out: it's refused as superfluous."""
     negative = kind == EXPENSE
     body: dict[str, Any] = {
@@ -237,7 +267,7 @@ def entry_body(
         ],
         "type_transaction": kind,
         "status": "ACTIVE",
-        "date": from_day(day),
+        "date": from_instant(at),
     }
     if category_custom:
         body["category"], body["category_custom"] = "OTHER", category_custom

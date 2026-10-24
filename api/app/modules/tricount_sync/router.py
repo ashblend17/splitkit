@@ -71,6 +71,6 @@ def list_tricount_conflicts(actor: CurrentActor, session: DbSession):
 def resolve_tricount_conflict(
     conflict_id: uuid.UUID, body: ResolveConflictIn, actor: CurrentActor, session: DbSession
 ):
-    """Keep Splitkit's or Tricount's version. The other app is updated before this returns
+    """Keep the app's or Tricount's version. The other app is updated before this returns
     (unless Tricount can't be reached; then the worker retries)."""
     return service.resolve(session, actor, conflict_id, body.keep)[1]

@@ -7,6 +7,7 @@ from decimal import Decimal
 from sqlalchemy import delete, text
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.db import Base
 from app.core.security import hash_password
 from app.models import (
@@ -132,7 +133,11 @@ def load(session: Session) -> dict[str, int]:
     sid = {s.key: seed_id("settlement", s.key) for s in d.SETTLEMENTS}
     batch_id = seed_id("import_batch", "goa")
 
-    password_hash = hash_password(d.DEV_PASSWORD)
+    # Every seeded account signs in with SEED_PASSWORD (.env). Development only.
+    password = get_settings().seed_password
+    if not password:
+        raise ValueError("Set SEED_PASSWORD in .env: every seeded account signs in with it")
+    password_hash = hash_password(password)
     session.add_all(
         User(
             id=uid[u.key],
@@ -472,7 +477,7 @@ def load(session: Session) -> dict[str, int]:
         for when, actor, acting_as, action, entity, key, diff in d.AUDIT
     )
 
-    # Activity feed for group writes made inside Splitkit (imports are summarised by the batch).
+    # Activity feed for group writes made in the app (imports are summarised by the batch).
     for e in d.EXPENSES:
         if e.imported and not e.acting_admin:
             continue

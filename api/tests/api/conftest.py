@@ -73,7 +73,8 @@ def cat(key: str) -> str:
 
 def login(client: TestClient, key: str) -> dict[str, str]:
     email = next(u.email for u in data.USERS if u.key == key)
-    r = client.post("/api/v1/auth/login", json={"email": email, "password": data.DEV_PASSWORD})
+    password = get_settings().seed_password
+    r = client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert r.status_code == 200, r.text
     return {"Authorization": f"Bearer {r.json()['access_token']}"}
 

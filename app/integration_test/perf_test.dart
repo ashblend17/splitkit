@@ -28,18 +28,18 @@ import 'package:http/testing.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sembast/sembast_io.dart' show databaseFactoryIo;
-import 'package:splitkit/core/clock.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/store.dart';
-import 'package:splitkit/core/router/router.dart';
-import 'package:splitkit/core/session/session.dart';
-import 'package:splitkit/core/theme/theme_mode.dart';
-import 'package:splitkit/features/personal/personal_history_page.dart';
-import 'package:splitkit/features/shell/app_mode.dart';
-import 'package:splitkit/features/sms/sms_importer.dart';
-import 'package:splitkit/features/sms/sms_source.dart';
-import 'package:splitkit/main.dart';
+import 'package:app/core/clock.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/store.dart';
+import 'package:app/core/router/router.dart';
+import 'package:app/core/session/session.dart';
+import 'package:app/core/theme/theme_mode.dart';
+import 'package:app/features/personal/personal_history_page.dart';
+import 'package:app/features/shell/app_mode.dart';
+import 'package:app/features/sms/sms_importer.dart';
+import 'package:app/features/sms/sms_source.dart';
+import 'package:app/main.dart';
 
 import '../test/fake_backend.dart' show MemoryModeStore, MemoryThemeStore, MemoryTokenStore;
 import '../test/fake_sms.dart';
@@ -60,7 +60,7 @@ void main() {
   setUpAll(() async {
     data = buildHeavyData();
     // The device store, written once: every stream at seq 100, as after a sync.
-    final dir = Directory('${(await getTemporaryDirectory()).path}/splitkit-perf');
+    final dir = Directory('${(await getTemporaryDirectory()).path}/app-perf');
     if (dir.existsSync()) dir.deleteSync(recursive: true);
     dir.createSync(recursive: true);
     path = '${dir.path}/u_${data.me}.db';
@@ -99,7 +99,7 @@ void main() {
     // 1. Cold start: the app, as main() starts it, to Overview's numbers for the month.
     await binding.traceAction(() async {
       final s = Stopwatch()..start();
-      await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const SplitkitApp()));
+      await tester.pumpWidget(UncontrolledProviderScope(container: container, child: const RootApp()));
       await _pumpUntil(tester, find.textContaining('Spent in'));
       wall['cold_start_to_overview'] = s.elapsedMilliseconds;
     }, reportKey: 'cold_start');

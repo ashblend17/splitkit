@@ -10,7 +10,7 @@ import '../../core/sms/sms_notification.dart';
 /// else and stores nothing; the app adds the payment when it's next opened.
 Future<void> runSmsBackground() async {
   WidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('splitkit/sms_bg');
+  const channel = MethodChannel('app/sms_bg');
   channel.setMethodCallHandler((call) async {
     if (call.method != 'describe') return null;
     final a = (call.arguments as Map).cast<String, Object?>();

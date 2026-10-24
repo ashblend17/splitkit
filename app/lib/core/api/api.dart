@@ -1,12 +1,12 @@
 import 'dart:convert';
 
-import 'package:splitkit_api/api.dart';
+import 'package:api_client/api.dart';
 
 import '../config.dart';
 
-export 'package:splitkit_api/api.dart';
+export 'package:api_client/api.dart';
 
-/// The generated client (app/packages/splitkit_api, from api/openapi.json) plus bearer auth.
+/// The generated client (app/packages/api_client, from api/openapi.json) plus bearer auth.
 /// Regenerate with `tool/gen_api_client.sh`; never edit the generated package by hand.
 class Api {
   Api({String? origin, String? token}) : client = ApiClient(basePath: origin ?? AppConfig.apiOrigin) {
@@ -35,6 +35,7 @@ class Api {
   late final analytics = AnalyticsApi(client);
   late final sync = SyncApi(client);
   late final tricount = TricountApi(client); // features/tricount_sync
+  late final system = SystemApi(client);
 }
 
 /// The human message from the API's error body ({"error": {"code", "message"}}), for showing

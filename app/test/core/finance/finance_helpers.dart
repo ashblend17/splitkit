@@ -1,4 +1,4 @@
-import 'package:splitkit/core/finance/finance.dart';
+import 'package:app/core/finance/finance.dart';
 
 /// Entries and accounts for the finance tests, with dates as day keys (20260915).
 

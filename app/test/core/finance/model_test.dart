@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/finance/finance.dart';
-import 'package:splitkit/core/local/personal_index.dart';
+import 'package:app/core/finance/finance.dart';
+import 'package:app/core/local/personal_index.dart';
 
 import 'finance_helpers.dart';
 

@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/categorise/category_guesser.dart';
-import 'package:splitkit/core/categorise/category_rules.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/writes.dart';
-import 'package:splitkit/design_system/design_system.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/categorise/category_guesser.dart';
+import 'package:app/core/categorise/category_rules.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/writes.dart';
+import 'package:app/design_system/design_system.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

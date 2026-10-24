@@ -27,6 +27,8 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import event, func, inspect, select, text
 from sqlalchemy.orm import Session
 
+from app.core.fixed_names import ID_SEED
+
 if TYPE_CHECKING:
     from app.modules.auth.deps import Actor
 
@@ -246,7 +248,7 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
 
 def layout_id(owner_id: uuid.UUID | None, scope: str) -> uuid.UUID:
     """A stable entity id for a user's (or the default) layout of one dashboard."""
-    return uuid.uuid5(uuid.NAMESPACE_URL, f"splitkit:layout:{owner_id or 'default'}:{scope}")
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"{ID_SEED}:layout:{owner_id or 'default'}:{scope}")
 
 
 def layout_entry(owner_id: uuid.UUID | None, scope: str, rows: list[Any]) -> Entry:

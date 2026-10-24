@@ -288,6 +288,7 @@ class WebSidebar extends StatelessWidget {
     this.addLabel = 'Add split',
     this.accent = NavAccent.brand,
     this.modeSwitch,
+    this.title = 'App',
   });
 
   final List<NavDestination> destinations;
@@ -300,6 +301,9 @@ class WebSidebar extends StatelessWidget {
 
   /// Shown between the logo and the add button.
   final Widget? modeSwitch;
+
+  /// The app's name, at the top.
+  final String title;
 
   /// "Administrator" or "Personal account".
   final String role;
@@ -322,7 +326,7 @@ class WebSidebar extends StatelessWidget {
               children: [
                 const _BrandMark(size: 32, radius: 10, iconSize: 18),
                 const SizedBox(width: 10),
-                Text('Splitkit', style: SkText.display(22, 700)),
+                Text(title, style: SkText.display(22, 700)),
               ],
             ),
           ),

@@ -5,14 +5,27 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// The app's id and name on the phone: APP_ID and APP_NAME, from the environment or the repo's
+// .env (as docker compose and tool/build.sh read it). Another id is another app on a phone (its
+// own data and login), so keep it once the app is installed anywhere.
+val dotEnv: Map<String, String> = rootProject.file("../../.env").let { f ->
+    if (!f.exists()) emptyMap() else f.readLines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+        .associate { it.substringBefore("=").trim() to it.substringAfter("=").trim().trim('"', '\'') }
+}
+fun setting(key: String, default: String) = System.getenv(key) ?: dotEnv[key] ?: default
+val appId = setting("APP_ID", "com.example.app")
+val appName = setting("APP_NAME", "App")
+
 // A test build that installs next to the normal app instead of updating it:
-//   SPLITKIT_APP_ID_SUFFIX=.beta flutter build apk --dart-define=API_ORIGIN=http://<laptop>:8000
+//   APP_ID_SUFFIX=.beta flutter build apk --dart-define=API_ORIGIN=http://<laptop>:8000
 // Android treats another application id as another app (own data, own login). Unset, nothing
 // changes.
-val betaSuffix = System.getenv("SPLITKIT_APP_ID_SUFFIX").orEmpty()
+val betaSuffix = System.getenv("APP_ID_SUFFIX").orEmpty()
 
 android {
-    namespace = "com.splitkit.splitkit"
+    namespace = "com.example.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -26,11 +39,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.splitkit.splitkit" + betaSuffix
-        // A beta (SPLITKIT_APP_ID_SUFFIX set) is its own app, "Splitkit Beta", and may reach a
-        // server over plain HTTP: a laptop on the same Wi-Fi. The normal app does neither.
-        manifestPlaceholders["appLabel"] = if (betaSuffix.isEmpty()) "splitkit" else "Splitkit Beta"
+        applicationId = appId + betaSuffix
+        // A beta (APP_ID_SUFFIX set) is its own app, "<name> Beta", and may reach a server over
+        // plain HTTP: a laptop on the same Wi-Fi. The normal app does neither.
+        manifestPlaceholders["appLabel"] = if (betaSuffix.isEmpty()) appName else "$appName Beta"
         manifestPlaceholders["usesCleartextTraffic"] = betaSuffix.isNotEmpty().toString()
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.

@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/categorise/category_guesser.dart';
-import 'package:splitkit/core/categorise/category_rules.dart';
-import 'package:splitkit/core/local/ledger.dart';
+import 'package:app/core/categorise/category_guesser.dart';
+import 'package:app/core/categorise/category_rules.dart';
+import 'package:app/core/local/ledger.dart';
 
 /// John's synced data (the seed), plus [extra] personal entries, learned [rules]
 /// ((pattern, category key, income, updated_at)) and [splits] (group expenses you created in the

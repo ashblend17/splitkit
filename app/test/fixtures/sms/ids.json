@@ -1,5 +1,5 @@
 {
-  "about": "The entry id each corpus message that parsed got before SmsKind was added (finance revamp S1), captured with the parser as it was then, for user_id. sms_parser_test.dart checks they still parse to the same id, direction, amount and reference. Never regenerate it: a changed id is a duplicate entry on every phone.",
+  "about": "The entry id each corpus message that parsed got before SmsKind was added (finance revamp S1), captured with the parser as it was then, for user_id. sms_parser_test.dart checks they still parse to the same id, direction, amount and reference. Never regenerate it: a changed id is a duplicate entry on every phone. (One exception, 2026-10-24: the payee in HDFC salary by NEFT was renamed to JOHN D, a different message, so that one id was taken anew; every other id is as captured.)",
   "user_id": "6f1d2c3b-9a8e-4b7c-8d5e-1f2a3b4c5d6e",
   "messages": [
     {
@@ -77,7 +77,7 @@
       "sender": "VM-HDFCBK-S",
       "received": "2026-10-01T10:02:00+05:30",
       "body": "Update! INR 85,000.00 deposited in HDFC Bank A/c XX4821 on 01-OCT-26 for NEFT Cr-CITI0000001-ACME CORP-JOHN D-CITIN26100112345.Avl bal INR 1,12,480.00. Cheque deposits in A/C are subject to clearing",
-      "id": "39daa238-c94d-59f8-98d7-d5c0c22dbc4e",
+      "id": "d390bb29-1d4d-53b4-9c58-ab8e43071a2a",
       "direction": "received",
       "amount_minor": 8500000,
       "reference": "CITIN26100112345"

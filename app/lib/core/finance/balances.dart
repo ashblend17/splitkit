@@ -12,14 +12,21 @@ int entryEffect(FinEntry e, AccountType t) {
   return t.isLiability ? -signed : signed;
 }
 
-/// The order entries happen in on an account: by day, a balance correction first in its day (so
-/// one dated on a reported balance's day closes the gap at it), then when it happened (the SMS's
-/// time, else created_at), when it was made, and id. Migration 0013's backfill sorts the same way
+/// Whether [e] is a balance you set (ISS-130): a correction that says what the balance was
+/// ([FinEntry.balance]) rather than only by how much it moved. From it on, the balance is that,
+/// whatever entries before it say: one added or edited later with an older date doesn't move it.
+bool setsBalance(FinEntry e) => e.txnType == TxnType.adjustment && e.balance != null;
+
+/// The order entries happen in on an account: by day, a correction of a difference first in its
+/// day (so one dated on a reported balance's day closes the gap at it), then when it happened
+/// (the SMS's time, else created_at), when it was made, and id. A balance you set ([setsBalance])
+/// goes where it was made among the day's entries. Migration 0013's backfill sorts the same way
 /// (it never sees a correction).
 int compareLedgerOrder(FinEntry a, FinEntry b) {
   var c = a.day.compareTo(b.day);
   if (c != 0) return c;
-  final aFirst = a.txnType == TxnType.adjustment, bFirst = b.txnType == TxnType.adjustment;
+  final aFirst = a.txnType == TxnType.adjustment && a.balance == null;
+  final bFirst = b.txnType == TxnType.adjustment && b.balance == null;
   if (aFirst != bFirst) return aFirst ? -1 : 1;
   c = a.atMicros.compareTo(b.atMicros);
   if (c != 0) return c;
@@ -53,10 +60,15 @@ final class AccountBalance {
     this.firstActivityDay,
     this.correctionCount = 0,
     this.lastReported,
+    this.setTo,
     this.linked = const [],
   });
 
   final FinAccount account;
+
+  /// The last balance you set ([setsBalance]): what, on which day, and with which correction.
+  /// Entries after it still move the balance from there.
+  final ({int minor, int day, String entryId})? setTo;
 
   /// What it holds, or for a liability, what you owe.
   final int balanceMinor;
@@ -153,15 +165,22 @@ class _Running {
   int? firstDay, lastDay;
   FinEntry? reported;
   int reportedDerived = 0;
+  FinEntry? setTo;
 
   void add(FinEntry e) {
     if (e.currency != account.currency) return;
-    minor += entryEffect(e, account.type);
+    if (setsBalance(e)) {
+      minor = e.balance!;
+      setTo = e;
+    } else {
+      minor += entryEffect(e, account.type);
+    }
     count++;
     if (e.txnType == TxnType.adjustment) corrections++;
     firstDay ??= e.day;
     lastDay = e.day;
-    if (e.balance != null && !account.type.isLiability) {
+    // What the bank said; a balance you set is your word, not a report.
+    if (e.balance != null && !account.type.isLiability && e.txnType != TxnType.adjustment) {
       reported = e;
       reportedDerived = minor;
     }
@@ -177,6 +196,10 @@ class _Running {
     linked: List.unmodifiable(linked),
     lastReported: switch (reported) {
       final e? => Checkpoint(entryId: e.id, day: e.day, reportedMinor: e.balance!, derivedMinor: reportedDerived),
+      null => null,
+    },
+    setTo: switch (setTo) {
+      final e? => (minor: e.balance!, day: e.day, entryId: e.id),
       null => null,
     },
   );
@@ -196,6 +219,7 @@ int openingFromFirstReport(Iterable<FinEntry> entries, AccountType type) {
   var running = 0;
   for (final e in sorted) {
     running += entryEffect(e, type);
+    if (e.txnType == TxnType.adjustment) continue;
     if (e.balance case final reported?) return reported - running;
   }
   return 0;

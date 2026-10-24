@@ -46,6 +46,8 @@ lib/model/category_match_out.dart
 lib/model/category_option_out.dart
 lib/model/category_out.dart
 lib/model/category_total.dart
+lib/model/chart_average.dart
+lib/model/chart_averages.dart
 lib/model/chart_bar.dart
 lib/model/chart_row.dart
 lib/model/chart_stat.dart

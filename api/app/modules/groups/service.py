@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.errors import ApiError, not_found
 from app.core.events import record
 from app.core.versioning import check_version, client_id, replayed_create
@@ -142,7 +143,9 @@ def add_member(session: Session, actor: Actor, group_id: uuid.UUID, body: AddMem
     if user is not None:
         placeholder_name = None
     elif body.name is None:
-        raise ApiError(404, "no_account", "There's no Splitkit account with that email yet")
+        raise ApiError(
+            404, "no_account", f"There's no {get_settings().app_name} account with that email yet"
+        )
     else:
         invite = body.email.lower() if body.email else None
         user = User(name=body.name.strip())

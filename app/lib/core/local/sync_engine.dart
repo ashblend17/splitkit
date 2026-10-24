@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' show Response;
-import 'package:splitkit_api/api.dart';
+import 'package:api_client/api.dart';
 
 import '../clock.dart';
 import 'ledger.dart';

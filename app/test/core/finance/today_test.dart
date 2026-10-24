@@ -2,8 +2,8 @@ import 'package:clock/clock.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/clock.dart';
-import 'package:splitkit/core/finance/today.dart';
+import 'package:app/core/clock.dart';
+import 'package:app/core/finance/today.dart';
 
 /// TodayTicker (core/finance/today.dart): today moves at local midnight while the ticker is in
 /// the tree, and its timer goes away with it.

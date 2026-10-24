@@ -7,8 +7,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 image="${1:?usage: tool/push_images.sh <user>/<repo>}"
+# docker compose names the images it builds after the project (COMPOSE_PROJECT_NAME in .env).
+project=$(sed -n 's/^COMPOSE_PROJECT_NAME=//p' .env 2>/dev/null | tail -1)
+project=${COMPOSE_PROJECT_NAME:-${project:-$(basename "$PWD")}}
 docker compose build api web tricount
 for svc in api web tricount; do
-  docker tag "splitkit-$svc" "$image:split-$svc"
+  docker tag "$project-$svc" "$image:split-$svc"
   docker push "$image:split-$svc"
 done

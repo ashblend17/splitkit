@@ -128,6 +128,8 @@ class ParsedFile:
     """Everyone in the file, in column order, then payers not seen in a column."""
     title: str | None
     """A tricount name found above the header, if any."""
+    default_currency: str | None = None
+    """What "Amount in default currency (EUR)" says the converted amounts are in, if it says."""
 
 
 # ---- reading the table ----
@@ -190,12 +192,14 @@ class _Columns:
     fixed: dict[str, int]
     shares: list[tuple[int, str]]
     paid_by: list[tuple[int, str]]
+    default_currency: str | None = None
 
 
 def _columns(header: list[Any]) -> _Columns:
     fixed: dict[str, int] = {}
     shares: list[tuple[int, str]] = []
     paid_by: list[tuple[int, str]] = []
+    default_currency = None
     for i, cell in enumerate(header):
         raw = str(cell or "").replace("﻿", "").strip()
         h = _norm(raw)
@@ -204,6 +208,8 @@ def _columns(header: list[Any]) -> _Columns:
         key = next((k for k, names in _COLUMNS.items() if _base(h) in names), None)
         if key is not None:
             fixed.setdefault(key, i)
+            if key == "amount_default" and (m := re.search(r"\(\s*([A-Za-z]{3})\s*\)$", raw)):
+                default_currency = m.group(1).upper()
             continue
         if h.startswith(_IGNORED_PREFIXES):
             continue
@@ -213,7 +219,7 @@ def _columns(header: list[Any]) -> _Columns:
         prefix = next((p for p in _SHARE_PREFIXES if h.startswith(p)), None)
         if prefix is not None:
             shares.append((i, raw[len(prefix) :].strip()))
-    return _Columns(fixed, shares, paid_by)
+    return _Columns(fixed, shares, paid_by, default_currency)
 
 
 def _find_header(table: list[list[Any]]) -> tuple[int, _Columns]:
@@ -448,6 +454,11 @@ def parse(content: bytes, file_name: str) -> ParsedFile:
         category = (
             str(cell(r, "custom_category") or "").strip() or str(cell(r, "category") or "").strip()
         )
+        # No type column (Sesterce's layout): a transfer says so in its category (ISS-028).
+        if "type" not in cols.fixed and category:
+            by_category, _ = _kind(category)
+            if by_category != "expense":
+                kind, category = by_category, ""
         rows.append(
             RawRow(
                 line=n,
@@ -469,4 +480,6 @@ def parse(content: bytes, file_name: str) -> ParsedFile:
         )
     if not rows:
         raise ParseError("This file has Tricount's columns but no expenses in it.")
-    return ParsedFile(rows=rows, people=list(people.values()), title=title)
+    return ParsedFile(
+        rows=rows, people=list(people.values()), title=title, default_currency=cols.default_currency
+    )

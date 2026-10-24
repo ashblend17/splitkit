@@ -1,4 +1,4 @@
-"""Suggestions for the review step: which Splitkit person and category each Tricount name
+"""Suggestions for the review step: which person here and category each Tricount name
 probably is. Pure; the user confirms or changes every suggestion before anything is saved."""
 
 import re
@@ -69,7 +69,7 @@ def match_people(names: list[str], candidates: list[Candidate]) -> dict[str, Per
     return result
 
 
-# Tricount's built-in categories (and common custom ones) -> Splitkit category keys.
+# Tricount's built-in categories (and common custom ones) -> category keys here.
 _CATEGORY_ALIASES: dict[str, set[str]] = {
     "food": {
         "food",

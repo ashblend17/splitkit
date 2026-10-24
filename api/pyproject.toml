@@ -1,7 +1,7 @@
 [project]
-name = "splitkit-api"
-version = "0.1.0"
-description = "Splitkit REST API (/api/v1): a FastAPI modular monolith"
+name = "api"
+version = "1.0.0"
+description = "The REST API (/api/v1): a FastAPI modular monolith"
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.0",

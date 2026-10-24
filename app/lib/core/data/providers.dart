@@ -266,6 +266,16 @@ final personalListProvider = FutureProvider.family<PersonalListOut, PersonalQuer
   ),
 );
 
+/// The server's version (`GET /health`), shown on Profile beside the app's: the two are released
+/// on their own. Null when it can't be reached.
+final serverVersionProvider = FutureProvider<String?>((ref) async {
+  try {
+    return (await ref.watch(apiProvider).system.health())?['version'];
+  } catch (_) {
+    return null;
+  }
+});
+
 final personalTxnProvider = FutureProvider.family<PersonalTxnOut, String>(
   (ref, id) => localOn(ref, personalViews, (l) => PersonalTxnOut.fromJson(l.personalTransaction(id))),
 );

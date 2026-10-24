@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/finance/finance.dart';
+import 'package:app/core/finance/finance.dart';
 
 import 'finance_helpers.dart';
 
@@ -164,6 +164,83 @@ void main() {
       expect(reconcileDelta(card, 500), (flow: MoneyFlow.outflow, amountMinor: 200));
       expect(reconcileDelta(card, 100), (flow: MoneyFlow.inflow, amountMinor: 200));
       expect(reconcileDelta(card, 300), isNull);
+    });
+  });
+
+  group('a balance you set (ISS-130)', () {
+    test('is the balance from then on: an entry dated before it, added later, leaves it', () {
+      final hdfc = account('hdfc', opening: 1000);
+      final spent = entry(type: 'expense', amount: 300, accountId: 'hdfc', day: 20260910, time: '09:00', sms: true);
+      final set = entry(
+        id: 'set',
+        type: 'adjustment',
+        direction: 'in',
+        amount: 500,
+        accountId: 'hdfc',
+        day: 20260920,
+        time: '12:00',
+        sms: true,
+        balance: 1200,
+      );
+      expect(only(hdfc, [spent, set]).balanceMinor, 1200);
+      final older = entry(type: 'expense', amount: 400, accountId: 'hdfc', day: 20260915, time: '10:00', sms: true);
+      expect(only(hdfc, [spent, set, older]).balanceMinor, 1200);
+      // After it, an entry moves it from there.
+      final newer = entry(type: 'expense', amount: 100, accountId: 'hdfc', day: 20260921, time: '10:00', sms: true);
+      final b = only(hdfc, [spent, set, older, newer]);
+      expect(b.balanceMinor, 1100);
+      expect(b.setTo, (minor: 1200, day: 20260920, entryId: 'set'));
+      expect(b.correctionCount, 1);
+      expect(b.lastReported, isNull, reason: "your word, not the bank's");
+    });
+
+    test('sits where it was made in its day; a correction of a difference still goes first', () {
+      final set = entry(
+        id: 'set',
+        type: 'adjustment',
+        direction: 'in',
+        amount: 1,
+        accountId: 'hdfc',
+        day: 20260920,
+        time: '12:00',
+        sms: true,
+        balance: 5000,
+      );
+      final before = entry(id: 'before', amount: 100, accountId: 'hdfc', day: 20260920, time: '09:00', sms: true);
+      final after = entry(id: 'after', amount: 100, accountId: 'hdfc', day: 20260920, time: '15:00', sms: true);
+      final fix = entry(
+        id: 'fix',
+        type: 'adjustment',
+        direction: 'in',
+        amount: 50,
+        accountId: 'hdfc',
+        day: 20260920,
+        time: '23:00',
+        sms: true,
+      );
+      final sorted = [after, set, fix, before]..sort(compareLedgerOrder);
+      expect([for (final e in sorted) e.id], ['fix', 'before', 'set', 'after']);
+      expect(only(account('hdfc', opening: 1000), sorted).balanceMinor, 4900);
+    });
+
+    test('on a card it is what you owe', () {
+      final card = account('card', type: AccountType.creditCard);
+      final b = only(card, [
+        entry(type: 'expense', amount: 700, accountId: 'card', day: 20260901, time: '10:00', sms: true),
+        entry(
+          type: 'adjustment',
+          direction: 'out',
+          amount: 1300,
+          accountId: 'card',
+          day: 20260905,
+          time: '10:00',
+          sms: true,
+          balance: 2000,
+        ),
+        entry(type: 'expense', amount: 300, accountId: 'card', day: 20260906, time: '10:00', sms: true),
+      ]);
+      expect(b.balanceMinor, 2300);
+      expect(b.setTo!.minor, 2000);
     });
   });
 

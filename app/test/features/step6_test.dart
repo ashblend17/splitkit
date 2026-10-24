@@ -1,8 +1,8 @@
 import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/clock.dart';
-import 'package:splitkit/design_system/design_system.dart';
+import 'package:app/core/clock.dart';
+import 'package:app/design_system/design_system.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';
@@ -149,6 +149,62 @@ void main() {
     expect(find.text('HDFC ··4821'), findsOneWidget);
     expect(find.text('Not said'), findsOneWidget);
     expect(find.text('Swiggy order'), findsOneWidget);
+  });
+
+  testWidgets("Insights' breakdowns share a carousel on a phone, and sit side by side on a desktop", (tester) async {
+    await pumpApp(tester, location: '/personal/insights');
+    final carousel = find.byType(BreakdownCarousel);
+    await tester.scrollUntilVisible(carousel, 300, scrollable: find.byType(Scrollable).first);
+    for (final title in ['Spending by category', 'By account', 'By payment mode']) {
+      expect(find.descendant(of: carousel, matching: find.text(title)), findsOneWidget);
+    }
+    expect(find.descendant(of: carousel, matching: find.text('Top merchants')), findsNothing);
+    // One card at a time, the next peeking in; a swipe settles on it whole: one card (318px of
+    // the 358 between the margins, less the peek and the gap) and the gap further on.
+    final strip = find.descendant(of: carousel, matching: find.byType(Scrollable));
+    await tester.flingFrom(tester.getCenter(find.text('Spending by category')), const Offset(-120, 0), 600);
+    await tester.pumpAndSettle();
+    expect(tester.state<ScrollableState>(strip).position.pixels, 330);
+
+    await pumpApp(tester, location: '/personal/insights', size: const Size(1440, 1200));
+    expect(find.descendant(of: carousel, matching: find.byType(Scrollable)), findsNothing);
+    final tops = {
+      for (final title in ['Spending by category', 'By account', 'By payment mode']) tester.getTopLeft(find.text(title)).dy,
+    };
+    expect(tops, hasLength(1), reason: 'in one row');
+  });
+
+  testWidgets("Spending by category: Average sets each category's usual month against this one", (tester) async {
+    await pumpApp(tester, location: '/personal/insights');
+    // To the card's title: scrolling to the switch itself would slide the carousel along to it.
+    await tester.scrollUntilVisible(find.text('Spending by category'), 300, scrollable: find.byType(Scrollable).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Average'));
+    await tester.pumpAndSettle();
+    expect(find.text('Average of 5 months'), findsOneWidget);
+    expect(find.text('September so far'), findsOneWidget);
+    expect(find.text('Usually ₹4,218 · ₹3,990 more', findRichText: true), findsOneWidget); // Food
+    expect(find.text('Usually ₹20,000 · ₹3,000 more', findRichText: true), findsOneWidget); // Rent
+    expect(find.text('Nothing in a usual month', findRichText: true), findsNWidgets(2)); // Travel, Stay
+    expect(find.byType(AverageBars), findsOneWidget);
+
+    await tester.tap(find.text('Total'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AverageBars), findsNothing);
+    expect(find.text('Average of 5 months'), findsNothing);
+  });
+
+  testWidgets('a server without category averages shows no Average switch', (tester) async {
+    final be = FakeBackend();
+    final dash = Map<String, dynamic>.from(fixture('analytics_personal') as Map);
+    dash['cards'] = [
+      for (final c in dash['cards'] as List) {...(c as Map), 'averages': null},
+    ];
+    be.get['/api/v1/analytics/personal'] = dash;
+    await pumpApp(tester, backend: be, location: '/personal/insights');
+    await tester.scrollUntilVisible(find.text('Spending by category'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Average'), findsNothing);
+    expect(find.text('Rent'), findsOneWidget);
   });
 
   testWidgets('group analytics and editing the layout', (tester) async {

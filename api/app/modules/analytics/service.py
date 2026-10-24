@@ -66,6 +66,7 @@ def _cards(rows: list[AnalyticsConfiguration], ctx: sources.Context) -> list[Ana
                 bars=data.bars,
                 rows=data.rows,
                 stat=data.stat,
+                averages=data.averages,
             )
         )
     return cards

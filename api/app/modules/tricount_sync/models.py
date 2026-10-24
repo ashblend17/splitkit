@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, now_default, uuid_pk
+from app.core.fixed_names import KEPT_HERE
 
 
 class TricountDevice(Base):
@@ -62,13 +63,13 @@ class TricountLink(Base):
     lease_until: Mapped[datetime | None]
     """A pass in progress holds the link until then, so two processes never run one at once."""
     seen_seq: Mapped[int] = mapped_column(BigInteger, server_default="0")
-    """The group stream's head after the last pass. A higher head means Splitkit changed."""
+    """The group stream's head after the last pass. A higher head means the app changed."""
     last_active_at: Mapped[datetime | None]
     """When a member of the group last used the app (pulls run only while it's recent)."""
 
 
 class TricountMember(Base):
-    """A tricount member and the Splitkit person they are."""
+    """A tricount member and the person here they are."""
 
     __tablename__ = "tricount_members"
     __table_args__ = (UniqueConstraint("group_id", "user_id"),)
@@ -98,7 +99,7 @@ class TricountEntry(Base):
     entity: Mapped[str]
     entity_id: Mapped[uuid.UUID]
     remote_id: Mapped[int | None] = mapped_column(BigInteger)
-    """None while the entry exists only in Splitkit (deleted in Tricount, or not sent yet)."""
+    """None while the entry exists only here (deleted in Tricount, or not sent yet)."""
     base: Mapped[dict[str, Any] | None]
     """The entry as both sides last agreed on it (see mapping.py), or None if they agreed it
     was deleted."""
@@ -106,7 +107,7 @@ class TricountEntry(Base):
     """Bumped each time the entry is created in Tricount again (after a delete and restore),
     so its creation id is new."""
     force: Mapped[str | None]
-    """Set when someone resolves a conflict: the next pass sends Splitkit's version ("push")
+    """Set when someone resolves a conflict: the next pass sends the app's version ("push")
     or takes Tricount's ("pull") whatever the base says, then clears it."""
 
 
@@ -115,7 +116,7 @@ class TricountConflict(Base):
 
     __tablename__ = "tricount_conflicts"
     __table_args__ = (
-        CheckConstraint("resolution IN ('splitkit', 'tricount')", name="resolution"),
+        CheckConstraint(f"resolution IN ('{KEPT_HERE}', 'tricount')", name="resolution"),
         Index(
             "ix_tricount_conflicts_open",
             "entry_id",
@@ -132,7 +133,7 @@ class TricountConflict(Base):
         ForeignKey("tricount_entries.id", ondelete="CASCADE")
     )
     local: Mapped[dict[str, Any] | None]
-    """Splitkit's version (mapping.py form), or None if it was deleted in Splitkit."""
+    """The app's version (mapping.py form), or None if it was deleted here."""
     remote: Mapped[dict[str, Any] | None]
     """Tricount's version, or None if it was deleted in Tricount."""
     created_at: Mapped[datetime] = now_default()

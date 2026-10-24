@@ -100,9 +100,9 @@ def test_preview_writes_nothing_and_suggests_a_mapping(client, seeded):
     assert p["totals"] == {
         "expenses": 17,
         "expense_total_minor": 4_963_000,
-        "transfers": 1,
-        "transfer_total_minor": 100_000,
-        "skipped": 2,
+        "transfers": 2,  # Aman's payment, and Rahul's villa deposit (four payments to him)
+        "transfer_total_minor": 340_000,
+        "skipped": 1,
         "first_date": "2026-09-12",
         "last_date": "2026-09-20",
     }
@@ -149,6 +149,26 @@ def test_preview_errors(client, seeded):
     assert r.status_code == 401
 
 
+def test_preview_counts_the_rows_each_person_is_really_in(client, seeded):
+    """ISS-029: an export that fills every person's column has zeros for those not in a row,
+    and a row paid by two people (imported as two expenses) is still one row."""
+    content = (
+        b"Date,Title,Amount,Paid by,Paid for John,Paid for Omar,Paid for Jane,Currency\n"
+        b"2026-09-21,Groceries,600,John,300,300,0.0,INR\n"
+        b"2026-09-22,Cab,200,Omar,100,100,0.0,INR\n"
+    )
+    split_payers = (
+        b"Date,Title,Paid by John,Paid by Omar,Paid for John,Paid for Jane,Currency\n"
+        b"2026-09-23,Coffee,100,20,60,60,INR\n"
+    )
+    h = login(client, "john")
+    p = preview(client, h, file=("t.csv", content, "text/csv"))
+    assert {x["name"]: x["rows"] for x in p["people"]} == {"John": 2, "Omar": 2, "Jane": 0}
+    p = preview(client, h, file=("t.csv", split_payers, "text/csv"))
+    assert {x["name"]: x["rows"] for x in p["people"]} == {"John": 1, "Omar": 1, "Jane": 1}
+    assert p["totals"]["expenses"] == 2
+
+
 # ---- commit ----
 
 
@@ -173,10 +193,10 @@ def test_commit_into_a_new_group_creates_everything_tagged(client, seeded):
         k: stats[k] for k in ("expenses", "transfers", "people", "placeholders", "skipped")
     } == {
         "expenses": 17,
-        "transfers": 1,
+        "transfers": 5,
         "people": 6,
         "placeholders": 1,
-        "skipped": 2,
+        "skipped": 1,
     }
     assert stats["expense_total_minor"] == 4_963_000 and stats["created_group"] is True
     why = {i["title"]: i["why"] for i in stats["review"]}
@@ -186,7 +206,6 @@ def test_commit_into_a_new_group_creates_everything_tagged(client, seeded):
     assert "converted from $30" in why["Dolphin trip"]
     assert stats["skipped_rows"] == [
         "Row 19 · Souvenirs: ₹100 still needs to be allocated",
-        "Row 20 · Villa deposit back: Income isn't supported yet, so this row is skipped",
     ]
 
     group_id = batch["group_id"]
@@ -201,32 +220,36 @@ def test_commit_into_a_new_group_creates_everything_tagged(client, seeded):
         assert len(expenses) == 17
         assert all(str(e.import_batch_id) == batch["id"] for e in expenses)
         assert all(sum(x.share_minor for x in e.splits) == e.amount_minor for e in expenses)
-        [pay] = s.scalars(select(Settlement).where(Settlement.group_id == group.id)).all()
-        assert (pay.from_user, pay.to_user, pay.amount_minor) == (
-            uuid.UUID(uid("aman")),
-            uuid.UUID(uid("rahul")),
-            100000,
+        pays = s.scalars(select(Settlement).where(Settlement.group_id == group.id)).all()
+        rahul = uuid.UUID(uid("rahul"))
+        # Aman's payment to Rahul, then the villa deposit Rahul got back: each other person
+        # it was for pays him their ₹600 (ISS-019).
+        assert sorted((p.from_user, p.to_user, p.amount_minor) for p in pays) == sorted(
+            [(uuid.UUID(uid("aman")), rahul, 100000)]
+            + [(uuid.UUID(uid(k)), rahul, 60000) for k in ("john", "aman", "priya", "vivek")]
         )
-        assert str(pay.import_batch_id) == batch["id"]
+        assert all(str(p.import_batch_id) == batch["id"] for p in pays)
         parking = next(e for e in expenses if e.description == "Parking at Baga")
         food = next(e for e in expenses if e.description == "Late-night pizza")
         assert parking.category_id != food.category_id
 
         log = s.scalars(select(ChangeLog).where(ChangeLog.stream_id == f"group:{group_id}")).all()
     entities = [r.entity for r in log]
-    assert entities.count("expense") == 17 and entities.count("settlement") == 1
+    assert entities.count("expense") == 17 and entities.count("settlement") == 5
     assert entities.count("group") == 1 and entities.count("member") == 6
 
-    # Balances match the file: payers are owed the amount, everyone owes their share.
+    # Balances match the file: payers are owed the amount, everyone owes their share. Income
+    # is the other way: whoever received it holds it for everyone it was for.
     ids = {x["name"]: x["user_id"] for x in new_group_options(p)["people"]}
     ids["Kabir M."] = str(kabir.user_id)
     expected: Counter = Counter()
     for r in p["rows"]:
         if r["issues"] and any(i["level"] == "error" for i in r["issues"]):
             continue
-        expected[ids[r["payer"]]] += r["amount_minor"]
+        sign = -1 if r["kind"] == "income" else 1
+        expected[ids[r["payer"]]] += sign * r["amount_minor"]
         for share in r["shares"]:
-            expected[ids[share["name"]]] -= share["share_minor"]
+            expected[ids[share["name"]]] -= sign * share["share_minor"]
     nets = balances(client, h, group_id)
     assert sum(nets.values()) == 0
     assert nets == {k: v for k, v in expected.items()}
@@ -303,7 +326,7 @@ def test_undo_of_a_new_group_archives_it_and_ends_the_memberships(client, seeded
         ops = s.scalars(
             select(ChangeLog.action).where(ChangeLog.stream_id == f"group:{group_id}")
         ).all()
-    assert ops.count("expense.delete") == 17 and ops.count("settlement.delete") == 1
+    assert ops.count("expense.delete") == 17 and ops.count("settlement.delete") == 5
     assert "member.remove" in ops and "group.update" in ops
     ids = [g["id"] for g in client.get(f"{API}/groups", headers=h).json()]
     assert group_id not in ids

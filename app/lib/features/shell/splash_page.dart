@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
+import '../../core/config.dart';
 
 /// Shown while the saved session is checked, or if the API can't be reached at launch.
 class SplashPage extends ConsumerWidget {
@@ -20,7 +21,7 @@ class SplashPage extends ConsumerWidget {
               ? ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 400),
                   child: ErrorState(
-                    title: "Couldn't reach Splitkit",
+                    title: "Couldn't reach ${AppConfig.appName}",
                     body: 'Check your connection and try again.',
                     onRetry: () => ref.invalidate(sessionProvider),
                   ),

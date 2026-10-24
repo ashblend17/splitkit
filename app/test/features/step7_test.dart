@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/data/providers.dart';
-import 'package:splitkit/core/layout/layout.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/common/common.dart';
-import 'package:splitkit/features/expenses/add_expense_page.dart';
-import 'package:splitkit/features/groups/group_detail_page.dart';
-import 'package:splitkit/features/shell/sync_banner.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/data/providers.dart';
+import 'package:app/core/layout/layout.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/common/common.dart';
+import 'package:app/features/expenses/add_expense_page.dart';
+import 'package:app/features/groups/group_detail_page.dart';
+import 'package:app/features/shell/sync_banner.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

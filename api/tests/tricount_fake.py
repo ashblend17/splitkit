@@ -5,7 +5,10 @@ app/modules/tricount_sync/wire.py): {"Response": [...]} envelopes, one-key wrapp
 items, negative expense amounts, flat uuids in requests and nested ones in responses. It also
 copies the behaviours the sync relies on: writes only from the Android app's User-Agent,
 sessions that expire, creates that are idempotent by uuid, updates that replace the whole
-entry, and members dropped when they're left out of a membership update.
+entry, and members dropped when they're left out of a membership update. As the real one does
+(seen on a real tricount, 2026-10-24), it keeps an entry's "date" as sent, stamps "created" in
+UTC, and credits each write to the member the device counts as (`membership_uuid_active`: the
+lowest id when it joins, then whoever a registry PUT names); `added_by` says who that was.
 
 Tests act as someone using Tricount through `add_expense`, `edit`, `remove`, and can make the
 service fail (`down`, `fail_next`).
@@ -15,13 +18,14 @@ import itertools
 import json
 import re
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
 import httpx
 
 ANDROID = "com.bunq.tricount.android"
+TIME = "%Y-%m-%d %H:%M:%S.%f"
 
 
 class FakeTricount:
@@ -33,12 +37,16 @@ class FakeTricount:
         """installation id -> user id"""
         self.joined: dict[int, set[int]] = {}
         """user id -> registry ids it follows"""
+        self.active: dict[tuple[int, int], str] = {}
+        """(user id, registry id) -> the member that device counts as"""
         self.registries: dict[int, dict[str, Any]] = {}
         self.down = False
         self.fail_next: list[tuple[int, str]] = []
         """(status, message) answers to give, in order, before working normally again."""
         self.calls: list[tuple[str, str]] = []
         self.writes: list[tuple[str, str, Any]] = []
+        self.refuse_active = False
+        """Refuse to switch whom a device counts as (a registry PUT naming a member)."""
 
     @property
     def transport(self) -> httpx.MockTransport:
@@ -88,13 +96,16 @@ class FakeTricount:
         category: str = "FOOD_AND_DRINK",
         kind: str = "NORMAL",
         ratios: dict[str, int] | None = None,
+        at: str | None = None,
     ) -> dict[str, Any]:
+        """As someone does in the app, which dates it the moment it's made (UTC): midday in
+        India on `day` unless `at` says when."""
         negative = kind == "NORMAL"
         sign = "-" if negative else ""
         entry = {
             "id": next(self.ids),
             "uuid": str(uuid.uuid4()),
-            "date": f"{day} 18:30:00.000000",
+            "date": at or f"{day} 06:30:00.000000",
             "description": description,
             "type": "MANUAL",
             "type_transaction": kind,
@@ -148,6 +159,18 @@ class FakeTricount:
     def by_description(self, reg: dict[str, Any], description: str) -> dict[str, Any]:
         return next(e for e in reg["entries"] if e["description"] == description)
 
+    def added_by(self, reg: dict[str, Any], entry: dict[str, Any]) -> str | None:
+        """The name Tricount shows as having added (or last changed) `entry`."""
+        return next((m["name"] for m in reg["members"] if m["uuid"] == entry.get("_by")), None)
+
+    def _join(self, user: int, reg: dict[str, Any]) -> None:
+        self.joined[user].add(reg["id"])
+        active = sorted(
+            (m for m in reg["members"] if m["status"] == "ACTIVE"), key=lambda m: m["id"]
+        )
+        if active:
+            self.active.setdefault((user, reg["id"]), active[0]["uuid"])
+
     # ---- the API ----
 
     def handle(self, request: httpx.Request) -> httpx.Response:
@@ -198,20 +221,20 @@ class FakeTricount:
                 if (token and r["public_identifier_token"] == token)
                 or (not token and r["id"] in self.joined[user])
             ]
-            return self._ok([{"Registry": self._registry_out(r)} for r in found])
+            return self._ok([{"Registry": self._registry_out(r, user=user)} for r in found])
         if path == "/registry" and method == "POST":
             reg = self.make(body["title"], body["currency"], [])
             reg["members"].append(self._member(""))  # the device that made it
-            self.joined[user].add(reg["id"])
+            self._join(user, reg)
             return self._ok([{"Id": {"id": reg["id"]}}])
         if path == "/registry-synchronization" and method == "POST":
             for ref in body["all_registry_active"]:
                 reg = self._by_token(ref["public_identifier_token"])
                 if reg is None:
                     return self._error(404, "Registry not found")
-                self.joined[user].add(reg["id"])
+                self._join(user, reg)
             active = [
-                self._registry_out(self.registries[i], entries=False)
+                self._registry_out(self.registries[i], entries=False, user=user)
                 for i in sorted(self.joined[user])
             ]
             return self._ok(
@@ -233,13 +256,13 @@ class FakeTricount:
             return self._error(404, "Registry not found")
         if "/registry-entry" not in path:
             if method == "GET":
-                return self._ok([{"Registry": self._registry_out(reg)}])
+                return self._ok([{"Registry": self._registry_out(reg, user=user)}])
             if method == "PUT":
-                return self._update_registry(reg, body)
+                return self._update_registry(reg, body, user)
             return self._error(405, "Method not allowed")
         eid = int(m.group(2)) if m.group(2) else None
         if eid is None and method == "POST":
-            return self._create_entry(reg, body)
+            return self._create_entry(reg, body, user)
         entry = next((e for e in reg["entries"] if e["id"] == eid), None)
         if entry is None:
             return self._error(404, "Entry not found")
@@ -247,7 +270,9 @@ class FakeTricount:
             problem = self._check_entry(reg, body)
             if problem:
                 return self._error(400, problem)
-            reg["entries"][reg["entries"].index(entry)] = self._entry_in(reg, body, eid)
+            new = self._entry_in(reg, body, eid, user)
+            new["created"] = entry.get("created", new["created"])
+            reg["entries"][reg["entries"].index(entry)] = new
             return self._ok([{"Id": {"id": eid}}])
         if method == "DELETE":
             self.remove(reg, eid)
@@ -259,9 +284,18 @@ class FakeTricount:
             (r for r in self.registries.values() if r["public_identifier_token"] == token), None
         )
 
-    def _update_registry(self, reg: dict[str, Any], body: dict[str, Any]) -> httpx.Response:
+    def _update_registry(
+        self, reg: dict[str, Any], body: dict[str, Any], user: int
+    ) -> httpx.Response:
         if "currency" in body:
             return self._error(400, "The currency can't be changed")
+        if "membership_uuid_active" in body:
+            if self.refuse_active:
+                return self._error(400, "Field membership_uuid_active is superfluous")
+            wanted = body["membership_uuid_active"]
+            if not any(m["uuid"] == wanted and m["status"] == "ACTIVE" for m in reg["members"]):
+                return self._error(400, "Unknown membership")
+            self.active[(user, reg["id"])] = wanted
         if "title" in body:
             reg["title"] = body["title"]
         if "memberships" in body:
@@ -295,8 +329,14 @@ class FakeTricount:
         datetime.strptime(body["date"], "%Y-%m-%d %H:%M:%S.%f")
         return None
 
-    def _entry_in(self, reg: dict[str, Any], body: dict[str, Any], eid: int) -> dict[str, Any]:
+    def _entry_in(
+        self, reg: dict[str, Any], body: dict[str, Any], eid: int, user: int
+    ) -> dict[str, Any]:
+        now = datetime.now(UTC).strftime(TIME)
         return {
+            "_by": self.active.get((user, reg["id"])),
+            "created": now,
+            "updated": now,
             "id": eid,
             "uuid": body["uuid"],
             "date": body["date"],
@@ -320,21 +360,24 @@ class FakeTricount:
             "attachment": body.get("attachment", []),
         }
 
-    def _create_entry(self, reg: dict[str, Any], body: dict[str, Any]) -> httpx.Response:
+    def _create_entry(self, reg: dict[str, Any], body: dict[str, Any], user: int) -> httpx.Response:
         for e in reg["entries"]:
             if e["uuid"] == body.get("uuid"):
                 return self._ok([{"Id": {"id": e["id"]}}])  # the first write wins
         problem = self._check_entry(reg, body)
         if problem:
             return self._error(400, problem)
-        entry = self._entry_in(reg, body, next(self.ids))
+        entry = self._entry_in(reg, body, next(self.ids), user)
         reg["entries"].append(entry)
         return self._ok([{"Id": {"id": entry["id"]}}])
 
     # ---- response shapes ----
 
-    def _registry_out(self, reg: dict[str, Any], entries: bool = True) -> dict[str, Any]:
+    def _registry_out(
+        self, reg: dict[str, Any], entries: bool = True, user: int | None = None
+    ) -> dict[str, Any]:
         out = {k: v for k, v in reg.items() if k not in ("members", "entries")}
+        out["membership_uuid_active"] = self.active.get((user, reg["id"]))
         out["memberships"] = [
             {
                 "RegistryMembershipNonUser": {
@@ -356,7 +399,7 @@ class FakeTricount:
         return out
 
     def _entry_out(self, e: dict[str, Any]) -> dict[str, Any]:
-        out = {k: v for k, v in e.items() if k not in ("payer", "allocations")}
+        out = {k: v for k, v in e.items() if k not in ("payer", "allocations") and k[0] != "_"}
         out["membership_owned"] = {"RegistryMembershipNonUser": {"uuid": e["payer"], "alias": {}}}
         out["allocations"] = [
             {

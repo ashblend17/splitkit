@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:splitkit/core/session/session.dart';
+import 'package:app/core/fixed_names.dart';
+import 'package:app/core/session/session.dart';
 
 import '../fake_backend.dart';
 
@@ -17,7 +18,7 @@ void main() {
   });
 
   test('switching servers logs out, saves the choice and sends requests there', () async {
-    SharedPreferences.setMockInitialValues({'splitkit.token': 'old-token'});
+    SharedPreferences.setMockInitialValues({FixedNames.token: 'old-token'});
     final hosts = <String>[];
     final container = ProviderContainer(overrides: [
       httpClientProvider.overrideWithValue(MockClient((req) async {

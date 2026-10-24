@@ -1201,12 +1201,11 @@ class Ledger {
   /// another entry. Closest date first; each as GET /expenses/{id} answers.
   List<Json> linkCandidates(String txnId, {int windowDays = 3}) {
     final t = _index.byId[txnId] ?? (throw const LocalNotFound('Transaction'));
-    final day = localDay(t.day);
     final found = <(Json, int, int)>[];
     for (final e in _paidByMe[(t.amount, t.currency)] ?? const <Json>[]) {
       if (!_isMember(e['group_id'] as String, me)) continue;
       if (_index.linkedTo(e['id'] as String).any((p) => p.id != txnId)) continue;
-      final apart = localDay(dayKey(e['date'] as String)).difference(day).inDays.abs();
+      final apart = daysApart(dayKey(e['date'] as String), t.day);
       if (apart <= windowDays) found.add((e, apart, isoMicros(e['created_at'])));
     }
     found.sort((a, b) {
@@ -1344,9 +1343,9 @@ class Ledger {
   /// Your newest entry made by hand (live, with no account yet) of [type] and [amountMinor],
   /// dated within a day of [day]: one the bank's SMS is about.
   Json? manualMatch(String type, int amountMinor, DateTime day) {
-    final target = DateTime(day.year, day.month, day.day);
+    final target = dayKeyOf(day);
     for (final t in _index.manualWithoutAccount(type, amountMinor)) {
-      if (localDay(t.day).difference(target).inDays.abs() <= 1) return _txnOut(t);
+      if (daysApart(t.day, target) <= 1) return _txnOut(t);
     }
     return null;
   }

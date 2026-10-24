@@ -1,4 +1,4 @@
-package com.splitkit.splitkit
+package com.example.app
 
 import android.Manifest
 import android.app.Activity
@@ -20,9 +20,9 @@ import java.util.concurrent.Executors
 /**
  * Bank SMS for the app (lib/features/sms/sms_source.dart).
  *
- * `splitkit/sms` reads the inbox, but only messages whose sender matches the pattern the app
+ * `app/sms` reads the inbox, but only messages whose sender matches the pattern the app
  * passes (business headers such as VM-HDFCBK-S): messages from people never leave this class.
- * `splitkit/sms/live` fires when the inbox changes while the app is open, after the SMS app has
+ * `app/sms/live` fires when the inbox changes while the app is open, after the SMS app has
  * stored the message, so a read that follows finds it.
  *
  * It also passes on what the receiver needs for notifications ("configure"), asks for the
@@ -32,8 +32,8 @@ import java.util.concurrent.Executors
 class SmsChannel(private val activity: Activity, messenger: BinaryMessenger) :
     MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
 
-    private val methods = MethodChannel(messenger, "splitkit/sms")
-    private val events = EventChannel(messenger, "splitkit/sms/live")
+    private val methods = MethodChannel(messenger, "app/sms")
+    private val events = EventChannel(messenger, "app/sms/live")
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private var pending: MethodChannel.Result? = null
@@ -54,6 +54,7 @@ class SmsChannel(private val activity: Activity, messenger: BinaryMessenger) :
                     activity,
                     notify = call.argument<Boolean>("notify") ?: false,
                     splitAction = call.argument<Boolean>("split") ?: true,
+                    lockScreenAmounts = call.argument<Boolean>("amounts") ?: false,
                     senders = call.argument<String>("senders") ?: "(?!)",
                 )
                 result.success(null)

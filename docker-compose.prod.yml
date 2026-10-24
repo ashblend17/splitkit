@@ -1,19 +1,18 @@
 # The server's stack: runs the images tool/push_images.sh pushed, so nothing is built there.
-# Needs a .env with IMAGE, POSTGRES_PASSWORD and JWT_SECRET (see .env.example). Only web is
-# published; its nginx proxies /api/ to the API over the compose network.
-name: splitkit
-
+# Needs a .env with IMAGE, DB_NAME, DB_USER, POSTGRES_PASSWORD and JWT_SECRET (see .env.example),
+# and COMPOSE_PROJECT_NAME unless the folder's name is the project's. Only web is published;
+# its nginx proxies /api/ to the API over the compose network.
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: splitkit
-      POSTGRES_USER: splitkit
+      POSTGRES_DB: ${DB_NAME:?set DB_NAME in .env}
+      POSTGRES_USER: ${DB_USER:?set DB_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U splitkit -d splitkit"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -23,8 +22,10 @@ services:
     image: ${IMAGE:?set IMAGE in .env}:split-api
     environment:
       ENV: prod
-      DATABASE_URL: postgresql+psycopg://splitkit:${POSTGRES_PASSWORD}@db:5432/splitkit
+      APP_NAME: ${APP_NAME:-App}
+      DATABASE_URL: postgresql+psycopg://${DB_USER}:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      TRICOUNT_TIME_ZONE: ${TRICOUNT_TIME_ZONE:-Asia/Kolkata}
     depends_on:
       db:
         condition: service_healthy
@@ -42,8 +43,10 @@ services:
     command: ["python", "-m", "app.modules.tricount_sync"]
     environment:
       ENV: prod
-      DATABASE_URL: postgresql+psycopg://splitkit:${POSTGRES_PASSWORD}@db:5432/splitkit
+      APP_NAME: ${APP_NAME:-App}
+      DATABASE_URL: postgresql+psycopg://${DB_USER}:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
+      TRICOUNT_TIME_ZONE: ${TRICOUNT_TIME_ZONE:-Asia/Kolkata}
     depends_on:
       api:
         condition: service_healthy  # its start-up runs the migrations

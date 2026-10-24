@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/categorise/category_rules.dart';
+import 'package:app/core/categorise/category_rules.dart';
 
 void main() {
   test('the pattern and id are the same as the server makes', () {

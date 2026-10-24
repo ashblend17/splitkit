@@ -1,25 +1,39 @@
 #!/usr/bin/env bash
-# Builds Splitkit, any part of it or all of it, with one command:
+# Builds the app, any part of it or all of it, with one command:
 #   - the Android app: an APK to install, or an App Bundle for Google Play;
 #   - the iOS app (on a Mac);
 #   - the web app as a static bundle, to host anywhere;
 #   - the Docker images docker compose runs: api, tricount (the same image) and web.
 #
-# Files go to dist/, named with the version, build number and commit, and dist/SHA256SUMS lists
+# The UI (app/: the phone apps, the web bundle and the web image) and the backend (api/: the api
+# and tricount images) each have their own version (README "Versions and releases"). Files go to
+# dist/, named with the UI's version, the build number and the commit, and dist/SHA256SUMS lists
 # their checksums. Images are tagged :latest (what `docker compose up` runs) and
-# :<version>-<build>-<commit>; whatever :latest was before keeps a tag of its own, so going back
-# is one `docker tag`.
+# :<version>-<build>-<commit> with their own part's version; whatever :latest was before keeps a
+# tag of its own, so going back is one `docker tag`.
 #
-#   tool/build.sh apk --api-origin https://splitkit.example.com
+#   tool/build.sh apk --api-origin https://api.example.com
 #   tool/build.sh apk --beta --api-origin http://192.168.0.3:8000   # installs next to the app
 #   tool/build.sh images                                            # docker compose's images
-#   tool/build.sh all --api-origin https://splitkit.example.com --check
+#   tool/build.sh all --api-origin https://api.example.com --check
 #
 # `tool/build.sh --help` lists every target and option. Works with macOS's bash 3.2 too.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 ROOT=$PWD
+
+# What the build takes from .env, as docker compose does: the project's name, which names the
+# images compose runs and the files here, and the app's name and id. The environment wins.
+env_value() { # key, default
+  local v=""
+  if [[ -f .env ]]; then v=$(sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" .env | tail -1); fi
+  v=${v%\"}; v=${v#\"}
+  printf '%s' "${!1:-${v:-$2}}"
+}
+PROJECT=$(env_value COMPOSE_PROJECT_NAME app)
+APP_NAME=$(env_value APP_NAME App)
+APP_ID=$(env_value APP_ID com.example.app)
 
 usage() {
   cat <<'EOF'
@@ -30,19 +44,19 @@ Targets (any number, in any order):
   aab          Android App Bundle, for Google Play
   android      apk and aab
   ios          iOS: an .ipa (needs a Mac with Xcode and signing; see --no-codesign)
-  web          The web app as a static bundle (dist/splitkit-web-*.tar.gz)
+  web          The web app as a static bundle (dist/<project>-web-*.tar.gz)
   api          Docker image for the API and the Tricount sync (alias: backend)
   web-image    Docker image for the web app (nginx serving it, proxying /api)
   images       api and web-image: everything docker compose runs
   all          apk, aab, web and images, plus ios on a Mac
 
 Options:
-  --api-origin URL      Server the phone apps talk to, e.g. https://splitkit.example.com (the app
+  --api-origin URL      Server the phone apps talk to, e.g. https://api.example.com (the app
                         adds /api/v1). Needed for apk, aab and ios unless --debug or --dev-tools.
-                        Default: $SPLITKIT_API_ORIGIN.
+                        Default: $API_ORIGIN.
   --web-api-origin URL  Server the web bundle talks to. Default: none, the page's own origin (as
                         served by the web image, whose nginx proxies /api).
-  --beta                Android: build "Splitkit Beta" (com.splitkit.splitkit.beta), which installs
+  --beta                Android: build "<APP_NAME> Beta" (<APP_ID>.beta), which installs
                         next to the normal app instead of updating it and may use plain http.
   --debug | --profile   Build mode (default: release).
   --dev-tools           Keep developer settings (the login screen's Server link) in a release
@@ -52,26 +66,28 @@ Options:
   --split-per-abi       APK: one smaller file per CPU type instead of one for all.
   --base-href /path/    Web bundle: serve it under a sub-path.
   --no-codesign         iOS: build Runner.app without signing (zipped) instead of an .ipa.
-  --build-name X.Y.Z    Version shown to users. Default: pubspec.yaml's (now 0.1.0).
+  --build-name X.Y.Z    The UI's version, shown to users. Default: app/pubspec.yaml's. (The
+                        backend's is api/app/__init__.py's; tool/version.py changes either.)
   --build-number N      Android versionCode / iOS build. Default: the number of commits, so it
                         goes up with every commit (Android refuses an "update" to a lower one).
   --check               Run the checks first: flutter analyze and tests for app builds; ruff and
-                        pytest for the API image (pytest needs the compose db: docker start
-                        splitkit-db-1).
+                        pytest for the API image (pytest needs the compose db:
+                        `docker compose start db`).
   --clean               flutter clean before building.
   --push REPO           After building images, push them as REPO:split-api|split-tricount|split-web
                         (what docker-compose.prod.yml pulls) and REPO:split-<svc>-<tag> (to go
                         back to). Needs docker login. Refuses a build with uncommitted changes.
-  --allow-dirty         Push even with uncommitted changes in app/ or api/.
+  --allow-dirty         Push even with uncommitted changes in the part pushed (app/ for the web
+                        image, api/ for the api and tricount images).
   --out DIR             Where files go. Default: dist/.
   -h, --help            This help.
 
 Examples:
-  tool/build.sh apk --api-origin https://splitkit.example.com
+  tool/build.sh apk --api-origin https://api.example.com
   tool/build.sh apk --beta --api-origin http://192.168.0.3:8000 --dev-tools
   tool/build.sh images && docker compose up -d --no-build
   tool/build.sh images --push <user>/<repo>
-  tool/build.sh all --api-origin https://splitkit.example.com --check
+  tool/build.sh all --api-origin https://api.example.com --check
 EOF
 }
 
@@ -93,7 +109,7 @@ trap 'rc=$?; if [[ $rc -ne 0 && -n $CURRENT ]]; then printf "\n%sfailed:%s %s (e
 
 [[ $# -gt 0 ]] || { usage >&2; exit 2; }
 
-API_ORIGIN=${SPLITKIT_API_ORIGIN:-}
+API_ORIGIN=${API_ORIGIN:-}
 WEB_API_ORIGIN=""
 MODE=release
 BETA=0
@@ -177,7 +193,7 @@ if [[ $DO_IOS -eq 1 && $(uname) != Darwin ]]; then
   die "iOS builds need macOS and Xcode. Without a Mac, run .github/workflows/ios.yml (GitHub → Actions → iOS build)."
 fi
 if [[ $DO_PHONE -gt 0 && -z $API_ORIGIN && $MODE != debug && $DEV_TOOLS -eq 0 ]]; then
-  die "phone builds need --api-origin (the server they talk to, e.g. https://splitkit.example.com), or --dev-tools to type one on the phone"
+  die "phone builds need --api-origin (the server they talk to, e.g. https://api.example.com), or --dev-tools to type one on the phone"
 fi
 if [[ $DO_ANDROID -gt 0 && $BETA -eq 0 && $API_ORIGIN == http://* ]]; then
   warn "the normal Android app refuses plain http: $API_ORIGIN won't be reachable. Use https, or --beta."
@@ -192,16 +208,25 @@ if [[ -n $BASE_HREF && ($BASE_HREF != /* || $BASE_HREF != */) ]]; then die "--ba
 
 [[ -n $BUILD_NAME ]] || BUILD_NAME=$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' app/pubspec.yaml)
 [[ -n $BUILD_NAME ]] || die "couldn't read the version from app/pubspec.yaml; pass --build-name"
+API_VERSION=$(sed -n 's/^__version__ = "\([^"]*\)"$/\1/p' api/app/__init__.py)
+[[ -n $API_VERSION ]] || die "couldn't read the backend's version from api/app/__init__.py"
 [[ -n $BUILD_NUMBER ]] || BUILD_NUMBER=$(git rev-list --count HEAD)
 [[ $BUILD_NUMBER =~ ^[0-9]+$ ]] || die "--build-number must be a whole number"
 SHA=$(git rev-parse --short HEAD)
-DIRTY=""
-[[ -z $(git status --porcelain -- app api) ]] || DIRTY="-dirty"
-# Docker tags can't hold "+", so the tag and file names use "-": 0.1.0-81-eb4a276.
-TAG="$BUILD_NAME-$BUILD_NUMBER-$SHA$DIRTY"
-if [[ -n $DIRTY ]]; then
-  warn "app/ or api/ has uncommitted changes: this build is marked $TAG"
-  if [[ -n $PUSH_REPO && $ALLOW_DIRTY -eq 0 ]]; then die "refusing to push a build with uncommitted changes (commit them, or --allow-dirty)"; fi
+dirty() { if [[ -n $(git status --porcelain -- "$1") ]]; then printf -- '-dirty'; fi; }
+UI_DIRTY=$(dirty app)
+API_DIRTY=$(dirty api)
+# Docker tags can't hold "+", so the tag and file names use "-": 1.0.0-92-eb4a276. TAG is the
+# UI's (the app files and the web image), API_TAG the backend's (the api and tricount images).
+TAG="$BUILD_NAME-$BUILD_NUMBER-$SHA$UI_DIRTY"
+API_TAG="$API_VERSION-$BUILD_NUMBER-$SHA$API_DIRTY"
+if [[ -n $UI_DIRTY && $((DO_FLUTTER + DO_WEB_IMAGE)) -gt 0 ]]; then
+  warn "app/ has uncommitted changes: the UI build is marked $TAG"
+  if [[ -n $PUSH_REPO && $DO_WEB_IMAGE -eq 1 && $ALLOW_DIRTY -eq 0 ]]; then die "refusing to push the web image with uncommitted changes in app/ (commit them, or --allow-dirty)"; fi
+fi
+if [[ -n $API_DIRTY && $DO_API_IMAGE -eq 1 ]]; then
+  warn "api/ has uncommitted changes: the backend build is marked $API_TAG"
+  if [[ -n $PUSH_REPO && $ALLOW_DIRTY -eq 0 ]]; then die "refusing to push the api image with uncommitted changes in api/ (commit them, or --allow-dirty)"; fi
 fi
 
 mkdir -p "$OUT"
@@ -212,25 +237,27 @@ show() { case $1 in "$ROOT"/*) printf '%s' "${1#"$ROOT"/}" ;; *) printf '%s' "$1
 keep() { cp "$1" "$OUT/$2"; ARTIFACTS+=("$2"); printf '   → %s\n' "$(show "$OUT/$2")"; }
 sha256() { if have sha256sum; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 
-printf '%sSplitkit %s+%s (%s%s), %s%s\n' "$BOLD" "$BUILD_NAME" "$BUILD_NUMBER" "$SHA" "$DIRTY" "$MODE" "$OFF"
+printf '%s%s UI %s, backend %s, build %s (%s), %s%s\n' "$BOLD" "$APP_NAME" "$BUILD_NAME" "$API_VERSION" "$BUILD_NUMBER" "$SHA" "$MODE" "$OFF"
 [[ $DO_PHONE -eq 0 ]] || printf '  phone apps talk to: %s\n' "${API_ORIGIN:-(none: set on the phone, dev tools)}"
 [[ $DO_WEB -eq 0 ]] || printf '  web bundle talks to: %s\n' "${WEB_API_ORIGIN:-its own origin}"
 
 # ---- Flutter options shared by the app builds ----
 
-FLUTTER=(--"$MODE" --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER")
+# BUILD_NUMBER also goes to the app itself, which shows it on Profile (core/version.dart).
+FLUTTER=(--"$MODE" --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER" --dart-define="BUILD_NUMBER=$BUILD_NUMBER"
+  --dart-define="APP_NAME=$APP_NAME")
 PHONE_DEFINES=(${DEFINES[@]+"${DEFINES[@]}"})
 [[ -z $API_ORIGIN ]] || PHONE_DEFINES+=("--dart-define=API_ORIGIN=$API_ORIGIN")
 [[ $DEV_TOOLS -eq 0 ]] || PHONE_DEFINES+=("--dart-define=DEV_TOOLS=true")
 WEB_DEFINES=(${DEFINES[@]+"${DEFINES[@]}"})
 [[ -z $WEB_API_ORIGIN ]] || WEB_DEFINES+=("--dart-define=API_ORIGIN=$WEB_API_ORIGIN")
 [[ $DEV_TOOLS -eq 0 ]] || WEB_DEFINES+=("--dart-define=DEV_TOOLS=true")
-# build.gradle.kts gives a beta its own application id ("Splitkit Beta"); empty is the normal app.
+# build.gradle.kts gives a beta its own application id ("<name> Beta"); empty is the normal app.
 ID_SUFFIX=""
-NAME=splitkit
-if [[ $BETA -eq 1 ]]; then ID_SUFFIX=.beta NAME=splitkit-beta; fi
+NAME=$PROJECT
+if [[ $BETA -eq 1 ]]; then ID_SUFFIX=.beta NAME=$PROJECT-beta; fi
 
-flutter_build() { (cd app && SPLITKIT_APP_ID_SUFFIX="$ID_SUFFIX" flutter build "$@"); }
+flutter_build() { (cd app && APP_ID="$APP_ID" APP_NAME="$APP_NAME" APP_ID_SUFFIX="$ID_SUFFIX" flutter build "$@"); }
 
 # ---- checks ----
 
@@ -257,7 +284,7 @@ if [[ $DO_ANDROID -gt 0 ]] && grep -q 'signingConfigs.getByName("debug")' app/an
 fi
 
 if [[ $DO_APK -eq 1 ]]; then
-  CURRENT="APK"; step "Android APK${ID_SUFFIX:+ (beta: com.splitkit.splitkit$ID_SUFFIX)}"
+  CURRENT="APK"; step "Android APK${ID_SUFFIX:+ (beta: $APP_ID$ID_SUFFIX)}"
   apks=app/build/app/outputs/flutter-apk
   rm -f "$apks"/app-*.apk
   if [[ $SPLIT_PER_ABI -eq 1 ]]; then
@@ -273,7 +300,7 @@ if [[ $DO_APK -eq 1 ]]; then
 fi
 
 if [[ $DO_AAB -eq 1 ]]; then
-  CURRENT="App Bundle"; step "Android App Bundle${ID_SUFFIX:+ (beta: com.splitkit.splitkit$ID_SUFFIX)}"
+  CURRENT="App Bundle"; step "Android App Bundle${ID_SUFFIX:+ (beta: $APP_ID$ID_SUFFIX)}"
   aab=app/build/app/outputs/bundle/$MODE/app-$MODE.aab
   rm -f "$aab"
   flutter_build appbundle "${FLUTTER[@]}" ${PHONE_DEFINES[@]+"${PHONE_DEFINES[@]}"}
@@ -291,14 +318,14 @@ if [[ $DO_IOS -eq 1 ]]; then
     app=app/build/ios/iphoneos/Runner.app
     [[ -d $app ]] || app=app/build/ios/$dir/Runner.app
     [[ -d $app ]] || die "couldn't find the built Runner.app"
-    (cd "$(dirname "$app")" && zip -qry "$OUT/splitkit-$TAG-ios-$MODE.app.zip" Runner.app)
-    ARTIFACTS+=("splitkit-$TAG-ios-$MODE.app.zip"); printf '   → %s\n' "$(show "$OUT/splitkit-$TAG-ios-$MODE.app.zip")"
+    (cd "$(dirname "$app")" && zip -qry "$OUT/$PROJECT-$TAG-ios-$MODE.app.zip" Runner.app)
+    ARTIFACTS+=("$PROJECT-$TAG-ios-$MODE.app.zip"); printf '   → %s\n' "$(show "$OUT/$PROJECT-$TAG-ios-$MODE.app.zip")"
   else
     [[ $MODE != debug ]] || die "an .ipa can't be a debug build: use --profile, --release or --no-codesign"
     step "iOS .ipa (needs signing set up in Xcode)"
     rm -rf app/build/ios/ipa
     flutter_build ipa "${FLUTTER[@]}" ${PHONE_DEFINES[@]+"${PHONE_DEFINES[@]}"}
-    for f in app/build/ios/ipa/*.ipa; do keep "$f" "splitkit-$TAG-$MODE.ipa"; done
+    for f in app/build/ios/ipa/*.ipa; do keep "$f" "$PROJECT-$TAG-$MODE.ipa"; done
   fi
 fi
 
@@ -309,13 +336,15 @@ if [[ $DO_WEB -eq 1 ]]; then
   web_flags=("${FLUTTER[@]}" ${WEB_DEFINES[@]+"${WEB_DEFINES[@]}"})
   [[ -z $BASE_HREF ]] || web_flags+=("--base-href=$BASE_HREF")
   flutter_build web "${web_flags[@]}"
-  tar -C app/build/web -czf "$OUT/splitkit-web-$TAG-$MODE.tar.gz" .
-  ARTIFACTS+=("splitkit-web-$TAG-$MODE.tar.gz"); printf '   → %s\n' "$(show "$OUT/splitkit-web-$TAG-$MODE.tar.gz")"
+  sed -i.bak "s/__APP_NAME__/$APP_NAME/g" app/build/web/index.html app/build/web/manifest.json
+  rm -f app/build/web/index.html.bak app/build/web/manifest.json.bak
+  tar -C app/build/web -czf "$OUT/$PROJECT-web-$TAG-$MODE.tar.gz" .
+  ARTIFACTS+=("$PROJECT-web-$TAG-$MODE.tar.gz"); printf '   → %s\n' "$(show "$OUT/$PROJECT-web-$TAG-$MODE.tar.gz")"
 fi
 
 # ---- Docker images ----
 
-# Keeps the image splitkit-<svc>:latest points at under a tag of its own before it's replaced:
+# Keeps the image <project>-<svc>:latest points at under a tag of its own before it's replaced:
 # the tag it was built with, if it still has one, else backup-<when it was built>.
 keep_previous() {
   local repo=$1 id tags t kept
@@ -327,7 +356,7 @@ keep_previous() {
       return 0
     fi
   done
-  kept=$(docker image inspect -f '{{with .Config.Labels}}{{index . "app.splitkit.tag"}}{{end}}' "$id")
+  kept=$(docker image inspect -f '{{with .Config.Labels}}{{index . "build.tag"}}{{end}}' "$id")
   if [[ -z $kept ]]; then
     kept=backup-$(docker image inspect -f '{{.Created}}' "$id" | cut -c1-16 | tr -d ':-' | tr 'T' '-')
   fi
@@ -335,41 +364,43 @@ keep_previous() {
   printf '   previous %s:latest is kept as %s:%s\n' "$repo" "$repo" "$kept"
 }
 
-build_image() { # image name, build context
-  local repo=$1 context=$2
+build_image() { # image name, build context, its part's version, tag and -dirty, then build options
+  local repo=$1 context=$2 version=$3 tag=$4 dirt=$5
+  shift 5
   keep_previous "$repo"
-  docker build \
+  docker build "$@" \
     --label "org.opencontainers.image.title=$repo" \
-    --label "org.opencontainers.image.version=$BUILD_NAME+$BUILD_NUMBER" \
-    --label "org.opencontainers.image.revision=$SHA$DIRTY" \
+    --label "org.opencontainers.image.version=$version+$BUILD_NUMBER" \
+    --label "org.opencontainers.image.revision=$SHA$dirt" \
     --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    --label "app.splitkit.tag=$TAG" \
-    -t "$repo:latest" -t "$repo:$TAG" "$context"
-  IMAGES_BUILT+=("$repo:$TAG")
+    --label "build.tag=$tag" \
+    -t "$repo:latest" -t "$repo:$tag" "$context"
+  IMAGES_BUILT+=("$repo:$tag")
 }
 
 if [[ $DO_API_IMAGE -eq 1 ]]; then
   CURRENT="API image"; step "Docker image: api (and tricount, the same image)"
-  build_image splitkit-api api
+  build_image "$PROJECT-api" api "$API_VERSION" "$API_TAG" "$API_DIRTY"
   # docker compose builds tricount from the same context: the same image under its own name.
-  keep_previous splitkit-tricount
-  docker tag splitkit-api:latest splitkit-tricount:latest
-  docker tag splitkit-api:latest "splitkit-tricount:$TAG"
-  IMAGES_BUILT+=("splitkit-tricount:$TAG")
+  keep_previous "$PROJECT-tricount"
+  docker tag "$PROJECT-api:latest" "$PROJECT-tricount:latest"
+  docker tag "$PROJECT-api:latest" "$PROJECT-tricount:$API_TAG"
+  IMAGES_BUILT+=("$PROJECT-tricount:$API_TAG")
 fi
 
 if [[ $DO_WEB_IMAGE -eq 1 ]]; then
   CURRENT="web image"; step "Docker image: web"
   [[ -z $WEB_API_ORIGIN && $DEV_TOOLS -eq 0 && $MODE == release ]] ||
     note "The web image is always a release build served from its own origin; --web-api-origin, --dev-tools and the mode apply to the web bundle only."
-  build_image splitkit-web app
+  build_image "$PROJECT-web" app "$BUILD_NAME" "$TAG" "$UI_DIRTY" \
+    --build-arg "BUILD_NUMBER=$BUILD_NUMBER" --build-arg "APP_NAME=$APP_NAME"
 fi
 
 if [[ -n $PUSH_REPO ]]; then
   CURRENT="push"; step "Pushing to $PUSH_REPO"
   for image in ${IMAGES_BUILT[@]+"${IMAGES_BUILT[@]}"}; do
-    svc=${image%%:*}; svc=${svc#splitkit-}
-    for remote in "$PUSH_REPO:split-$svc" "$PUSH_REPO:split-$svc-$TAG"; do
+    svc=${image%%:*}; svc=${svc#"$PROJECT"-}
+    for remote in "$PUSH_REPO:split-$svc" "$PUSH_REPO:split-$svc-${image#*:}"; do
       docker tag "$image" "$remote"
       docker push "$remote"
     done

@@ -70,7 +70,7 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  /// One of your payments in the plan: "Omar · Pays you ₹3,160.52" with a button.
+  /// One of your payments in the plan: "John · Pays you ₹500" with a button.
   Widget _yours(BuildContext context, UserOut me, SettlePlan plan, SuggestedPayment p) {
     final youPay = p.fromUser.id == me.id;
     final other = youPay ? p.toUser : p.fromUser;

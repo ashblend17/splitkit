@@ -794,13 +794,21 @@ PersonalAccountInTypeEnum _accountType(AccountType t) => PersonalAccountInTypeEn
 String? _notes(String? notes) => LocalWrites._text(notes);
 
 /// A balance correction on [accountId] by [delta], dated [day].
-PersonalTxnIn _adjustment(String accountId, ({MoneyFlow flow, int amountMinor}) delta, DateTime day) => PersonalTxnIn(
+/// A balance correction of [delta] on [day]. With [setTo] it also says what the balance is from
+/// then on (balances.dart setsBalance), so an older entry added later doesn't move it (ISS-130).
+PersonalTxnIn _adjustment(
+  String accountId,
+  ({MoneyFlow flow, int amountMinor}) delta,
+  DateTime day, {
+  int? setTo,
+}) => PersonalTxnIn(
   type: PersonalTxnInTypeEnum.adjustment,
   amountMinor: delta.amountMinor,
   description: 'Balance correction',
   date: apiDate(day),
   accountId: accountId,
   direction: PersonalTxnInDirectionEnum.fromJson(delta.flow.wire),
+  balanceMinor: setTo,
   source_: PersonalTxnInSource_Enum.manual,
 );
 
@@ -922,15 +930,30 @@ extension FinanceWrites on LocalWrites {
     final l = await _ledger();
     final before = _required(l.rawAccount(id), 'Account');
     if (before['status'] == 'closed') return;
+    // A closed account still counts in net worth, holdings and all: zeroing its ledger balance
+    // wouldn't take what they're worth off it (ISS-113).
+    final held = _holdingsWorth(l, id);
+    if (held != 0) {
+      _refuse(
+        'account_in_use',
+        'Its holdings are still worth ${formatMinor(held, currency: before['currency'] as String)}. '
+            'Set them to zero or delete them first',
+        status: 409,
+      );
+    }
     final body = _accountIn(before)..status = PersonalAccountInStatusEnum.closed;
     final balance = zeroFirst ? l.finance.balanceOf(id) : null;
     final delta = balance == null ? null : reconcileDelta(balance, 0, atCheckpoint: false);
     if (delta == null) return _queueAccountEdit(l, id, body, 'Closed');
     final draft = _Draft(this, l)
-      ..add(BatchItem.createEntry(LocalWrites._uuid.v4(), _adjustment(id, delta, appClock.now())))
+      ..add(BatchItem.createEntry(LocalWrites._uuid.v4(), _adjustment(id, delta, appClock.now(), setTo: 0)))
       ..add(BatchItem.updateAccount(id, body));
     await _queue(draft.op('Closed ${before['name']} at a zero balance'));
   }
+
+  /// What account [id]'s live holdings are worth together.
+  int _holdingsWorth(Ledger l, String id) =>
+      l.finance.holdings.where((h) => h.accountId == id).fold(0, (sum, h) => sum + h.marketValueMinor);
 
   /// Opens closed account [id] again. With a label, your entries with it and no account yet move
   /// in, as the server moves them.
@@ -1287,12 +1310,45 @@ extension FinanceWrites on LocalWrites {
     );
   }
 
+  /// "This was a refund" (ISS-089): income [incomeId] was money back for spend [spendId]. It
+  /// becomes a refund of it, under the spend's category, so it comes off spending instead of
+  /// counting as income, and it has been looked at. Refused when it's more than what's left to
+  /// refund of the spend.
+  Future<void> markAsRefund(String incomeId, String spendId) async {
+    final l = await _ledger();
+    final income = l.rawPersonal(incomeId);
+    if (income == null || income['deleted_at'] != null || income['type'] != 'income') {
+      _refuse('refund_invalid', 'Only money that came in can be a refund');
+    }
+    final spend = l.rawPersonal(spendId);
+    if (spend == null || spend['deleted_at'] != null || spend['type'] != 'expense') {
+      _refuse('unknown_refund_target', "That spend isn't available");
+    }
+    final left = l.finance.refundableMinor(PersonalRow(spend));
+    if ((income['amount_minor'] as int) > left) {
+      _refuse(
+        'refund_too_large',
+        'Only ${formatMinor(left, currency: spend['currency'] as String)} of this spend is left to refund',
+      );
+    }
+    await updatePersonal(
+      incomeId,
+      _bodyOf(l, incomeId)
+        ..type = PersonalTxnInTypeEnum.refund
+        ..refundOfId = spendId
+        ..categoryId = spend['category_id'] as String?
+        ..reviewed = true,
+    );
+  }
+
   /// Sets account [accountId]'s balance to what the bank says ([bankSaysMinor]: what it holds,
   /// or for a card or loan, what you owe) with a balance correction (an adjustment, the engine's
   /// reconcileDelta). With [checkpointDay] (a day key such as 20260921: the day of the balance the
   /// bank last reported, AccountBalance.lastReported), the gap is measured at that report and the
   /// correction dated that day, so it closes the gap there; without, against the balance now,
-  /// dated today. Returns the correction's id, or null when there's no gap (nothing is queued).
+  /// dated today, and the balance is [bankSaysMinor] from then on: an entry added later with an
+  /// older date or time doesn't move it (ISS-130). Returns the correction's id, or null when
+  /// there's no gap (nothing is queued).
   Future<String?> reconcile(String accountId, {required int bankSaysMinor, int? checkpointDay}) async {
     final l = await _ledger();
     final a = l.rawAccount(accountId);
@@ -1304,7 +1360,8 @@ extension FinanceWrites on LocalWrites {
     final day = checkpointDay == null
         ? appClock.now()
         : DateTime.utc(checkpointDay ~/ 10000, checkpointDay ~/ 100 % 100, checkpointDay % 100);
-    return createPersonal(_adjustment(accountId, delta, day));
+    // Set now, it's what the balance is from here; at a checkpoint, it closes the gap there.
+    return createPersonal(_adjustment(accountId, delta, day, setTo: checkpointDay == null ? bankSaysMinor : null));
   }
 
   /// A cash withdrawal, spend [atmEntryId], becomes a transfer into your Cash account

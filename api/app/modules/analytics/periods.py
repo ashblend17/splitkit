@@ -78,6 +78,26 @@ def trend_buckets(period: Period, on: date) -> list[Span]:
     return [Span(m, min(month_end(m), on), f"{m:%b}") for m in months]
 
 
+AVERAGE_COUNT = {"week": 8, "month": 6, "year": 12}
+"""How many full weeks (Week) or months (Month, Year) a category average looks back over."""
+
+
+def average_spans(period: Period, on: date) -> tuple[list[Span], Span]:
+    """What a category average is worked out over, oldest first, and the week or month under
+    way it's set against: on Week, the 8 weeks before the last 7 days; on Month and Year, the
+    6 or 12 whole months before this one, against this month so far."""
+    count = AVERAGE_COUNT[period]
+    if period == "week":
+        past = [
+            Span(on - timedelta(days=7 * k + 6), on - timedelta(days=7 * k), "")
+            for k in range(count, 0, -1)
+        ]
+        return past, Span(on - timedelta(days=6), on, "Last 7 days")
+    start = month_start(on)
+    months = [add_months(start, -k) for k in range(count, 0, -1)]
+    return [Span(m, month_end(m), f"{m:%b}") for m in months], Span(start, on, f"{on:%B} so far")
+
+
 def trend_label(period: Period) -> str:
     return {"week": "Last 7 days", "month": "Last 6 months", "year": "Last 12 months"}[period]
 

@@ -3,10 +3,15 @@
 .idea/
 .vscode/
 
-splitkit-design/*
+design/*
 CLAUDE.md
 ISSUES.md
 .claude/worktrees/
 
 # tool/build.sh output
 /dist/
+
+# Database dumps and deploy bundles: they hold real people's data
+*.sql
+*.dump
+*.tgz

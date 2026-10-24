@@ -20,6 +20,7 @@ import '../settlements/settlement_sheet.dart';
 import '../tricount_sync/tricount_status_line.dart';
 import 'group_balances_tab.dart';
 import 'settle_plan.dart';
+import '../../core/config.dart';
 
 /// A group's tabs. Each has its own address (`/groups/<id>`, `/groups/<id>/balances`, ...), and
 /// all of them are this one page, so the header, tabs and width stay put and only what's under
@@ -788,7 +789,7 @@ class _LinkMemberFormState extends ConsumerState<_LinkMemberForm> {
           ),
           const SizedBox(height: 8),
           Text(
-            'If they have a Splitkit account, $_name’s expenses and payments move to it now. '
+            'If they have a ${AppConfig.appName} account, $_name’s expenses and payments move to it now. '
             'If not, they take $_name’s place when they sign up with this email. '
             'Nobody’s balance changes.',
             style: SkText.body(13, 400, color: SkColors.ink2),
@@ -911,7 +912,7 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
           if (_byEmail && _invite) ...[
             const SizedBox(height: 10),
             Text(
-              "There's no Splitkit account with that email yet. Add their name: they can be part of "
+              "There's no ${AppConfig.appName} account with that email yet. Add their name: they can be part of "
               'splits now, and join the group when they sign up with this email.',
               style: SkText.body(13, 400, color: SkColors.ink2, height: 1.4),
             ),
@@ -931,7 +932,7 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
             const SizedBox(height: 8),
             Text(
               _byEmail
-                  ? 'They see the group next time they open Splitkit.'
+                  ? 'They see the group next time they open ${AppConfig.appName}.'
                   : 'They can be part of splits now and link an account later.',
               style: SkText.body(13, 400, color: SkColors.ink2),
             ),

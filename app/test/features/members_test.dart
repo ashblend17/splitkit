@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:splitkit/features/common/common.dart';
+import 'package:app/features/common/common.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

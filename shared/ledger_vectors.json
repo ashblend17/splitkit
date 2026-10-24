@@ -86,7 +86,7 @@
     {"transaction_id": "11111111-1111-4111-8111-111111111111", "rule_id": "22222222-2222-4222-8222-222222222222", "id": "af143c33-aa86-586b-8f88-3392e21af774"}
   ],
   "reminder_state_ids": [
-    {"user_id": "49eaa721-4d30-5296-a193-d18818ade774", "dedup_key": "goal_behind:79002d77-7486-552b-a16c-d73921823dca:2026-09", "id": "981ff657-502b-5281-a806-5f256277c07e"},
+    {"user_id": "47e3d162-5a53-5b55-bce4-71577be7cca5", "dedup_key": "goal_behind:bfd73a31-7409-5229-82d4-2b385e403c7d:2026-09", "id": "02d1a7fd-9b5e-5fb5-a9d9-b2a9148ad377"},
     {"user_id": "0b6f3c0e-1d2a-4c6b-9f00-6a1d2c3b4e5f", "dedup_key": "setup_gap", "id": "4c4571c7-03ba-5609-a0e4-8ea25f1f50d2"}
   ],
   "account_types": [

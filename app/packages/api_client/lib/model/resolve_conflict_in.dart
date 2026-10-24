@@ -120,12 +120,12 @@ class ResolveConflictInKeepEnum {
 
   String toJson() => value;
 
-  static const splitkit = ResolveConflictInKeepEnum._(r'splitkit');
+  static const local = ResolveConflictInKeepEnum._(r'local');
   static const tricount = ResolveConflictInKeepEnum._(r'tricount');
 
   /// List of all possible values in this [enum][ResolveConflictInKeepEnum].
   static const values = <ResolveConflictInKeepEnum>[
-    splitkit,
+    local,
     tricount,
   ];
 
@@ -165,7 +165,7 @@ class ResolveConflictInKeepEnumTypeTransformer {
   ResolveConflictInKeepEnum? decode(dynamic data, {bool allowNull = true}) {
     if (data != null) {
       switch (data) {
-        case r'splitkit': return ResolveConflictInKeepEnum.splitkit;
+        case r'local': return ResolveConflictInKeepEnum.local;
         case r'tricount': return ResolveConflictInKeepEnum.tricount;
         default:
           if (!allowNull) {

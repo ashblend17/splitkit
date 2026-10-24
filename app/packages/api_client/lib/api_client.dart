@@ -218,6 +218,10 @@ class ApiClient {
           return CategoryOut.fromJson(value);
         case 'CategoryTotal':
           return CategoryTotal.fromJson(value);
+        case 'ChartAverage':
+          return ChartAverage.fromJson(value);
+        case 'ChartAverages':
+          return ChartAverages.fromJson(value);
         case 'ChartBar':
           return ChartBar.fromJson(value);
         case 'ChartRow':

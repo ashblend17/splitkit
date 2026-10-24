@@ -4,10 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sembast/sembast_memory.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/local/outbox.dart';
-import 'package:splitkit/core/local/store.dart';
-import 'package:splitkit/core/local/sync_engine.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/local/outbox.dart';
+import 'package:app/core/local/store.dart';
+import 'package:app/core/local/sync_engine.dart';
 
 import '../fake_backend.dart';
 

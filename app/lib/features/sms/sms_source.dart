@@ -26,8 +26,13 @@ abstract class SmsSource {
   Stream<void> get changes;
 
   /// What the phone needs to notify with the app closed: whether to, whether to offer Split,
-  /// and which senders are banks.
-  Future<void> configure({required bool notify, required bool split, required String senderPattern});
+  /// whether a locked phone shows what it says, and which senders are banks.
+  Future<void> configure({
+    required bool notify,
+    required bool split,
+    required bool lockScreenAmounts,
+    required String senderPattern,
+  });
 
   Future<bool> hasNotificationAccess();
 
@@ -45,8 +50,8 @@ abstract class SmsSource {
 typedef SmsLaunch = ({RawSms sms, bool split, int notification});
 
 class AndroidSmsSource implements SmsSource {
-  static const _methods = MethodChannel('splitkit/sms');
-  static const _live = EventChannel('splitkit/sms/live');
+  static const _methods = MethodChannel('app/sms');
+  static const _live = EventChannel('app/sms/live');
 
   @override
   bool get available => true;
@@ -81,8 +86,17 @@ class AndroidSmsSource implements SmsSource {
   Stream<void> get changes => _live.receiveBroadcastStream();
 
   @override
-  Future<void> configure({required bool notify, required bool split, required String senderPattern}) =>
-      _methods.invokeMethod<void>('configure', {'notify': notify, 'split': split, 'senders': senderPattern});
+  Future<void> configure({
+    required bool notify,
+    required bool split,
+    required bool lockScreenAmounts,
+    required String senderPattern,
+  }) => _methods.invokeMethod<void>('configure', {
+    'notify': notify,
+    'split': split,
+    'amounts': lockScreenAmounts,
+    'senders': senderPattern,
+  });
 
   @override
   Future<bool> hasNotificationAccess() async => await _methods.invokeMethod<bool>('notificationAccess') ?? false;
@@ -134,7 +148,12 @@ class NoSmsSource implements SmsSource {
   Stream<void> get changes => const Stream.empty();
 
   @override
-  Future<void> configure({required bool notify, required bool split, required String senderPattern}) async {}
+  Future<void> configure({
+    required bool notify,
+    required bool split,
+    required bool lockScreenAmounts,
+    required String senderPattern,
+  }) async {}
 
   @override
   Future<bool> hasNotificationAccess() async => false;

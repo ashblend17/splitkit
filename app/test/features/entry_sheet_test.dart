@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/copy/copy.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/writes.dart';
-import 'package:splitkit/core/theme/theme.dart';
-import 'package:splitkit/design_system/design_system.dart';
-import 'package:splitkit/features/personal/personal_txn_sheet.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/copy/copy.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/writes.dart';
+import 'package:app/core/theme/theme.dart';
+import 'package:app/design_system/design_system.dart';
+import 'package:app/features/personal/personal_txn_sheet.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';
@@ -255,6 +255,54 @@ void main() {
         ('refund', 24000, coffee, icici),
       );
       expect(body['category_id'], _txn(tester, coffee).category!.id);
+    });
+
+    testWidgets('money in from a merchant you spent at can be marked as a refund of it (ISS-089)', (tester) async {
+      final be = await pumpApp(tester, location: '/personal', size: tall);
+      be.offline = true;
+      Future<String> income(String merchant, int amount) => runWrite(
+        tester,
+        _writes(tester).createPersonal(
+          PersonalTxnIn(
+          type: PersonalTxnInTypeEnum.income,
+          amountMinor: amount,
+          description: 'Money in',
+          date: DateTime(2026, 9, 24),
+          merchant: merchant,
+          accountId: hdfc,
+          reviewed: false,
+          source_: PersonalTxnInSource_Enum.sms,
+          ),
+        ),
+      );
+      // From someone you never paid, and more than the Swiggy order: nothing to offer. (Money
+      // back from Rahul, whom you paid ₹500, would be offered: you're the one who knows.)
+      await _open(tester, id: await income('JOHN DOE', 20000));
+      expect(find.text('This was a refund'), findsNothing);
+      Navigator.of(tester.element(find.byType(BottomSheet).first)).pop();
+      await tester.pumpAndSettle();
+      await _open(tester, id: await income('SWIGGY', 50000));
+      expect(find.text('This was a refund'), findsNothing);
+      Navigator.of(tester.element(find.byType(BottomSheet).first)).pop();
+      await tester.pumpAndSettle();
+
+      final back = await income('SWIGGY', 20000);
+      await _open(tester, id: back);
+      expect(find.bySemanticsLabel(RegExp('This was a refund')), findsOneWidget);
+      await _tap(tester, find.text('This was a refund'));
+      // One batch: the plans your rules made from it as income go with it.
+      final (method, path, body) = _queued(tester).last;
+      expect((method, path), ('POST', '/api/v1/personal/batch'));
+      final item = (body!['items'] as List).cast<Map>().singleWhere((i) => i['id'] == back);
+      final sent = item['transaction'] as Map;
+      expect(
+        (item['op'], sent['type'], sent['refund_of_id'], sent['category_id'], sent['reviewed']),
+        ('update', 'refund', swiggy, _txn(tester, swiggy).category!.id, true),
+      );
+      expect(_txn(tester, back).type, PersonalTxnOutTypeEnum.refund);
+      // Now a refund, it isn't offered again; and the spend has ₹286 left to refund.
+      await _open(tester, id: back);
+      expect(find.text('This was a refund'), findsNothing);
     });
 
     testWidgets('Record a refund on a spend opens a refund of it', (tester) async {

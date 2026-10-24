@@ -17,6 +17,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.7.1"
+  api_client:
+    dependency: "direct main"
+    description:
+      path: "packages/api_client"
+      relative: true
+    source: path
+    version: "1.0.0"
   args:
     dependency: transitive
     description:
@@ -668,13 +675,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.1"
-  splitkit_api:
-    dependency: "direct main"
-    description:
-      path: "packages/splitkit_api"
-      relative: true
-    source: path
-    version: "1.0.0"
   stack_trace:
     dependency: transitive
     description:

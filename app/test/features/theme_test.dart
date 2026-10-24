@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/theme/theme.dart';
+import 'package:app/core/theme/theme.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';

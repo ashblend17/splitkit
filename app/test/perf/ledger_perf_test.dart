@@ -28,25 +28,25 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sembast/sembast_io.dart';
 import 'package:sembast/sembast_memory.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/categorise/category_guesser.dart';
-import 'package:splitkit/core/finance/finance.dart';
-import 'package:splitkit/core/integrations.dart';
-import 'package:splitkit/core/local/ledger.dart';
-import 'package:splitkit/core/local/outbox.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/local/store.dart';
-import 'package:splitkit/core/local/sync_engine.dart';
-import 'package:splitkit/core/local/writes.dart';
-import 'package:splitkit/core/session/session.dart';
-import 'package:splitkit/core/sms/sms.dart';
-import 'package:splitkit/core/sms/sms_ids.dart';
-import 'package:splitkit/core/sms/sms_parser.dart';
-import 'package:splitkit/core/sms/sms_scan.dart';
-import 'package:splitkit/core/theme/theme.dart';
-import 'package:splitkit/design_system/design_system.dart' show IconTile;
-import 'package:splitkit/features/personal/personal_history_page.dart';
-import 'package:splitkit/features/sms/sms_importer.dart' show smsImportUnits, smsScanInput;
+import 'package:app/core/api/api.dart';
+import 'package:app/core/categorise/category_guesser.dart';
+import 'package:app/core/finance/finance.dart';
+import 'package:app/core/integrations.dart';
+import 'package:app/core/local/ledger.dart';
+import 'package:app/core/local/outbox.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/local/store.dart';
+import 'package:app/core/local/sync_engine.dart';
+import 'package:app/core/local/writes.dart';
+import 'package:app/core/session/session.dart';
+import 'package:app/core/sms/sms.dart';
+import 'package:app/core/sms/sms_ids.dart';
+import 'package:app/core/sms/sms_parser.dart';
+import 'package:app/core/sms/sms_scan.dart';
+import 'package:app/core/theme/theme.dart';
+import 'package:app/design_system/design_system.dart' show IconTile;
+import 'package:app/features/personal/personal_history_page.dart';
+import 'package:app/features/sms/sms_importer.dart' show smsImportUnits, smsScanInput;
 
 import '../helpers.dart';
 import 'heavy_data.dart';
@@ -777,7 +777,7 @@ void main() {
 
   test('opening the device store: sembast on disk, every entity read', () async {
     // The phone's store (sembast_io, one JSON line per entity), written once.
-    final dir = await Directory.systemTemp.createTemp('splitkit-perf-');
+    final dir = await Directory.systemTemp.createTemp('app-perf-');
     addTearDown(() => dir.delete(recursive: true));
     final path = '${dir.path}/store.db';
     await (await _heavyStore(data, path, factory: databaseFactoryIo)).close();
@@ -875,7 +875,7 @@ void main() {
             // No store: views read the ledger above.
             localStoreProvider.overrideWith((ref) => Completer<LocalStore>().future),
           ],
-          child: MaterialApp(theme: buildSplitkitTheme(), home: const PersonalHistoryPage()),
+          child: MaterialApp(theme: buildAppTheme(), home: const PersonalHistoryPage()),
         ),
       );
       for (var i = 0; i < 20 && find.text('Per day').evaluate().isEmpty; i++) {

@@ -27,7 +27,8 @@ SmsVerdict parseSms(RawSms sms, {Set<String> testSenders = const {}}) {
     (kind, unread) = (readAs, reason);
     break;
   }
-  if (_foreign.hasMatch(lower)) return const SmsSkipped(SmsSkip.foreignCurrency);
+  // Another currency: read only when the bank also says what it came to in rupees (ISS-045).
+  if (_foreign.hasMatch(lower) && _amount(text) == null) return const SmsSkipped(SmsSkip.foreignCurrency);
   if (kind == SmsKind.refund && _refundPending.hasMatch(lower)) return const SmsSkipped(SmsSkip.notYet);
 
   // Money back, and a card bill as the card's bank tells it, are always money in.

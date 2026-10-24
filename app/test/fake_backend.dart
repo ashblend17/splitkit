@@ -8,14 +8,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sembast/sembast_memory.dart';
-import 'package:splitkit/core/api/api.dart';
-import 'package:splitkit/core/local/providers.dart';
-import 'package:splitkit/core/router/router.dart';
-import 'package:splitkit/features/shell/app_mode.dart';
-import 'package:splitkit/features/shell/sync_banner.dart';
-import 'package:splitkit/features/sms/sms_source.dart';
-import 'package:splitkit/core/session/session.dart';
-import 'package:splitkit/core/theme/theme_mode.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/local/providers.dart';
+import 'package:app/core/router/router.dart';
+import 'package:app/features/shell/app_mode.dart';
+import 'package:app/features/shell/sync_banner.dart';
+import 'package:app/features/sms/sms_source.dart';
+import 'package:app/core/session/session.dart';
+import 'package:app/core/theme/theme_mode.dart';
 
 import 'fake_sms.dart';
 
@@ -42,6 +42,7 @@ class FakeBackend {
       '/api/v1/expenses/$dinnerId/history': <dynamic>[],
       '/api/v1/categories': fixture('categories'),
       '/api/v1/splits/methods': fixture('split_methods'),
+      '/api/v1/health': {'status': 'ok', 'version': '1.0.0'},
       '/api/v1/friends/$friendId/settle-up': plan,
       '/api/v1/categories?scope=personal': fixture('personal_categories'),
       '/api/v1/categories?': [...fixture('categories') as List, ...fixture('personal_categories') as List],

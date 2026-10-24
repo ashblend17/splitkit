@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/finance/finance.dart';
+import 'package:app/core/finance/finance.dart';
 
 /// shared/ledger_vectors.json: the personal ledger's fixed rules, which the server (ledger_rules.py,
 /// migration 0013's backfill; api/tests/api/test_personal_backfill.py) passes too.

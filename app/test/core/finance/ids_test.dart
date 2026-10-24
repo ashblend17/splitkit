@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/finance/finance.dart';
+import 'package:app/core/finance/finance.dart';
 
 void main() {
   const john = '49eaa721-4d30-5296-a193-d18818ade774'; // the seed's john

@@ -66,6 +66,19 @@ class SplitController extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool get everyoneIncluded => people.every((p) => _included.contains(p.id));
+
+  /// A tap on a person's row rather than its checkbox. With everyone ticked (as a new split
+  /// starts) it ticks only them, so "just Rahul and me" is two taps, not one per person left
+  /// out; after that each tap ticks or unticks one person, as the checkbox does.
+  void tapRow(String id) {
+    if (!everyoneIncluded) return toggle(id);
+    _included
+      ..clear()
+      ..add(id);
+    notifyListeners();
+  }
+
   void setValue(String id, String text) {
     (_values[_method] ??= {})[id] = text;
     notifyListeners();
@@ -437,14 +450,9 @@ class _PersonRowState extends State<_PersonRow> {
     final p = widget.person;
     final equal = c.method == 'equal';
     final on = c.isIncluded(p.id);
-    return Container(
+    final row = Container(
       constraints: const BoxConstraints(minHeight: 68),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: SkColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: SkColors.line),
-      ),
       child: Row(
         children: [
           if (equal) ...[
@@ -495,6 +503,25 @@ class _PersonRowState extends State<_PersonRow> {
                   : const SplitValueFormatter(whole: 6, places: 4),
             ),
         ],
+      ),
+    );
+    return Semantics(
+      onTapHint: !equal
+          ? null
+          : c.everyoneIncluded
+          ? 'Split with ${p.name} only'
+          : on
+          ? 'Leave ${p.name} out'
+          : 'Include ${p.name}',
+      child: Material(
+        color: SkColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: SkColors.line),
+        ),
+        clipBehavior: Clip.antiAlias,
+        // Equally only: the other methods' rows are for typing.
+        child: InkWell(onTap: equal ? () => c.tapRow(p.id) : null, child: row),
       ),
     );
   }

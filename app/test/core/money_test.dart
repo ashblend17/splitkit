@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/money/money.dart';
+import 'package:app/core/money/money.dart';
 
 void main() {
   test('formatMinor matches the API formatter', () {
