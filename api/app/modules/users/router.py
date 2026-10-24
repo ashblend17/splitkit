@@ -18,7 +18,7 @@ def update_me(body: UserUpdate, actor: CurrentActor, session: DbSession):
     actor.require_write()
     user = actor.user
     check_version(user, body.version)
-    changes = body.model_dump(exclude_unset=True, exclude={"version"})
+    changes = body.model_dump(exclude_none=True, exclude={"version"})
     diff = {
         k: {"from": getattr(user, k), "to": v} for k, v in changes.items() if getattr(user, k) != v
     }

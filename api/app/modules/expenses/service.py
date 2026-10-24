@@ -8,8 +8,9 @@ from app.core.events import record
 from app.core.versioning import check_version, client_id, replayed_create
 from app.modules.auth.deps import Actor
 from app.modules.balances import repository as ledger
-from app.modules.balances.engine import pairwise
+from app.modules.balances.engine import positions
 from app.modules.categories import repository as categories
+from app.modules.categories import rules
 from app.modules.categories.schemas import CategoryOut
 from app.modules.expenses import repository as repo
 from app.modules.expenses.models import Expense, ExpenseSplit
@@ -27,14 +28,14 @@ def to_out(session: Session, e: Expense, me: uuid.UUID) -> ExpenseOut:
         categories.get_visible(session, e.category_id, me, "group") if e.category_id else None
     )
     my_share = next((s.share_minor for s in e.splits if s.user_id == me), 0)
-    owed_to_payer = pairwise(
-        e.payer_id, ledger.flows_by_group(session, [e.group_id]).get(e.group_id, [])
-    )
+    pos = positions(ledger.flows_by_group(session, [e.group_id]).get(e.group_id, []))
 
     def status(user_id: uuid.UUID) -> str:
+        # As the group's fewest payments see it: a share is settled once its person pays
+        # nobody in the group, whoever the plan has them paying.
         if user_id == e.payer_id:
             return "paid"
-        return "owes" if owed_to_payer.get(user_id, 0) > 0 else "settled"
+        return "owes" if pos.get(user_id, 0) < 0 else "settled"
 
     return ExpenseOut(
         id=e.id,
@@ -145,6 +146,7 @@ def create_expense(
         {"description": expense.description, "amount_minor": expense.amount_minor},
         obj=expense,
     )
+    rules.learn(session, actor, expense.description, expense.category_id)
     session.commit()
     return get_expense(session, actor, expense.id)
 
@@ -166,7 +168,7 @@ def update_expense(
     )
     split_rows = _check(session, actor, group, body, allowed)
 
-    before = _snapshot(expense)
+    before = snapshot(expense)
     expense.description = body.description.strip()
     expense.amount_minor = body.amount_minor
     expense.payer_id = body.payer_id
@@ -177,14 +179,17 @@ def update_expense(
     expense.acting_admin_id = actor.admin_id
     expense.updated_at = datetime.now(UTC)
     repo.replace_splits(session, expense, split_rows)
-    after = {**_snapshot(expense), "splits": {str(s.user_id): s.share_minor for s in split_rows}}
-    diff = {k: {"from": before[k], "to": after[k]} for k in before if before[k] != after[k]}
+    after = {**snapshot(expense), "splits": {str(s.user_id): s.share_minor for s in split_rows}}
+    diff = changes(before, after)
     record(session, actor, "expense.update", "expense", expense.id, group.id, diff, obj=expense)
+    if "category_id" in diff:
+        rules.learn(session, actor, expense.description, expense.category_id)
     session.commit()
     return get_expense(session, actor, expense.id)
 
 
-def _snapshot(e: Expense) -> dict:
+def snapshot(e: Expense) -> dict:
+    """What an edit's history diff compares (see changes)."""
     return {
         "description": e.description,
         "amount_minor": e.amount_minor,
@@ -195,6 +200,11 @@ def _snapshot(e: Expense) -> dict:
         "split_method": e.split_method,
         "splits": {str(s.user_id): s.share_minor for s in e.splits},
     }
+
+
+def changes(before: dict, after: dict) -> dict:
+    """{"amount_minor": {"from": 120000, "to": 150000}, ...} for what differs."""
+    return {k: {"from": before[k], "to": after[k]} for k in before if before[k] != after[k]}
 
 
 def set_deleted(

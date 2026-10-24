@@ -1,0 +1,64 @@
+# The server's stack: runs the images tool/push_images.sh pushed, so nothing is built there.
+# Needs a .env with IMAGE, DB_NAME, DB_USER, POSTGRES_PASSWORD and JWT_SECRET (see .env.example),
+# and COMPOSE_PROJECT_NAME unless the folder's name is the project's. Only web is published;
+# its nginx proxies /api/ to the API over the compose network.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:?set DB_NAME in .env}
+      POSTGRES_USER: ${DB_USER:?set DB_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    image: ${IMAGE:?set IMAGE in .env}:split-api
+    environment:
+      ENV: prod
+      APP_NAME: ${APP_NAME:-App}
+      DATABASE_URL: postgresql+psycopg://${DB_USER}:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      TRICOUNT_TIME_ZONE: ${TRICOUNT_TIME_ZONE:-Asia/Kolkata}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # Keeps linked groups in sync with Tricount (api/app/modules/tricount_sync). Remove this
+  # service to turn the sync off; links then just stop updating.
+  tricount:
+    image: ${IMAGE}:split-tricount
+    command: ["python", "-m", "app.modules.tricount_sync"]
+    environment:
+      ENV: prod
+      APP_NAME: ${APP_NAME:-App}
+      DATABASE_URL: postgresql+psycopg://${DB_USER}:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET}
+      TRICOUNT_TIME_ZONE: ${TRICOUNT_TIME_ZONE:-Asia/Kolkata}
+    depends_on:
+      api:
+        condition: service_healthy  # its start-up runs the migrations
+    restart: unless-stopped
+
+  web:
+    image: ${IMAGE}:split-web
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-80}:80"
+    restart: unless-stopped
+
+volumes:
+  db-data:

@@ -1,0 +1,326 @@
+{
+  "about": "The entry id each corpus message that parsed got before SmsKind was added (finance revamp S1), captured with the parser as it was then, for user_id. sms_parser_test.dart checks they still parse to the same id, direction, amount and reference. Never regenerate it: a changed id is a duplicate entry on every phone. (One exception, 2026-10-24: the payee in HDFC salary by NEFT was renamed to JOHN D, a different message, so that one id was taken anew; every other id is as captured.)",
+  "user_id": "6f1d2c3b-9a8e-4b7c-8d5e-1f2a3b4c5d6e",
+  "messages": [
+    {
+      "name": "HDFC UPI sent (new format)",
+      "sender": "VM-HDFCBK-S",
+      "received": "2026-10-12T13:10:00+05:30",
+      "body": "Sent Rs.450.00\nFrom HDFC Bank A/C *4821\nTo SWIGGY\nOn 12/10/26\nRef 627812345678\nNot You?\nCall 18002586161/SMS BLOCK UPI to 7308080808",
+      "id": "af973efe-3153-559e-98e9-9b95f63e43cf",
+      "direction": "spent",
+      "amount_minor": 45000,
+      "reference": "627812345678"
+    },
+    {
+      "name": "HDFC UPI sent, without the footer that says UPI",
+      "sender": "VM-HDFCBK-S",
+      "received": "2026-09-24T21:00:00+05:30",
+      "body": "Sent Rs.320.00\nFrom HDFC Bank A/C *4821\nTo ZOMATO\nOn 24/09/26\nRef 626800000001",
+      "id": "fbbb4532-843d-5a32-80aa-655a958a4188",
+      "direction": "spent",
+      "amount_minor": 32000,
+      "reference": "626800000001"
+    },
+    {
+      "name": "HDFC UPI sent to a person",
+      "sender": "AD-HDFCBK",
+      "received": "2026-09-22T06:50:00+05:30",
+      "body": "Sent Rs.500.00\nFrom HDFC Bank A/C *4821\nTo RAHUL SHARMA\nOn 22/09/26\nRef 626502117394\nNot You?\nCall 18002586161/SMS BLOCK UPI to 7308080808",
+      "id": "2b431e79-6a89-56ef-80f2-e180ec0f7c29",
+      "direction": "spent",
+      "amount_minor": 50000,
+      "reference": "626502117394"
+    },
+    {
+      "name": "HDFC UPI debited to a VPA (old format)",
+      "sender": "VM-HDFCBK",
+      "received": "2026-10-11T21:05:00+05:30",
+      "body": "Rs.1250.00 debited from a/c **4821 on 11-10-26 to VPA zomato.payu@axisbank(UPI Ref No 628412345671). Not you? Call on 18002586161 to report",
+      "id": "85333347-fb82-5ed1-a709-6ed7a71e896e",
+      "direction": "spent",
+      "amount_minor": 125000,
+      "reference": "628412345671"
+    },
+    {
+      "name": "HDFC UPI received",
+      "sender": "JD-HDFCBK-S",
+      "received": "2026-10-10T20:15:00+05:30",
+      "body": "Rs.2500.00 credited to HDFC Bank A/c XX4821 on 10-10-26 by a/c linked to VPA rahul.sharma@okaxis (UPI Ref No 628312345670).",
+      "id": "1e4f6781-b8ab-5255-84b7-92464b828ed5",
+      "direction": "received",
+      "amount_minor": 250000,
+      "reference": "628312345670"
+    },
+    {
+      "name": "HDFC card spend",
+      "sender": "VM-HDFCBK-T",
+      "received": "2026-10-09T19:31:10+05:30",
+      "body": "Spent Rs.1,299.00 On HDFC Bank Card 5678 At AMAZON PAY INDIA PRIVATE LIMITED On 2026-10-09:19:31:05.Not You? To Block+Reissue Call 18002323232/SMS BLOCK CC 5678 to 7308080808",
+      "id": "629a2e17-3b4a-53ee-b1d3-e6a7e0de4e04",
+      "direction": "spent",
+      "amount_minor": 129900,
+      "reference": null
+    },
+    {
+      "name": "HDFC credit card spend, with the limit",
+      "sender": "AX-HDFCBK-S",
+      "received": "2026-10-08T18:00:00+05:30",
+      "body": "Rs.3,450.00 spent on HDFC Bank Credit Card XX9876 at DMART on 08-10-26. Avl Lmt: Rs.1,23,456.00. Not you? Call 18002586161",
+      "id": "0cb4e290-584e-5f2d-9eaa-8291dd901372",
+      "direction": "spent",
+      "amount_minor": 345000,
+      "reference": null
+    },
+    {
+      "name": "HDFC salary by NEFT, with the balance",
+      "sender": "VM-HDFCBK-S",
+      "received": "2026-10-01T10:02:00+05:30",
+      "body": "Update! INR 85,000.00 deposited in HDFC Bank A/c XX4821 on 01-OCT-26 for NEFT Cr-CITI0000001-ACME CORP-JOHN D-CITIN26100112345.Avl bal INR 1,12,480.00. Cheque deposits in A/C are subject to clearing",
+      "id": "d390bb29-1d4d-53b4-9c58-ab8e43071a2a",
+      "direction": "received",
+      "amount_minor": 8500000,
+      "reference": "CITIN26100112345"
+    },
+    {
+      "name": "HDFC ATM withdrawal",
+      "sender": "VM-HDFCBK-S",
+      "received": "2026-10-07T11:40:00+05:30",
+      "body": "Rs.2000.00 withdrawn at ATM HDFC0001234 from A/c XX4821 on 07-10-26. Avl Bal: Rs.40,276.50 Not you? Call 18002586161",
+      "id": "d9b06a61-9956-52ae-b2d8-e6fe9d0c4572",
+      "direction": "spent",
+      "amount_minor": 200000,
+      "reference": null
+    },
+    {
+      "name": "HDFC IMPS to an account",
+      "sender": "VM-HDFCBK-S",
+      "received": "2026-10-06T09:00:00+05:30",
+      "body": "IMPS Rs.5000.00 sent from HDFC Bank A/c XX4821 to A/c XX7788 (IFSC ICIC0001234) on 06-10-26. Ref 628009876543. Avl bal: Rs.45,276.50",
+      "id": "b2fb004d-2f6c-5153-a41e-a6bc33ae13ab",
+      "direction": "spent",
+      "amount_minor": 500000,
+      "reference": "628009876543"
+    },
+    {
+      "name": "HDFC net banking bill",
+      "sender": "VM-HDFCBK-S",
+      "received": "2026-10-05T08:00:00+05:30",
+      "body": "Rs.1,120.00 debited from HDFC Bank A/c XX4821 on 05-10-26 towards AIRTEL via NetBanking. Avl bal Rs.50,276.50",
+      "id": "5b55c7fe-1753-58f3-8ade-deb5e6fb96a0",
+      "direction": "spent",
+      "amount_minor": 112000,
+      "reference": null
+    },
+    {
+      "name": "HDFC debit with no date: the day it arrived",
+      "sender": "VM-HDFCBK-S",
+      "received": "2026-10-04T22:30:00+05:30",
+      "body": "Rs.640.00 debited from HDFC Bank A/c XX4821 to VPA starbucks.in@hdfcbank. UPI Ref No 627700112244.",
+      "id": "42d28c53-384f-5978-a198-30f5fc3786f4",
+      "direction": "spent",
+      "amount_minor": 64000,
+      "reference": "627700112244"
+    },
+    {
+      "name": "HDFC: a date far from when it arrived is not believed",
+      "sender": "VM-HDFCBK-S",
+      "received": "2026-10-04T22:30:00+05:30",
+      "body": "Rs.99.00 debited from HDFC Bank A/c XX4821 on 01-01-25 to VPA jiomobility@hdfcbank. UPI Ref No 627700112245.",
+      "id": "546538ec-3b86-5e0f-91c4-f74cda287007",
+      "direction": "spent",
+      "amount_minor": 9900,
+      "reference": "627700112245"
+    },
+    {
+      "name": "ICICI UPI debit, payee credited",
+      "sender": "VM-ICICIB-S",
+      "received": "2026-10-12T13:12:00+05:30",
+      "body": "ICICI Bank Acct XX123 debited for Rs 450.00 on 12-Oct-26; SWIGGY credited. UPI:627912345678. Call 18002662 for dispute. SMS BLOCK 123 to 9215676766.",
+      "id": "a210c98c-7bfe-5577-b317-2a85ec1c1f62",
+      "direction": "spent",
+      "amount_minor": 45000,
+      "reference": "627912345678"
+    },
+    {
+      "name": "ICICI UPI to a friend",
+      "sender": "AD-ICICIB-S",
+      "received": "2026-09-24T20:00:00+05:30",
+      "body": "ICICI Bank Acct XX123 debited for Rs 750.00 on 24-Sep-26; KABIR MEHTA credited. UPI:626700112233. Call 18002662 for dispute.",
+      "id": "d87a3c95-e66e-56d0-be75-f0d6e8540c50",
+      "direction": "spent",
+      "amount_minor": 75000,
+      "reference": "626700112233"
+    },
+    {
+      "name": "ICICI credit card spend (limit, so credit)",
+      "sender": "VM-ICICIT-S",
+      "received": "2026-10-11T18:20:00+05:30",
+      "body": "INR 1,299.00 spent using ICICI Bank Card XX9012 on 11-Oct-26 on AMAZON. Avl Limit: INR 1,23,456.00. If not you, call 1800 2662/SMS BLOCK 9012 to 9215676766",
+      "id": "df180d38-5ffa-58a8-afc9-cb9b708c44fe",
+      "direction": "spent",
+      "amount_minor": 129900,
+      "reference": null
+    },
+    {
+      "name": "ICICI UPI received",
+      "sender": "VM-ICICIB-S",
+      "received": "2026-10-10T19:00:00+05:30",
+      "body": "Dear Customer, Acct XX123 is credited with Rs 25000.00 on 10-Oct-26 from RAHUL SHARMA. UPI:628312345670-ICICI Bank.",
+      "id": "685bdf40-6407-5514-a7d8-1d21a612a5d4",
+      "direction": "received",
+      "amount_minor": 2500000,
+      "reference": "628312345670"
+    },
+    {
+      "name": "ICICI salary by NEFT",
+      "sender": "VM-ICICIB-S",
+      "received": "2026-10-01T11:00:00+05:30",
+      "body": "ICICI Bank Account XX123 credited:Rs. 85,000.00 on 01-Oct-26. Info NEFT-CITIN26100112345-ACME CORP. Available Balance is Rs. 1,20,000.00.",
+      "id": "74a060ab-1195-51d1-ac02-c660dd2c6d6f",
+      "direction": "received",
+      "amount_minor": 8500000,
+      "reference": "CITIN26100112345"
+    },
+    {
+      "name": "ICICI debit card at a shop, with the balance",
+      "sender": "VM-ICICIT-S",
+      "received": "2026-10-09T09:00:00+05:30",
+      "body": "INR 640.00 spent on ICICI Bank Debit Card XX4455 on 09-Oct-26 at STARBUCKS. Avl Bal: INR 32,100.00.",
+      "id": "04019bc6-0656-5ccf-ba22-fb7c1fbba3b9",
+      "direction": "spent",
+      "amount_minor": 64000,
+      "reference": null
+    },
+    {
+      "name": "ICICI ATM",
+      "sender": "VM-ICICIB-S",
+      "received": "2026-10-08T14:00:00+05:30",
+      "body": "ICICI Bank Acct XX123 debited with INR 3,000.00 on 08-Oct-26 at ATM. Avl Bal INR 29,100.00.",
+      "id": "f5a16195-0d7a-594f-a91b-c11a009c66a3",
+      "direction": "spent",
+      "amount_minor": 300000,
+      "reference": null
+    },
+    {
+      "name": "ICICI AutoPay taken",
+      "sender": "VM-ICICIB-S",
+      "received": "2026-10-07T06:00:00+05:30",
+      "body": "Your ICICI Bank Acct XX123 has been debited with INR 499.00 on 07-Oct-26 for AutoPay of SPOTIFY. Avl Bal INR 28,601.00.",
+      "id": "a5b24c5a-9962-5772-a23d-1cfb47234b90",
+      "direction": "spent",
+      "amount_minor": 49900,
+      "reference": null
+    },
+    {
+      "name": "ICICI IMPS between accounts",
+      "sender": "VM-ICICIB-S",
+      "received": "2026-10-06T10:00:00+05:30",
+      "body": "ICICI Bank Acct XX123 debited for Rs 10,000.00 on 06-Oct-26 & Acct XX9988 credited. IMPS:628009876543. Call 18002662 for dispute.",
+      "id": "8991dd0a-49cb-56ed-909f-fa76f33499ab",
+      "direction": "spent",
+      "amount_minor": 1000000,
+      "reference": "628009876543"
+    },
+    {
+      "name": "SBI UPI debit",
+      "sender": "JD-SBIUPI-S",
+      "received": "2026-10-12T13:15:00+05:30",
+      "body": "Dear UPI user A/C X4821 debited by 450.0 on date 12Oct26 trf to SWIGGY Refno 627812345679. If not u? call 1800111109. -SBI",
+      "id": "094879c3-f372-5fd3-99ed-5258508fcbf7",
+      "direction": "spent",
+      "amount_minor": 45000,
+      "reference": "627812345679"
+    },
+    {
+      "name": "SBI UPI credit, payer not named",
+      "sender": "AD-SBIUPI",
+      "received": "2026-10-10T18:00:00+05:30",
+      "body": "Dear SBI UPI User, ur A/cX4821 credited by Rs2500 on 10Oct26 by (Ref no 628312345672)",
+      "id": "571608d6-9db5-574a-b3e8-aef00fb0585a",
+      "direction": "received",
+      "amount_minor": 250000,
+      "reference": "628312345672"
+    },
+    {
+      "name": "SBI transfer to a person, with the balance",
+      "sender": "VM-SBIINB-S",
+      "received": "2026-10-09T12:00:00+05:30",
+      "body": "Your A/C XXXXX4821 Debited INR 2,000.00 on 09/10/26 -Transferred to Mr. RAHUL SHARMA. Avl Balance INR 45,210.00-SBI",
+      "id": "c0d3a919-b90d-54a6-90d2-76c692edba82",
+      "direction": "spent",
+      "amount_minor": 200000,
+      "reference": null
+    },
+    {
+      "name": "SBI ATM",
+      "sender": "VM-ATMSBI-S",
+      "received": "2026-10-08T17:00:00+05:30",
+      "body": "Dear Customer, Rs.2000 withdrawn at SBI ATM S1AW000123 from A/cX4821 on 08Oct26 Transaction Number 1234. Available Balance Rs.43210. If not withdrawn by you, forward this SMS to 7208933148/9223008333 / call 1800111109 to block your card. -SBI",
+      "id": "e683a868-ac09-5558-b324-07702c936871",
+      "direction": "spent",
+      "amount_minor": 200000,
+      "reference": null
+    },
+    {
+      "name": "SBI Card spend",
+      "sender": "AX-SBICRD-T",
+      "received": "2026-10-07T20:00:00+05:30",
+      "body": "Rs.1,299.00 spent on your SBI Credit Card ending 3344 at AMAZON on 07/10/26. Trxn. not done by you? Report at https://sbicard.com/Dispute",
+      "id": "d4d60e12-a485-57ec-87b4-640f3f0bdc82",
+      "direction": "spent",
+      "amount_minor": 129900,
+      "reference": null
+    },
+    {
+      "name": "SBI salary",
+      "sender": "VM-CBSSBI-S",
+      "received": "2026-10-01T12:00:00+05:30",
+      "body": "Dear Customer, Your A/C XXXXX4821 has been credited with INR 85,000.00 on 01/10/26 by NEFT from ACME CORP. Avl Bal INR 1,28,210.00 -SBI",
+      "id": "5695f783-f718-5e6f-9784-eabb684cbd44",
+      "direction": "received",
+      "amount_minor": 8500000,
+      "reference": null
+    },
+    {
+      "name": "SBI IMPS between accounts",
+      "sender": "VM-SBIINB-S",
+      "received": "2026-10-05T15:00:00+05:30",
+      "body": "Dear Customer, Your a/c no. XXXXXXXX4821 is debited for Rs.1,120.00 on 05-10-2026 and a/c XXXXXXXX7788 credited (IMPS Ref no 628112345673). -SBI",
+      "id": "2ddde463-960d-5e81-a09a-199bc105fea8",
+      "direction": "spent",
+      "amount_minor": 112000,
+      "reference": "628112345673"
+    },
+    {
+      "name": "SBI debit card at a shop",
+      "sender": "VM-SBIINB-S",
+      "received": "2026-10-04T19:00:00+05:30",
+      "body": "Dear Customer, Rs.860.00 spent on your SBI Debit Card ending 5566 at BIGBASKET on 04Oct26. Avl Bal Rs.42,350.00 -SBI",
+      "id": "f01c7823-c6cd-597b-a9cf-446d325548c2",
+      "direction": "spent",
+      "amount_minor": 86000,
+      "reference": null
+    },
+    {
+      "name": "Axis UPI to a merchant",
+      "sender": "AD-AXISBK-S",
+      "received": "2026-10-12T18:22:30+05:30",
+      "body": "INR 350.00 debited from A/c no. XX6677 on 12-10-2026 at 18:22:10 IST. UPI/P2M/627900112233/RAPIDO. Not you? SMS BLOCKUPI to 919951860002 - Axis Bank",
+      "id": "31591d38-adf1-5c40-a245-359f25adfd0d",
+      "direction": "spent",
+      "amount_minor": 35000,
+      "reference": "627900112233"
+    },
+    {
+      "name": "Kotak UPI to a VPA",
+      "sender": "VM-KOTAKB-S",
+      "received": "2026-10-11T10:00:00+05:30",
+      "body": "Sent Rs.199.00 from Kotak Bank AC X3344 to jiomobility@hdfcbank on 11-10-26.UPI Ref 627800998877. Not you, https://kotak.com/KBANKT/Fraud",
+      "id": "f6cb6c64-52ef-5206-ab64-bb71ef2b434a",
+      "direction": "spent",
+      "amount_minor": 19900,
+      "reference": "627800998877"
+    }
+  ]
+}

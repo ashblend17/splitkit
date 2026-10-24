@@ -24,7 +24,7 @@ class SkPerson {
 }
 
 class Avatar extends StatelessWidget {
-  const Avatar(this.person, {super.key, this.size = 36, this.fontSize, this.ring, this.ringColor = SkColors.surface});
+  const Avatar(this.person, {super.key, this.size = 36, this.fontSize, this.ring, Color? ringColor}) : _ringColor = ringColor;
 
   final SkPerson person;
   final double size;
@@ -32,7 +32,8 @@ class Avatar extends StatelessWidget {
 
   /// Optional white ring, used in overlapping stacks.
   final double? ring;
-  final Color ringColor;
+  final Color? _ringColor;
+  Color get ringColor => _ringColor ?? SkColors.surface;
 
   @override
   Widget build(BuildContext context) {
@@ -65,8 +66,8 @@ class AvatarStack extends StatelessWidget {
     this.size = 28,
     this.max = 6,
     this.overlap = 6,
-    this.ringColor = SkColors.surface,
-  });
+    Color? ringColor,
+  }) : _ringColor = ringColor;
 
   final List<SkPerson> people;
   final double size;
@@ -74,7 +75,8 @@ class AvatarStack extends StatelessWidget {
   final double overlap;
 
   /// Match the background the stack sits on (white on cards, paper on pages).
-  final Color ringColor;
+  final Color? _ringColor;
+  Color get ringColor => _ringColor ?? SkColors.surface;
 
   @override
   Widget build(BuildContext context) {

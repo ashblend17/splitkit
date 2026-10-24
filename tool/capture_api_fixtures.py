@@ -1,19 +1,31 @@
 #!/usr/bin/env python3
 """Capture real API responses into app/test/fixtures/api for the Dart contract tests.
 
-Needs the API running with freshly seeded data:
-  docker compose exec api python -m app.seed --reset && python3 tool/capture_api_fixtures.py
+Needs the API running with freshly seeded data on a throwaway database (create it first: seeding
+the compose one wipes what's in it):
+  cd api && export DATABASE_URL=postgresql+psycopg://<DB_USER>:<POSTGRES_PASSWORD>@localhost:5433/<DB_NAME>_fixtures
+  uv run alembic upgrade head && uv run python -m app.seed --reset && uv run uvicorn app.main:app --port 8001
+  API=http://localhost:8001 SEED_PASSWORD=<the seed's> python3 tool/capture_api_fixtures.py   # from the repo root
 Read-only except for one rejected (422) request.
+
+Also writes app/test/fixtures/sync/<user>.json: every sync snapshot a seeded user can see plus the
+API's own answers (groups, balances, feed, expenses, settle-up plans, personal) for the same data.
+The app's parity test rebuilds each answer from the snapshots alone and compares.
 """
 
 import json
 import os
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
 BASE = os.environ.get("API", "http://localhost:8000") + "/api/v1"
+PASSWORD = os.environ["SEED_PASSWORD"]
+"""What the seeded accounts sign in with (SEED_PASSWORD, as the seed was run with)."""
 OUT = Path(__file__).resolve().parents[1] / "app" / "test" / "fixtures" / "api"
+SYNC_OUT = OUT.parent / "sync"
+PARITY_USERS = {"john": "admin@example.com", "rahul": "rahul.sharma@example.com"}
 
 
 def call(path, body=None, token=None):
@@ -31,7 +43,7 @@ def call(path, body=None, token=None):
 
 
 def main():
-    login = call("/auth/login", {"email": "admin@example.com", "password": "dev-password"})
+    login = call("/auth/login", {"email": "admin@example.com", "password": PASSWORD})
     token = login["access_token"]
     login["access_token"] = "<token>"
     groups = call("/groups", token=token)
@@ -50,13 +62,23 @@ def main():
         "expense_history": call(f"/expenses/{scooter['id']}/history", token=token),
         "split_methods": call("/splits/methods", token=token),
         "categories": call("/categories?scope=group", token=token),
-        "settle_up_plan": call(f"/friends/{members['Aman Verma']}/settle-up", token=token),
+        "settle_up_plan": call(f"/friends/{members['Vivek Iyer']}/settle-up", token=token),
         "personal_summary": call("/personal/summary?month=2026-09-23", token=token),
         "personal_list": call("/personal/transactions?start=2026-09-01&end=2026-09-23", token=token),
         "personal_categories": call("/categories?scope=personal", token=token),
+        "personal_accounts": call("/personal/accounts", token=token),
+        "personal_accounts_reported": call("/personal/accounts/reported", token=token),
+        "personal_goals": call("/personal/goals", token=token),
+        "goal_contributions": call("/personal/goal-contributions", token=token),
+        "allocation_rules": call("/personal/allocation-rules", token=token),
+        "allocation_plans": call("/personal/allocation-plans", token=token),
         "analytics_personal": call("/analytics/personal?period=month&on=2026-09-23", token=token),
         "analytics_group": call(f"/analytics/groups/{goa['id']}?on=2026-09-23", token=token),
         "analytics_layout": call("/analytics/layout/personal", token=token),
+        "admin_dashboard": call("/admin/dashboard", token=token),
+        "admin_users": call("/admin/users", token=token),
+        "admin_audit": call("/admin/audit?limit=20", token=token),
+        "admin_sessions": call("/admin/sessions", token=token),
         "error_split_invalid": call(
             f"/groups/{goa['id']}/expenses",
             {
@@ -69,7 +91,97 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     for name, data in fixtures.items():
         (OUT / f"{name}.json").write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    capture_sync()
     print(f"Wrote {len(fixtures)} fixtures to {OUT.relative_to(Path.cwd()) if OUT.is_relative_to(Path.cwd()) else OUT}")
+
+
+def capture_sync():
+    SYNC_OUT.mkdir(parents=True, exist_ok=True)
+    for key, email in PARITY_USERS.items():
+        login = call("/auth/login", {"email": email, "password": PASSWORD})
+        if "access_token" not in login:
+            raise SystemExit(f"Can't log in as {email}: {login}")
+        token = login["access_token"]
+        streams = [s["stream"] for s in call("/sync", {"cursors": {}}, token)["streams"]]
+        snapshots = {s: call(f"/sync/snapshot/{s}", token=token) for s in streams}
+        groups = call("/groups", token=token)
+        archived = call("/groups?archived=true", token=token)
+        answers = {
+            "me": call("/me", token=token),
+            "groups": groups,
+            "groups_archived": archived,
+            "balances": call("/balances", token=token),
+            "feed": call("/feed?limit=100", token=token),
+            "feed_deleted": call("/feed?deleted=true&limit=100", token=token),
+            "categories": call("/categories", token=token),
+            "categories_group": call("/categories?scope=group", token=token),
+            "categories_personal": call("/categories?scope=personal", token=token),
+        }
+        for g in groups + archived:
+            gid = g["id"]
+            answers[f"group:{gid}"] = call(f"/groups/{gid}", token=token)
+            answers[f"group_balances:{gid}"] = call(f"/groups/{gid}/balances", token=token)
+            answers[f"feed:{gid}"] = call(f"/feed?group_id={gid}&limit=100", token=token)
+            for item in answers[f"feed:{gid}"]:
+                if item["kind"] == "expense":
+                    answers[f"expense:{item['id']}"] = call(f"/expenses/{item['id']}", token=token)
+        for f in answers["balances"]["friends"]:
+            answers[f"settle_up:{f['user']['id']}:{f['currency']}"] = call(
+                f"/friends/{f['user']['id']}/settle-up?currency={f['currency']}", token=token
+            )
+        for month in ("2026-07-01", "2026-08-01", "2026-09-01"):
+            answers[f"personal_summary:{month}"] = call(f"/personal/summary?month={month}", token=token)
+        answers["personal_list"] = call("/personal/transactions?limit=500", token=token)
+        answers["personal_list:sep_expense"] = call(
+            "/personal/transactions?start=2026-09-01&end=2026-09-30&type=expense&limit=500", token=token
+        )
+        answers["personal_deleted"] = call("/personal/transactions?deleted=true&limit=500", token=token)
+        # Bank SMS entries: "Just in", by payment mode and by account (local_parity_test's names).
+        answers["personal_list:just_in"] = call("/personal/transactions?source=sms&reviewed=false&limit=500", token=token)
+        answers["personal_list:upi"] = call("/personal/transactions?channel=upi&limit=500", token=token)
+        hdfc = urllib.parse.quote("HDFC ··4821")
+        answers["personal_list:hdfc"] = call(f"/personal/transactions?account={hdfc}&limit=500", token=token)
+        answers["personal_list:transfers"] = call("/personal/transactions?type=transfer&limit=500", token=token)
+        # Accounts (finance revamp): the raw list, each one, and the old label view.
+        accounts = call("/personal/accounts", token=token)
+        answers["personal_accounts"] = accounts
+        answers["personal_accounts_reported"] = call("/personal/accounts/reported", token=token)
+        for a in accounts:
+            answers[f"personal_account:{a['id']}"] = call(f"/personal/accounts/{a['id']}", token=token)
+        hdfc_account = next((a for a in accounts if a["sms_label"] == "HDFC ··4821"), None)
+        if hdfc_account:
+            answers["personal_list:hdfc_account"] = call(
+                f"/personal/transactions?account_id={hdfc_account['id']}&limit=500", token=token
+            )
+        # Goals and their contributions (finance revamp Phase 2): the lists, each goal, each
+        # goal's contributions, and the deleted ones.
+        goals = call("/personal/goals", token=token)
+        answers["personal_goals"] = goals
+        answers["personal_goals_deleted"] = call("/personal/goals?deleted=true", token=token)
+        answers["goal_contributions"] = call("/personal/goal-contributions", token=token)
+        answers["goal_contributions_deleted"] = call("/personal/goal-contributions?deleted=true", token=token)
+        for g in goals:
+            answers[f"personal_goal:{g['id']}"] = call(f"/personal/goals/{g['id']}", token=token)
+            answers[f"goal_contributions:{g['id']}"] = call(
+                f"/personal/goal-contributions?goal_id={g['id']}", token=token
+            )
+        # Allocation rules and plans (finance revamp Phase 3): the lists, each rule, the deleted
+        # ones, and the plans of each income, rule, goal and account that has some.
+        rules = call("/personal/allocation-rules", token=token)
+        answers["allocation_rules"] = rules
+        answers["allocation_rules_deleted"] = call("/personal/allocation-rules?deleted=true", token=token)
+        for r in rules:
+            answers[f"allocation_rule:{r['id']}"] = call(f"/personal/allocation-rules/{r['id']}", token=token)
+        plans = call("/personal/allocation-plans", token=token)
+        answers["allocation_plans"] = plans
+        answers["allocation_plans_deleted"] = call("/personal/allocation-plans?deleted=true", token=token)
+        for by, field in (("income", "source_transaction_id"), ("rule", "rule_id"), ("goal", "goal_id"), ("account", "account_id")):
+            for value in sorted({p[field] for p in plans if p[field]}):
+                answers[f"allocation_plans:{by}:{value}"] = call(
+                    f"/personal/allocation-plans?{field}={value}", token=token
+                )
+        out ={"user": key, "email": email, "snapshots": snapshots, "answers": answers}
+        (SYNC_OUT / f"{key}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.modules.auth.deps import Actor
 from app.modules.balances import repository as ledger
-from app.modules.balances.engine import pairwise
+from app.modules.balances.engine import positions
 from app.modules.balances.schemas import FeedItem
 from app.modules.categories.models import Category
 from app.modules.categories.schemas import CategoryOut
@@ -126,13 +126,13 @@ def feed(
     }
 
     flows = ledger.flows_by_group(session, list({e.group_id for e in expenses}))
-    my_pairs = {gid: pairwise(me, f) for gid, f in flows.items()}
+    my_positions = {gid: positions(f).get(me, 0) for gid, f in flows.items()}
 
     items = []
     for e in expenses:
         my_share = next((s.share_minor for s in e.splits if s.user_id == me), 0)
-        pairs = my_pairs.get(e.group_id, {})
-        if f.open_only and not _open(e, me, my_share, pairs):
+        position = my_positions.get(e.group_id, 0)
+        if f.open_only and not _open(e, me, my_share, position):
             continue
         items.append(
             FeedItem(
@@ -152,7 +152,7 @@ def feed(
                 participant_count=sum(1 for s in e.splits if s.share_minor),
                 my_share_minor=my_share,
                 my_net_minor=(e.amount_minor if e.payer_id == me else 0) - my_share,
-                settled=(e.payer_id != me and my_share > 0 and pairs.get(e.payer_id, 0) >= 0),
+                settled=(e.payer_id != me and my_share > 0 and position >= 0),
                 by_admin=e.acting_admin_id is not None,
                 deleted_at=e.deleted_at,
             )
@@ -187,10 +187,10 @@ def feed(
     return items[offset:window]
 
 
-def _open(e: Expense, me: uuid.UUID, my_share: int, pairs: dict[uuid.UUID, int]) -> bool:
-    """You owe the payer, or you paid and someone in the split still owes you."""
+def _open(e: Expense, me: uuid.UUID, my_share: int, position: int) -> bool:
+    """As the group's fewest payments see it (`position` is yours in the group): you have a
+    share and still pay someone in the group, or you paid for others and someone still pays
+    you."""
     if e.payer_id == me:
-        return any(
-            s.user_id != me and s.share_minor and pairs.get(s.user_id, 0) > 0 for s in e.splits
-        )
-    return my_share > 0 and pairs.get(e.payer_id, 0) < 0
+        return position > 0 and any(s.user_id != me and s.share_minor for s in e.splits)
+    return my_share > 0 and position < 0

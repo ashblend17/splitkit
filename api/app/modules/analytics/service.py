@@ -21,7 +21,8 @@ from app.modules.categories.models import Category
 from app.modules.expenses.models import Expense, ExpenseSplit
 from app.modules.groups import repository as groups
 from app.modules.groups.service import require_member
-from app.modules.personal.models import PersonalTransaction
+from app.modules.personal import repository as personal_repo
+from app.modules.personal.models import PersonalAccount, PersonalTransaction
 from app.modules.sync import log as sync_log
 from app.modules.users.models import User
 
@@ -65,6 +66,7 @@ def _cards(rows: list[AnalyticsConfiguration], ctx: sources.Context) -> list[Ana
                 bars=data.bars,
                 rows=data.rows,
                 stat=data.stat,
+                averages=data.averages,
             )
         )
     return cards
@@ -74,33 +76,86 @@ def _labels(session: Session) -> dict[uuid.UUID, str]:
     return {c.id: c.label for c in session.scalars(select(Category))}
 
 
-def personal_dashboard(session: Session, actor: Actor, period: Period, on: date) -> DashboardOut:
-    me = actor.user_id
-    labels = _labels(session)
-    personal = [
-        sources.Entry(t.date, t.amount_minor, labels.get(t.category_id, "Uncategorised"))
+def personal_dashboard(
+    session: Session, actor: Actor, period: Period, on: date, group_share: bool = True
+) -> DashboardOut:
+    """Personal's Insights. With `group_share`, your share of group expenses is spending, as
+    the app's cash flow counts it: the trend, categories, daily average, needs and wants and
+    the savings rate add it; By account, By payment mode and Top merchants stay your own
+    entries."""
+    me, currency = actor.user_id, actor.user.currency
+    categories = {c.id: c for c in session.scalars(select(Category))}
+    accounts = dict(
+        session.execute(
+            select(PersonalAccount.id, PersonalAccount.name).where(PersonalAccount.user_id == me)
+        ).all()
+    )
+    # As in the summary: entries in your currency, less those that became a group expense or
+    # payment (and refunds of those). Transfers, investments and adjustments never count.
+    covered = personal_repo.covered_ids(session, me)
+    rows = [
+        t
         for t in session.scalars(
-            select(PersonalTransaction).where(
+            select(PersonalTransaction)
+            .where(
                 PersonalTransaction.user_id == me,
-                PersonalTransaction.type == "expense",
+                PersonalTransaction.type.in_(("expense", "refund", "income")),
+                PersonalTransaction.currency == currency,
                 PersonalTransaction.deleted_at.is_(None),
             )
+            .order_by(PersonalTransaction.created_at, PersonalTransaction.id)
         )
+        if t.id not in covered
     ]
-    shares = [
-        sources.Entry(d, share)
-        for d, share in session.execute(
-            select(Expense.date, ExpenseSplit.share_minor)
-            .join(ExpenseSplit, ExpenseSplit.expense_id == Expense.id)
-            .where(ExpenseSplit.user_id == me, Expense.deleted_at.is_(None))
+    spending = [t for t in rows if t.type != "income"]
+    # A merchant is called what its first entry was (the app names entries from SMS).
+    merchants: dict[str, str] = {}
+    for t in spending:
+        if t.merchant:
+            merchants.setdefault(t.merchant.lower(), t.description)
+    personal = []
+    for t in spending:
+        c = categories.get(t.category_id)
+        personal.append(
+            sources.Entry(
+                t.date,
+                -t.amount_minor if t.type == "refund" else t.amount_minor,
+                c.label if c else "Uncategorised",
+                account=accounts.get(t.account_id) or t.account,
+                channel=t.channel,
+                merchant=merchants[t.merchant.lower()] if t.merchant else None,
+                kind=c.kind if c else None,
+            )
         )
-    ]
+    income = [sources.Entry(t.date, t.amount_minor) for t in rows if t.type == "income"]
+    # As repository.group_share: your shares of live expenses in your currency, in groups
+    # you're still in (a group you've left is gone from your device too).
+    shares = []
+    for d, share, category_id in session.execute(
+        select(Expense.date, ExpenseSplit.share_minor, Expense.category_id)
+        .join(ExpenseSplit, ExpenseSplit.expense_id == Expense.id)
+        .where(
+            ExpenseSplit.user_id == me,
+            Expense.currency == currency,
+            Expense.deleted_at.is_(None),
+            Expense.group_id.in_(personal_repo.current_groups(me)),
+        )
+    ):
+        c = categories.get(category_id)
+        label, kind = (c.label, c.kind) if c else ("Uncategorised", None)
+        shares.append(sources.Entry(d, share, label, kind=kind))
     ctx = sources.Context(
-        period=period, on=on, currency=actor.user.currency, personal=personal, group_shares=shares
+        period=period,
+        on=on,
+        currency=currency,
+        personal=personal,
+        income=income,
+        group_shares=shares,
+        count_group_share=group_share,
     )
     return DashboardOut(
         scope="personal",
-        currency=actor.user.currency,
+        currency=currency,
         cards=_cards(layout_rows(session, "personal", me), ctx),
     )
 

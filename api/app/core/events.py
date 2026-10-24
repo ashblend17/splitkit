@@ -28,6 +28,7 @@ def record(
 ) -> None:
     """`obj` is what changed (a model instance, or a list of them) and goes to the sync log.
     Pass `deleted=True` before a hard delete so clients get a tombstone."""
+    actor.require_write()  # last line of defence: a read-only admin never gets a write recorded
     admin_id = actor.admin_id
     session.add(
         AuditLog(

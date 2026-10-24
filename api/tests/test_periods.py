@@ -2,6 +2,8 @@ from datetime import date
 
 from app.modules.analytics.periods import (
     adaptive_buckets,
+    average_spans,
+    bucket_kind,
     current,
     previous,
     range_label,
@@ -39,6 +41,19 @@ def test_trend_buckets():
     assert [b.start for b in week][-1] == ON and len(week) == 7
 
 
+def test_average_spans_are_the_whole_weeks_or_months_before_the_one_under_way():
+    past, now = average_spans("month", ON)
+    assert [s.label for s in past] == ["Mar", "Apr", "May", "Jun", "Jul", "Aug"]
+    assert (past[0].start, past[-1].end) == (date(2026, 3, 1), date(2026, 8, 31))
+    assert (now.start, now.end, now.label) == (date(2026, 9, 1), ON, "September so far")
+    past, now = average_spans("year", ON)
+    assert len(past) == 12 and past[0].start == date(2025, 9, 1) and now.label == "September so far"
+    past, now = average_spans("week", ON)
+    assert len(past) == 8 and all(s.days == 7 for s in past)
+    assert (past[-1].start, past[-1].end) == (date(2026, 9, 10), date(2026, 9, 16))
+    assert (past[0].start, now.start, now.end) == (date(2026, 7, 23), date(2026, 9, 17), ON)
+
+
 def test_adaptive_buckets():
     assert [b.label for b in adaptive_buckets(date(2026, 9, 12), date(2026, 9, 20))] == [
         str(d) for d in range(12, 21)
@@ -47,3 +62,20 @@ def test_adaptive_buckets():
     assert weeks[0].label == "1 Jul" and weeks[-1].end == date(2026, 9, 23)
     months = adaptive_buckets(date(2026, 1, 15), date(2026, 9, 23))
     assert months[0].start == date(2026, 1, 15) and months[-1].label == "Sep"
+
+
+def test_adaptive_buckets_long_histories():
+    across = adaptive_buckets(date(2025, 11, 3), date(2026, 2, 10))
+    assert [b.label for b in across] == ["Nov", "Dec", "2026", "Feb"]
+    two_years = adaptive_buckets(date(2024, 10, 1), date(2026, 9, 30))
+    assert len(two_years) == 24
+    years = adaptive_buckets(date(2019, 6, 5), date(2026, 9, 23))
+    assert [b.label for b in years] == [str(y) for y in range(2019, 2027)]
+    assert years[0].start == date(2019, 6, 5) and years[-1].end == date(2026, 9, 23)
+
+
+def test_bucket_kind_matches_the_bars():
+    assert bucket_kind(date(2026, 9, 12), date(2026, 9, 20)) == "day"
+    assert bucket_kind(date(2026, 7, 1), date(2026, 9, 23)) == "week"
+    assert bucket_kind(date(2026, 1, 15), date(2026, 9, 23)) == "month"
+    assert bucket_kind(date(2019, 6, 5), date(2026, 9, 23)) == "year"

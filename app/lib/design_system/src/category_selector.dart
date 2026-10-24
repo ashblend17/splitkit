@@ -13,13 +13,12 @@ class CategoryOption {
 
 /// Colour of the selected state. Group screens use indigo, personal screens teal.
 enum ChipAccent {
-  brand(SkColors.brand, SkColors.brandSoft, SkColors.brandInk),
-  personal(SkColors.personal, SkColors.personalSoft, SkColors.personalInk);
+  brand,
+  personal;
 
-  const ChipAccent(this.border, this.background, this.foreground);
-  final Color border;
-  final Color background;
-  final Color foreground;
+  Color get border => this == brand ? SkColors.brand : SkColors.personal;
+  Color get background => this == brand ? SkColors.brandSoft : SkColors.personalSoft;
+  Color get foreground => this == brand ? SkColors.brandInk : SkColors.personalInk;
 }
 
 /// Single-choice category chips (Add split). Renders whatever categories it is given.
@@ -56,7 +55,8 @@ class CategorySelector extends StatelessWidget {
   }
 }
 
-/// 36px chip used for categories and history filters.
+/// 36px chip used for categories and history filters. Without [onTap] it's shown greyed out and
+/// can't be picked.
 class SelectableChip extends StatelessWidget {
   const SelectableChip({
     super.key,
@@ -70,14 +70,15 @@ class SelectableChip extends StatelessWidget {
   final String label;
   final String? icon;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final ChipAccent accent;
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? accent.foreground : SkColors.ink;
+    final fg = onTap == null ? SkColors.ink3 : (selected ? accent.foreground : SkColors.ink);
     return Semantics(
       button: true,
+      enabled: onTap != null,
       selected: selected,
       label: label,
       child: Material(

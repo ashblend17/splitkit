@@ -3,15 +3,24 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.errors import ApiError, not_found
 from app.core.events import record
 from app.core.versioning import check_version, client_id, replayed_create
 from app.modules.auth.deps import Actor
 from app.modules.balances import repository as ledger
 from app.modules.balances.engine import positions
+from app.modules.groups import linking
 from app.modules.groups import repository as repo
 from app.modules.groups.models import Group, GroupMember
-from app.modules.groups.schemas import AddMemberIn, GroupIn, GroupOut, GroupUpdate, MemberOut
+from app.modules.groups.schemas import (
+    AddMemberIn,
+    GroupIn,
+    GroupOut,
+    GroupUpdate,
+    LinkMemberIn,
+    MemberOut,
+)
 from app.modules.users import repository as users
 from app.modules.users.models import User
 from app.modules.users.schemas import brief
@@ -48,6 +57,7 @@ def _to_out(session: Session, groups: list[Group], me: uuid.UUID) -> list[GroupO
                     role=m.role,
                     joined_at=m.joined_at,
                     placeholder_name=m.placeholder_name,
+                    invite_email=m.invite_email,
                 )
                 for m, u in repo.active_members(session, g.id)
             ],
@@ -128,12 +138,16 @@ def update_group(
 def add_member(session: Session, actor: Actor, group_id: uuid.UUID, body: AddMemberIn) -> GroupOut:
     actor.require_write()
     require_member(session, group_id, actor.user_id)
-    if body.email is not None:
-        user = users.get_by_email(session, body.email)
-        if user is None:
-            raise ApiError(404, "no_account", "There's no Splitkit account with that email yet")
+    invite = None
+    user = users.get_by_email(session, body.email) if body.email is not None else None
+    if user is not None:
         placeholder_name = None
+    elif body.name is None:
+        raise ApiError(
+            404, "no_account", f"There's no {get_settings().app_name} account with that email yet"
+        )
     else:
+        invite = body.email.lower() if body.email else None
         user = User(name=body.name.strip())
         session.add(user)
         session.flush()
@@ -147,7 +161,12 @@ def add_member(session: Session, actor: Actor, group_id: uuid.UUID, body: AddMem
         existing.left_at = None  # rejoining keeps their history
         member = existing
     else:
-        member = GroupMember(group_id=group_id, user_id=user.id, placeholder_name=placeholder_name)
+        member = GroupMember(
+            group_id=group_id,
+            user_id=user.id,
+            placeholder_name=placeholder_name,
+            invite_email=invite,
+        )
         session.add(member)
     record(
         session,
@@ -156,9 +175,41 @@ def add_member(session: Session, actor: Actor, group_id: uuid.UUID, body: AddMem
         "group",
         group_id,
         group_id,
-        {"user_id": str(user.id)},
+        {"user_id": str(user.id), **({"invite_email": invite} if invite else {})},
         obj=member,
     )
+    session.commit()
+    return get_group(session, actor, group_id)
+
+
+def link_member(
+    session: Session, actor: Actor, group_id: uuid.UUID, user_id: uuid.UUID, body: LinkMemberIn
+) -> GroupOut:
+    """Link a placeholder to the account with this email, or invite the email if there's none."""
+    actor.require_write()
+    require_member(session, group_id, actor.user_id)
+    member = repo.membership(session, group_id, user_id)
+    if member is None or member.left_at is not None:
+        raise not_found("Member")
+    placeholder = session.get(User, user_id)
+    if placeholder.email is not None:
+        raise ApiError(409, "not_placeholder", f"{placeholder.name} already has an account")
+    email = body.email.lower()
+    account = users.get_by_email(session, email)
+    if account is None:
+        member.invite_email = email
+        record(
+            session,
+            actor,
+            "member.invite",
+            "group",
+            group_id,
+            group_id,
+            {"user_id": str(user_id), "email": email},
+            obj=member,
+        )
+    else:
+        linking.merge(session, actor, placeholder, account)
     session.commit()
     return get_group(session, actor, group_id)
 
@@ -181,4 +232,29 @@ def remove_member(session: Session, actor: Actor, group_id: uuid.UUID, user_id: 
     record(
         session, actor, action, "group", group_id, group_id, {"user_id": str(user_id)}, obj=target
     )
+    if target.role == "owner":
+        _hand_over(session, actor, group_id, target)
     session.commit()
+
+
+def _hand_over(session: Session, actor: Actor, group_id: uuid.UUID, leaving: GroupMember) -> None:
+    """The owner left: whoever has been in the group longest (with an account) takes over, so
+    someone can still remove people. Placeholders can't own a group."""
+    leaving.role = "member"
+    heir = next(
+        (m for m, u in repo.active_members(session, group_id) if u.email is not None),
+        None,
+    )
+    if heir is None:
+        return
+    heir.role = "owner"
+    record(
+        session,
+        actor,
+        "member.promote",
+        "group",
+        group_id,
+        group_id,
+        {"user_id": str(heir.user_id), "role": "owner"},
+        obj=[leaving, heir],
+    )

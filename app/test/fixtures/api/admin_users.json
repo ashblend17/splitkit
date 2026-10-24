@@ -1,0 +1,132 @@
+{
+  "items": [
+    {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "email": "admin@example.com",
+      "avatar_url": null,
+      "role": "admin",
+      "currency": "INR",
+      "created_at": "2026-06-20T06:30:00Z",
+      "is_placeholder": false,
+      "group_count": 2,
+      "expense_count": 25,
+      "settlement_count": 1,
+      "personal_count": 56,
+      "balances": [
+        {
+          "amount_minor": 147000,
+          "currency": "INR"
+        }
+      ],
+      "last_active_at": "2026-09-23T12:45:00Z"
+    },
+    {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "email": "aman.v@example.com",
+      "avatar_url": null,
+      "role": "user",
+      "currency": "INR",
+      "created_at": "2026-06-20T06:30:00Z",
+      "is_placeholder": false,
+      "group_count": 2,
+      "expense_count": 24,
+      "settlement_count": 0,
+      "personal_count": 0,
+      "balances": [
+        {
+          "amount_minor": -1300,
+          "currency": "INR"
+        }
+      ],
+      "last_active_at": "2026-09-21T13:00:00Z"
+    },
+    {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "email": "kabir.m@example.com",
+      "avatar_url": null,
+      "role": "user",
+      "currency": "INR",
+      "created_at": "2026-06-20T06:30:00Z",
+      "is_placeholder": false,
+      "group_count": 1,
+      "expense_count": 8,
+      "settlement_count": 0,
+      "personal_count": 0,
+      "balances": [
+        {
+          "amount_minor": 85500,
+          "currency": "INR"
+        }
+      ],
+      "last_active_at": "2026-09-21T04:35:00Z"
+    },
+    {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "email": "priya.nair@example.com",
+      "avatar_url": null,
+      "role": "user",
+      "currency": "INR",
+      "created_at": "2026-06-20T06:30:00Z",
+      "is_placeholder": false,
+      "group_count": 1,
+      "expense_count": 13,
+      "settlement_count": 0,
+      "personal_count": 0,
+      "balances": [
+        {
+          "amount_minor": -340800,
+          "currency": "INR"
+        }
+      ],
+      "last_active_at": null
+    },
+    {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "email": "rahul.sharma@example.com",
+      "avatar_url": null,
+      "role": "user",
+      "currency": "INR",
+      "created_at": "2026-06-20T06:30:00Z",
+      "is_placeholder": false,
+      "group_count": 1,
+      "expense_count": 15,
+      "settlement_count": 1,
+      "personal_count": 0,
+      "balances": [
+        {
+          "amount_minor": 451800,
+          "currency": "INR"
+        }
+      ],
+      "last_active_at": "2026-09-23T16:10:00Z"
+    },
+    {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "email": "vivek.iyer@example.com",
+      "avatar_url": null,
+      "role": "user",
+      "currency": "INR",
+      "created_at": "2026-06-20T06:30:00Z",
+      "is_placeholder": false,
+      "group_count": 2,
+      "expense_count": 23,
+      "settlement_count": 0,
+      "personal_count": 0,
+      "balances": [
+        {
+          "amount_minor": -342200,
+          "currency": "INR"
+        }
+      ],
+      "last_active_at": null
+    }
+  ],
+  "total": 6,
+  "has_more": false
+}

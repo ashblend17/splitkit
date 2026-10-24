@@ -4,32 +4,37 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/api.dart';
-import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/providers.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
+import '../../core/theme/theme_mode.dart';
+import '../../core/version.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import '../../core/integrations.dart';
+import '../sms/sms_setup_page.dart';
+import '../sms/sms_source.dart';
+import 'device_card.dart';
+import '../../core/config.dart';
 
-/// Screen 13: who you are, this month at a glance, settings.
+/// Screen 13: who you are and your settings. Shared by both modes: this month's spending
+/// lives in Personal, balances in Split.
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
-    final month = monthOf(DateTime.now());
-    final summary = ref.watch(personalSummaryProvider(month));
-    final balances = ref.watch(overallBalancesProvider);
     final categories = ref.watch(allCategoriesProvider);
     return Scaffold(
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+          padding: tabPagePadding(context),
           children: [
-            ContentWidth(
+            TabPageWidth(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -60,55 +65,83 @@ class ProfilePage extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  _Tabs(
-                    onHistory: () => context.go('/personal/history'),
-                    onAnalytics: () => context.go('/profile/analytics'),
-                  ),
-                  const SizedBox(height: 16),
-                  Semantics(
-                    header: true,
-                    child: Text(DateFormat('MMMM').format(month), style: SkText.display(18, 700)),
-                  ),
-                  const SizedBox(height: 10),
-                  _overview(summary, balances, me.currency),
-                  const SizedBox(height: 16),
-                  SkCard(
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        _link(
-                          'wallet',
-                          'Default currency',
-                          '${me.currency} ${currencySymbol(me.currency)}',
-                          () => showEditProfileSheet(context),
+                  const SizedBox(height: 20),
+                  // Settings, and this device beside them on a desktop.
+                  CardColumns(
+                    minWidth: 400,
+                    maxColumns: 2,
+                    gap: 16,
+                    children: [
+                      SkCard(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            _link(
+                              'wallet',
+                              'Default currency',
+                              '${me.currency} ${currencySymbol(me.currency)}',
+                              () => showEditProfileSheet(context),
+                            ),
+                            _link(
+                              'moon',
+                              'Appearance',
+                              _themeLabels[ref.watch(themeModeProvider)]!,
+                              () => _pickTheme(context, ref),
+                            ),
+                            _link(
+                              'grid',
+                              'Categories',
+                              categories.hasValue ? '${categories.value!.length}' : '',
+                              () => context.go('/profile/categories'),
+                            ),
+                            if (ref.watch(smsSourceProvider).available && ref.watch(featuresProvider).smsImport)
+                              _link(
+                                'file',
+                                'Bank SMS',
+                                switch (ref.watch(smsSetupProvider).value?.settings) {
+                                  null => 'Off',
+                                  _ => 'On',
+                                },
+                                () => context.go('/profile/sms'),
+                              ),
+                            _link('upload', 'Import from Tricount', '', () => context.go('/profile/import')),
+                            _link(
+                              'logout',
+                              'Log out',
+                              '',
+                              () async {
+                                final unsynced = ref.read(outboxProvider).length;
+                                final ok = await showConfirmDialog(
+                                  context,
+                                  title: 'Log out?',
+                                  body: unsynced == 0
+                                      ? 'You can log back in with your email and password.'
+                                      : '$unsynced change(s) on this device haven\'t reached the server and will be '
+                                            'deleted. Copy them from "This device" first if you need them.',
+                                  confirmLabel: 'Log out',
+                                  destructive: unsynced > 0,
+                                );
+                                if (ok) await ref.read(sessionProvider.notifier).logout();
+                              },
+                              color: SkColors.owe,
+                              last: true,
+                            ),
+                          ],
                         ),
-                        _link(
-                          'grid',
-                          'Categories',
-                          categories.hasValue ? '${categories.value!.length}' : '',
-                          () => context.go('/profile/categories'),
-                        ),
-                        _link('upload', 'Import from Tricount', 'Soon', null),
-                        _link(
-                          'logout',
-                          'Log out',
-                          '',
-                          () async {
-                            final ok = await showConfirmDialog(
-                              context,
-                              title: 'Log out?',
-                              body: 'You can log back in with your email and password.',
-                              confirmLabel: 'Log out',
-                              destructive: false,
-                            );
-                            if (ok) await ref.read(sessionProvider.notifier).logout();
-                          },
-                          color: SkColors.owe,
-                          last: true,
-                        ),
-                      ],
-                    ),
+                      ),
+                      const DeviceCard(),
+                      const SizedBox(height: 16),
+                      // The app and the server are released on their own (README "Versions").
+                      Text(
+                        switch (ref.watch(serverVersionProvider).value) {
+                          final server? => '${AppConfig.appName} ${AppVersion.label} · server $server',
+                          null => '${AppConfig.appName} ${AppVersion.label}',
+                        },
+                        key: const ValueKey('profile:versions'),
+                        textAlign: TextAlign.center,
+                        style: SkText.body(12, 400, color: SkColors.ink3),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -119,93 +152,15 @@ class ProfilePage extends ConsumerWidget {
     );
   }
 
-  Widget _overview(AsyncValue<PersonalSummaryOut> summary, AsyncValue<OverallBalancesOut> balances, String currency) {
-    final totals = balances.value?.totals.where((t) => t.currency == currency).firstOrNull;
-    Widget tile(
-      Widget label,
-      String value, {
-      Color bg = SkColors.surface,
-      Color valueColor = SkColors.ink,
-      bool border = true,
-    }) => Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(14),
-          border: border ? Border.all(color: SkColors.line) : null,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            label,
-            const SizedBox(height: 4),
-            Text(value, style: SkText.display(22, 800, color: valueColor)),
-          ],
-        ),
-      ),
-    );
-    Widget swatch(String text, Color c, Color ink) => Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(2)),
-        ),
-        const SizedBox(width: 6),
-        Flexible(
-          child: Text(text, style: SkText.body(12, 600, color: ink)),
-        ),
-      ],
-    );
-    final s = summary.value;
-    return Column(
-      children: [
-        Row(
-          children: [
-            tile(
-              swatch('Personal spending', SkColors.personal, SkColors.personalInk),
-              s == null ? '…' : money(s.spentMinor, currency),
-            ),
-            const SizedBox(width: 8),
-            tile(
-              swatch('Group spending', SkColors.brand, SkColors.brandInk),
-              s == null ? '…' : money(s.groupShareMinor, currency),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            tile(
-              Text('You owe', style: SkText.body(12, 600, color: SkColors.oweInk)),
-              money(totals?.youOweMinor ?? 0, currency),
-              bg: SkColors.oweSoft,
-              valueColor: SkColors.owe,
-              border: false,
-            ),
-            const SizedBox(width: 8),
-            tile(
-              Text('Owed to you', style: SkText.body(12, 600, color: SkColors.owedInk)),
-              money(totals?.youAreOwedMinor ?? 0, currency),
-              bg: SkColors.owedSoft,
-              valueColor: SkColors.owed,
-              border: false,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _link(
     String glyph,
     String label,
     String value,
     VoidCallback? onTap, {
-    Color color = SkColors.ink,
+    Color? color,
     bool last = false,
   }) {
+    color ??= SkColors.ink;
     return Semantics(
       button: onTap != null,
       enabled: onTap != null,
@@ -215,7 +170,7 @@ class ProfilePage extends ConsumerWidget {
           constraints: const BoxConstraints(minHeight: 52),
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
-            border: last ? null : const Border(bottom: BorderSide(color: SkPalette.divider)),
+            border: last ? null : Border(bottom: BorderSide(color: SkPalette.divider)),
           ),
           child: Row(
             children: [
@@ -233,49 +188,42 @@ class ProfilePage extends ConsumerWidget {
   }
 }
 
-/// Overview / History / Analytics segmented control.
-class _Tabs extends StatelessWidget {
-  const _Tabs({required this.onHistory, required this.onAnalytics});
-  final VoidCallback onHistory;
-  final VoidCallback onAnalytics;
+const _themeLabels = {ThemeMode.system: 'As the device', ThemeMode.light: 'Light', ThemeMode.dark: 'Dark'};
 
-  @override
-  Widget build(BuildContext context) {
-    Widget tab(String label, bool on, VoidCallback? onTap) => Expanded(
-      child: Semantics(
-        selected: on,
-        button: true,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: on ? SkColors.surface : Colors.transparent,
-              borderRadius: BorderRadius.circular(9),
-              boxShadow: on ? const [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))] : null,
+/// Light, dark, or following the phone or browser.
+Future<void> _pickTheme(BuildContext context, WidgetRef ref) async {
+  final current = ref.read(themeModeProvider);
+  final picked = await showAppBottomSheet<ThemeMode>(
+    context,
+    title: 'Appearance',
+    child: Column(
+      children: [
+        for (final MapEntry(key: mode, value: label) in _themeLabels.entries)
+          Builder(
+            builder: (sheet) => Semantics(
+              selected: mode == current,
+              button: true,
+              child: InkWell(
+                onTap: () => Navigator.of(sheet).pop(mode),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(label, style: SkText.body(15, 600))),
+                      if (mode == current) SkIcon('check', size: 20, color: SkColors.brand),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            alignment: Alignment.center,
-            child: Text(label, style: SkText.body(14, on ? 700 : 600, color: on ? SkColors.brandInk : SkColors.ink2)),
           ),
-        ),
-      ),
-    );
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: SkColors.sunken, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          tab('Overview', true, null),
-          const SizedBox(width: 4),
-          tab('History', false, onHistory),
-          const SizedBox(width: 4),
-          tab('Analytics', false, onAnalytics),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
+  if (picked != null) ref.read(themeModeProvider.notifier).set(picked);
 }
 
+/// Overview / History / Analytics segmented control.
 Future<void> showEditProfileSheet(BuildContext context) =>
     showAppBottomSheet<void>(context, title: 'Edit profile', child: const _EditProfile());
 
@@ -305,7 +253,7 @@ class _EditProfileState extends ConsumerState<_EditProfile> {
     }
     setState(() => _busy = true);
     try {
-      await ref.read(apiProvider).users.updateMe(UserUpdate(name: _name.text.trim(), currency: _currency));
+      await ref.read(apiProvider).users.updateMe(UserUpdate(name: _name.text.trim(), currency: UserUpdateCurrencyEnum.fromJson(_currency)));
       ref.invalidate(sessionProvider);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -326,7 +274,14 @@ class _EditProfileState extends ConsumerState<_EditProfile> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          SkTextField(label: 'Name', controller: _name, errorText: _error),
+          SkTextField(
+            label: 'Name',
+            controller: _name,
+            errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+          ),
           const SizedBox(height: 14),
           Text('Default currency', style: SkText.body(13, 600)),
           const SizedBox(height: 6),

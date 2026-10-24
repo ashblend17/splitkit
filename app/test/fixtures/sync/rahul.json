@@ -1,0 +1,4750 @@
+{
+ "user": "rahul",
+ "email": "rahul.sharma@example.com",
+ "snapshots": {
+  "global": {
+   "stream": "global",
+   "head_seq": 0,
+   "entities": [
+    {
+     "entity": "category",
+     "entity_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "version": null,
+     "data": {
+      "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "key": "food",
+      "label": "Food",
+      "icon": "food",
+      "scope": "all",
+      "owner_id": null,
+      "sort": 10,
+      "kind": "need"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+     "version": null,
+     "data": {
+      "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+      "key": "transport",
+      "label": "Transport",
+      "icon": "transport",
+      "scope": "all",
+      "owner_id": null,
+      "sort": 20,
+      "kind": "need"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+     "version": null,
+     "data": {
+      "id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+      "key": "shopping",
+      "label": "Shopping",
+      "icon": "shopping",
+      "scope": "all",
+      "owner_id": null,
+      "sort": 30,
+      "kind": "want"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+     "version": null,
+     "data": {
+      "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+      "key": "entertainment",
+      "label": "Fun",
+      "icon": "entertainment",
+      "scope": "all",
+      "owner_id": null,
+      "sort": 40,
+      "kind": "want"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+     "version": null,
+     "data": {
+      "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+      "key": "travel",
+      "label": "Travel",
+      "icon": "travel",
+      "scope": "group",
+      "owner_id": null,
+      "sort": 50,
+      "kind": "want"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+     "version": null,
+     "data": {
+      "id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+      "key": "stay",
+      "label": "Stay",
+      "icon": "rent",
+      "scope": "group",
+      "owner_id": null,
+      "sort": 60,
+      "kind": "want"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "81c9635a-b258-5ac2-bce7-a3619e4ebc93",
+     "version": null,
+     "data": {
+      "id": "81c9635a-b258-5ac2-bce7-a3619e4ebc93",
+      "key": "rent",
+      "label": "Rent",
+      "icon": "rent",
+      "scope": "all",
+      "owner_id": null,
+      "sort": 70,
+      "kind": "need"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+     "version": null,
+     "data": {
+      "id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+      "key": "bills",
+      "label": "Bills",
+      "icon": "bills",
+      "scope": "all",
+      "owner_id": null,
+      "sort": 80,
+      "kind": "need"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "42220069-ff05-57ab-8292-dc10b4f2ce83",
+     "version": null,
+     "data": {
+      "id": "42220069-ff05-57ab-8292-dc10b4f2ce83",
+      "key": "health",
+      "label": "Health",
+      "icon": "health",
+      "scope": "personal",
+      "owner_id": null,
+      "sort": 90,
+      "kind": "need"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "6614cb5e-301f-57f1-85d4-ae8a8838fe7c",
+     "version": null,
+     "data": {
+      "id": "6614cb5e-301f-57f1-85d4-ae8a8838fe7c",
+      "key": "income",
+      "label": "Income",
+      "icon": "income",
+      "scope": "personal",
+      "owner_id": null,
+      "sort": 100,
+      "kind": "income"
+     }
+    },
+    {
+     "entity": "category",
+     "entity_id": "45e00ef2-b34a-56d4-9d3a-4ad2456709aa",
+     "version": null,
+     "data": {
+      "id": "45e00ef2-b34a-56d4-9d3a-4ad2456709aa",
+      "key": "other",
+      "label": "Other",
+      "icon": "other",
+      "scope": "all",
+      "owner_id": null,
+      "sort": 999,
+      "kind": null
+     }
+    },
+    {
+     "entity": "layout",
+     "entity_id": "7da7e79e-da27-59ae-9b9e-a581fb481285",
+     "version": null,
+     "data": {
+      "scope": "group",
+      "owner_id": null,
+      "cards": [
+       {
+        "position": 1,
+        "type": "total_spend",
+        "title": "Total group spending",
+        "period": "all_time",
+        "source": "group_total",
+        "params_json": {}
+       },
+       {
+        "position": 2,
+        "type": "spending_trend",
+        "title": "Spending over time",
+        "period": "all_time",
+        "source": "group_daily",
+        "params_json": {
+         "bucket": "day"
+        }
+       },
+       {
+        "position": 3,
+        "type": "spending_by_category",
+        "title": "By category",
+        "period": "all_time",
+        "source": "group_by_category",
+        "params_json": {}
+       },
+       {
+        "position": 4,
+        "type": "paid_by_member",
+        "title": "Who paid",
+        "period": "all_time",
+        "source": "group_paid_by",
+        "params_json": {}
+       }
+      ]
+     }
+    },
+    {
+     "entity": "layout",
+     "entity_id": "a41c7792-5b73-523a-bb8f-40b66ce911f0",
+     "version": null,
+     "data": {
+      "scope": "personal",
+      "owner_id": null,
+      "cards": [
+       {
+        "position": 1,
+        "type": "spending_trend",
+        "title": "Spending over time",
+        "period": "last_6_months",
+        "source": "personal_monthly",
+        "params_json": {
+         "bucket": "month"
+        }
+       },
+       {
+        "position": 2,
+        "type": "spending_by_category",
+        "title": "Spending by category",
+        "period": "this_month",
+        "source": "personal_by_category",
+        "params_json": {}
+       },
+       {
+        "position": 3,
+        "type": "personal_vs_group",
+        "title": "Personal vs group",
+        "period": "this_month",
+        "source": "scope_split",
+        "params_json": {}
+       },
+       {
+        "position": 4,
+        "type": "average_daily",
+        "title": "Average per day",
+        "period": "this_month",
+        "source": "personal_daily_avg",
+        "params_json": {
+         "compare": "previous_month"
+        }
+       },
+       {
+        "position": 5,
+        "type": "spending_by_account",
+        "title": "By account",
+        "period": "this_month",
+        "source": "personal_by_account",
+        "params_json": {}
+       },
+       {
+        "position": 6,
+        "type": "spending_by_channel",
+        "title": "By payment mode",
+        "period": "this_month",
+        "source": "personal_by_channel",
+        "params_json": {}
+       },
+       {
+        "position": 7,
+        "type": "top_merchants",
+        "title": "Top merchants",
+        "period": "this_month",
+        "source": "personal_top_merchants",
+        "params_json": {}
+       },
+       {
+        "position": 8,
+        "type": "savings_rate",
+        "title": "Savings rate",
+        "period": "this_month",
+        "source": "personal_savings_rate",
+        "params_json": {}
+       },
+       {
+        "position": 9,
+        "type": "need_vs_want",
+        "title": "Needs and wants",
+        "period": "this_month",
+        "source": "personal_need_want",
+        "params_json": {}
+       }
+      ]
+     }
+    }
+   ]
+  },
+  "user:0029a2cc-64dc-5e7b-9779-4245e0d9e4dd": {
+   "stream": "user:0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+   "head_seq": 0,
+   "entities": [
+    {
+     "entity": "profile",
+     "entity_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "version": 1,
+     "data": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "email": "rahul.sharma@example.com",
+      "avatar_url": null,
+      "currency": "INR",
+      "role": "user",
+      "created_at": "2026-06-20T06:30:00+00:00",
+      "version": 1
+     }
+    },
+    {
+     "entity": "membership",
+     "entity_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+     "version": null,
+     "data": {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "active": true
+     }
+    }
+   ]
+  },
+  "group:7d18fd9a-32aa-594f-addc-9dc9936a976c": {
+   "stream": "group:7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "head_seq": 0,
+   "entities": [
+    {
+     "entity": "group",
+     "entity_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+     "version": 1,
+     "data": {
+      "id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "name": "Goa Trip",
+      "icon": "travel",
+      "currency": "INR",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "created_at": "2026-09-10T14:30:00+00:00",
+      "archived_at": null,
+      "import_batch_id": null,
+      "version": 1,
+      "last_activity_at": "2026-09-23T16:10:00+00:00"
+     }
+    },
+    {
+     "entity": "member",
+     "entity_id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "version": null,
+     "data": {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "role": "owner",
+      "joined_at": "2026-09-10T14:30:00+00:00",
+      "left_at": null,
+      "placeholder_name": null,
+      "invite_email": null,
+      "import_batch_id": null,
+      "user": {
+       "id": "49eaa721-4d30-5296-a193-d18818ade774",
+       "name": "John Doe",
+       "avatar_url": null,
+       "is_placeholder": false
+      }
+     }
+    },
+    {
+     "entity": "member",
+     "entity_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "version": null,
+     "data": {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "role": "member",
+      "joined_at": "2026-09-10T14:30:00+00:00",
+      "left_at": null,
+      "placeholder_name": null,
+      "invite_email": null,
+      "import_batch_id": null,
+      "user": {
+       "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+       "name": "Rahul Sharma",
+       "avatar_url": null,
+       "is_placeholder": false
+      }
+     }
+    },
+    {
+     "entity": "member",
+     "entity_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+     "version": null,
+     "data": {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "role": "member",
+      "joined_at": "2026-09-10T14:30:00+00:00",
+      "left_at": null,
+      "placeholder_name": null,
+      "invite_email": null,
+      "import_batch_id": null,
+      "user": {
+       "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+       "name": "Aman Verma",
+       "avatar_url": null,
+       "is_placeholder": false
+      }
+     }
+    },
+    {
+     "entity": "member",
+     "entity_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+     "version": null,
+     "data": {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "role": "member",
+      "joined_at": "2026-09-10T14:30:00+00:00",
+      "left_at": null,
+      "placeholder_name": null,
+      "invite_email": null,
+      "import_batch_id": null,
+      "user": {
+       "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+       "name": "Priya Nair",
+       "avatar_url": null,
+       "is_placeholder": false
+      }
+     }
+    },
+    {
+     "entity": "member",
+     "entity_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+     "version": null,
+     "data": {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "role": "member",
+      "joined_at": "2026-09-10T14:30:00+00:00",
+      "left_at": null,
+      "placeholder_name": null,
+      "invite_email": null,
+      "import_batch_id": null,
+      "user": {
+       "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+       "name": "Vivek Iyer",
+       "avatar_url": null,
+       "is_placeholder": false
+      }
+     }
+    },
+    {
+     "entity": "member",
+     "entity_id": "470aad14-41da-5c6e-863d-947a249fb114",
+     "version": null,
+     "data": {
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "role": "member",
+      "joined_at": "2026-09-21T04:35:00+00:00",
+      "left_at": null,
+      "placeholder_name": "Kabir M.",
+      "invite_email": null,
+      "import_batch_id": null,
+      "user": {
+       "id": "470aad14-41da-5c6e-863d-947a249fb114",
+       "name": "Kabir Mehta",
+       "avatar_url": null,
+       "is_placeholder": false
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "e4dcc557-2e41-5bcc-9d45-ad658ccb9b1f",
+     "version": 1,
+     "data": {
+      "id": "e4dcc557-2e41-5bcc-9d45-ad658ccb9b1f",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Train to Goa",
+      "amount_minor": 668000,
+      "currency": "INR",
+      "payer_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "date": "2026-09-12",
+      "category_id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+      "notes": "Kabir came separately",
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 133600,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 133600,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 133600,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 133600,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 133600,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+       "key": "travel",
+       "label": "Travel",
+       "icon": "travel",
+       "scope": "group",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "00633eac-0516-58e4-9279-69b74853ece8",
+     "version": 1,
+     "data": {
+      "id": "00633eac-0516-58e4-9279-69b74853ece8",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Villa in Anjuna",
+      "amount_minor": 1120000,
+      "currency": "INR",
+      "payer_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "date": "2026-09-12",
+      "category_id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 224000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 224000,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 224000,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 224000,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 224000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+       "key": "stay",
+       "label": "Stay",
+       "icon": "rent",
+       "scope": "group",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "eaf63a5c-f0d4-55a6-b2db-cd6f6a914886",
+     "version": 1,
+     "data": {
+      "id": "eaf63a5c-f0d4-55a6-b2db-cd6f6a914886",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Cab from Madgaon station",
+      "amount_minor": 128000,
+      "currency": "INR",
+      "payer_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "date": "2026-09-12",
+      "category_id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 25600,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 25600,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 25600,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 25600,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 25600,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+       "key": "transport",
+       "label": "Transport",
+       "icon": "transport",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "b0211144-d162-5200-97d8-724a424af143",
+     "version": 1,
+     "data": {
+      "id": "b0211144-d162-5200-97d8-724a424af143",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Breakfast at Artjuna",
+      "amount_minor": 120000,
+      "currency": "INR",
+      "payer_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "date": "2026-09-13",
+      "category_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 20000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 20000,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 20000,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 20000,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 20000,
+        "input_value": null
+       },
+       {
+        "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "share_minor": 20000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+       "key": "food",
+       "label": "Food",
+       "icon": "food",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "4e02df56-8074-5a49-a8dc-85406e69455e",
+     "version": 1,
+     "data": {
+      "id": "4e02df56-8074-5a49-a8dc-85406e69455e",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Parasailing",
+      "amount_minor": 350000,
+      "currency": "INR",
+      "payer_id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "date": "2026-09-13",
+      "category_id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 87500,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 87500,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 87500,
+        "input_value": null
+       },
+       {
+        "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "share_minor": 87500,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+       "key": "entertainment",
+       "label": "Fun",
+       "icon": "entertainment",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "49e8f68c-8d8e-54b5-a1fb-5990b56f174c",
+     "version": 1,
+     "data": {
+      "id": "49e8f68c-8d8e-54b5-a1fb-5990b56f174c",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Groceries for the villa",
+      "amount_minor": 240000,
+      "currency": "INR",
+      "payer_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "date": "2026-09-14",
+      "category_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "share_minor": 40000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+       "key": "food",
+       "label": "Food",
+       "icon": "food",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "ee48e3fe-a622-5b5f-9b20-b7d55762500f",
+     "version": 1,
+     "data": {
+      "id": "ee48e3fe-a622-5b5f-9b20-b7d55762500f",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Fish thali at Ritz Classic",
+      "amount_minor": 245000,
+      "currency": "INR",
+      "payer_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "date": "2026-09-15",
+      "category_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 49000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 49000,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 49000,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 49000,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 49000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+       "key": "food",
+       "label": "Food",
+       "icon": "food",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "1f8f16a1-bf9d-5d3b-8f7d-48512fcbfafb",
+     "version": 1,
+     "data": {
+      "id": "1f8f16a1-bf9d-5d3b-8f7d-48512fcbfafb",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Chai and bhajiyas",
+      "amount_minor": 6000,
+      "currency": "INR",
+      "payer_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "date": "2026-09-16",
+      "category_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 1000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 1000,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 1000,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 1000,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 1000,
+        "input_value": null
+       },
+       {
+        "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "share_minor": 1000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+       "key": "food",
+       "label": "Food",
+       "icon": "food",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "8c300bf9-eaea-573a-8db3-87575b4d12f3",
+     "version": 1,
+     "data": {
+      "id": "8c300bf9-eaea-573a-8db3-87575b4d12f3",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Drinks at Curlies",
+      "amount_minor": 165000,
+      "currency": "INR",
+      "payer_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "date": "2026-09-16",
+      "category_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 27500,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 27500,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 27500,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 27500,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 27500,
+        "input_value": null
+       },
+       {
+        "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "share_minor": 27500,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+       "key": "food",
+       "label": "Food",
+       "icon": "food",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "59424173-0ad9-5fbf-9866-2a081d44a28d",
+     "version": 1,
+     "data": {
+      "id": "59424173-0ad9-5fbf-9866-2a081d44a28d",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Late-night pizza",
+      "amount_minor": 114000,
+      "currency": "INR",
+      "payer_id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "date": "2026-09-17",
+      "category_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "notes": "Kabir only had one slice",
+      "split_method": "exact",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 20300,
+        "input_value": "20300"
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 20300,
+        "input_value": "20300"
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 20300,
+        "input_value": "20300"
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 20300,
+        "input_value": "20300"
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 20300,
+        "input_value": "20300"
+       },
+       {
+        "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "share_minor": 12500,
+        "input_value": "12500"
+       }
+      ],
+      "category": {
+       "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+       "key": "food",
+       "label": "Food",
+       "icon": "food",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "eb7a276c-b18c-573a-9a0a-74c45dbc122a",
+     "version": 1,
+     "data": {
+      "id": "eb7a276c-b18c-573a-9a0a-74c45dbc122a",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Beach shack lunch",
+      "amount_minor": 216000,
+      "currency": "INR",
+      "payer_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "date": "2026-09-18",
+      "category_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 36000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 36000,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 36000,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 36000,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 36000,
+        "input_value": null
+       },
+       {
+        "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "share_minor": 36000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+       "key": "food",
+       "label": "Food",
+       "icon": "food",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "ea3b54e6-17ae-59bb-a915-e55a525338cb",
+     "version": 1,
+     "data": {
+      "id": "ea3b54e6-17ae-59bb-a915-e55a525338cb",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Scooter rentals",
+      "amount_minor": 240000,
+      "currency": "INR",
+      "payer_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "date": "2026-09-19",
+      "category_id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-23T15:40:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 40000,
+        "input_value": null
+       },
+       {
+        "user_id": "470aad14-41da-5c6e-863d-947a249fb114",
+        "share_minor": 40000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+       "key": "transport",
+       "label": "Transport",
+       "icon": "transport",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "ade685ec-92cc-5aa5-9440-758b6106ae2c",
+     "version": 1,
+     "data": {
+      "id": "ade685ec-92cc-5aa5-9440-758b6106ae2c",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Return tickets",
+      "amount_minor": 972000,
+      "currency": "INR",
+      "payer_id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "date": "2026-09-20",
+      "category_id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+      "notes": "Fares depended on when each person booked. Vivek took the overnight bus.",
+      "split_method": "exact",
+      "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T04:30:00+00:00",
+      "updated_at": "2026-09-22T04:30:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 302500,
+        "input_value": "302500"
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 137700,
+        "input_value": "137700"
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 235300,
+        "input_value": "235300"
+       },
+       {
+        "user_id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+        "share_minor": 249300,
+        "input_value": "249300"
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 47200,
+        "input_value": "47200"
+       }
+      ],
+      "category": {
+       "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+       "key": "travel",
+       "label": "Travel",
+       "icon": "travel",
+       "scope": "group",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "51b0947b-c74e-5296-b0b5-efcb40be6f8e",
+     "version": 1,
+     "data": {
+      "id": "51b0947b-c74e-5296-b0b5-efcb40be6f8e",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Uber to airport",
+      "amount_minor": 62000,
+      "currency": "INR",
+      "payer_id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "date": "2026-09-22",
+      "category_id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": null,
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T01:35:00+00:00",
+      "updated_at": "2026-09-22T01:35:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 31000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 31000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+       "key": "transport",
+       "label": "Transport",
+       "icon": "transport",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "expense",
+     "entity_id": "5764ab9e-66b4-5785-9691-a18ff571a114",
+     "version": 1,
+     "data": {
+      "id": "5764ab9e-66b4-5785-9691-a18ff571a114",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "description": "Dinner at Thalassa",
+      "amount_minor": 180000,
+      "currency": "INR",
+      "payer_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "date": "2026-09-23",
+      "category_id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+      "notes": null,
+      "split_method": "equal",
+      "import_batch_id": null,
+      "created_by": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "acting_admin_id": null,
+      "created_at": "2026-09-23T16:10:00+00:00",
+      "updated_at": "2026-09-23T16:10:00+00:00",
+      "deleted_at": null,
+      "version": 1,
+      "splits": [
+       {
+        "user_id": "49eaa721-4d30-5296-a193-d18818ade774",
+        "share_minor": 45000,
+        "input_value": null
+       },
+       {
+        "user_id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+        "share_minor": 45000,
+        "input_value": null
+       },
+       {
+        "user_id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+        "share_minor": 45000,
+        "input_value": null
+       },
+       {
+        "user_id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+        "share_minor": 45000,
+        "input_value": null
+       }
+      ],
+      "category": {
+       "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+       "key": "food",
+       "label": "Food",
+       "icon": "food",
+       "scope": "all",
+       "owner_id": null
+      }
+     }
+    },
+    {
+     "entity": "settlement",
+     "entity_id": "4f4828a3-184c-5eb3-a9e0-0238f81c470f",
+     "version": 1,
+     "data": {
+      "id": "4f4828a3-184c-5eb3-a9e0-0238f81c470f",
+      "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+      "from_user": "49eaa721-4d30-5296-a193-d18818ade774",
+      "to_user": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "amount_minor": 50000,
+      "currency": "INR",
+      "date": "2026-09-22",
+      "method": "upi",
+      "note": null,
+      "import_batch_id": null,
+      "created_by": "49eaa721-4d30-5296-a193-d18818ade774",
+      "acting_admin_id": null,
+      "created_at": "2026-09-22T01:20:00+00:00",
+      "deleted_at": null,
+      "version": 1
+     }
+    }
+   ]
+  }
+ },
+ "answers": {
+  "me": {
+   "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+   "name": "Rahul Sharma",
+   "email": "rahul.sharma@example.com",
+   "avatar_url": null,
+   "currency": "INR",
+   "role": "user",
+   "created_at": "2026-06-20T06:30:00Z",
+   "version": 1
+  },
+  "groups": [
+   {
+    "id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "name": "Goa Trip",
+    "icon": "travel",
+    "currency": "INR",
+    "created_at": "2026-09-10T14:30:00Z",
+    "archived_at": null,
+    "members": [
+     {
+      "user": {
+       "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+       "name": "Aman Verma",
+       "avatar_url": null,
+       "is_placeholder": false
+      },
+      "role": "member",
+      "joined_at": "2026-09-10T14:30:00Z",
+      "placeholder_name": null,
+      "invite_email": null
+     },
+     {
+      "user": {
+       "id": "49eaa721-4d30-5296-a193-d18818ade774",
+       "name": "John Doe",
+       "avatar_url": null,
+       "is_placeholder": false
+      },
+      "role": "owner",
+      "joined_at": "2026-09-10T14:30:00Z",
+      "placeholder_name": null,
+      "invite_email": null
+     },
+     {
+      "user": {
+       "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+       "name": "Priya Nair",
+       "avatar_url": null,
+       "is_placeholder": false
+      },
+      "role": "member",
+      "joined_at": "2026-09-10T14:30:00Z",
+      "placeholder_name": null,
+      "invite_email": null
+     },
+     {
+      "user": {
+       "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+       "name": "Rahul Sharma",
+       "avatar_url": null,
+       "is_placeholder": false
+      },
+      "role": "member",
+      "joined_at": "2026-09-10T14:30:00Z",
+      "placeholder_name": null,
+      "invite_email": null
+     },
+     {
+      "user": {
+       "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+       "name": "Vivek Iyer",
+       "avatar_url": null,
+       "is_placeholder": false
+      },
+      "role": "member",
+      "joined_at": "2026-09-10T14:30:00Z",
+      "placeholder_name": null,
+      "invite_email": null
+     },
+     {
+      "user": {
+       "id": "470aad14-41da-5c6e-863d-947a249fb114",
+       "name": "Kabir Mehta",
+       "avatar_url": null,
+       "is_placeholder": false
+      },
+      "role": "member",
+      "joined_at": "2026-09-21T04:35:00Z",
+      "placeholder_name": "Kabir M.",
+      "invite_email": null
+     }
+    ],
+    "total_spent_minor": 4826000,
+    "my_net_minor": 451800,
+    "last_activity_at": "2026-09-23T16:10:00Z",
+    "version": 1
+   }
+  ],
+  "groups_archived": [],
+  "balances": {
+   "totals": [
+    {
+     "currency": "INR",
+     "net_minor": 451800,
+     "you_owe_minor": 0,
+     "you_are_owed_minor": 451800
+    }
+   ],
+   "friends": [
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "currency": "INR",
+     "net_minor": 340800
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "currency": "INR",
+     "net_minor": 111000
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "currency": "INR",
+     "net_minor": 0
+    },
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "currency": "INR",
+     "net_minor": 0
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "currency": "INR",
+     "net_minor": 0
+    }
+   ],
+   "groups": [
+    {
+     "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+     "name": "Goa Trip",
+     "currency": "INR",
+     "net_minor": 451800
+    }
+   ]
+  },
+  "feed": [
+   {
+    "kind": "expense",
+    "id": "5764ab9e-66b4-5785-9691-a18ff571a114",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Dinner at Thalassa",
+    "date": "2026-09-23",
+    "created_at": "2026-09-23T16:10:00Z",
+    "amount_minor": 180000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "name": "Rahul Sharma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 4,
+    "my_share_minor": 45000,
+    "my_net_minor": 135000,
+    "settled": false,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "51b0947b-c74e-5296-b0b5-efcb40be6f8e",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Uber to airport",
+    "date": "2026-09-22",
+    "created_at": "2026-09-22T01:35:00Z",
+    "amount_minor": 62000,
+    "currency": "INR",
+    "category": {
+     "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+     "key": "transport",
+     "label": "Transport",
+     "icon": "transport",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "name": "John Doe",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 2,
+    "my_share_minor": 31000,
+    "my_net_minor": -31000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "settlement",
+    "id": "4f4828a3-184c-5eb3-a9e0-0238f81c470f",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": null,
+    "date": "2026-09-22",
+    "created_at": "2026-09-22T01:20:00Z",
+    "amount_minor": 50000,
+    "currency": "INR",
+    "category": null,
+    "payer": {
+     "id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "name": "John Doe",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": {
+     "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "name": "Rahul Sharma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "method": "upi",
+    "participant_count": 2,
+    "my_share_minor": 0,
+    "my_net_minor": -50000,
+    "settled": false,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "ade685ec-92cc-5aa5-9440-758b6106ae2c",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Return tickets",
+    "date": "2026-09-20",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 972000,
+    "currency": "INR",
+    "category": {
+     "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+     "key": "travel",
+     "label": "Travel",
+     "icon": "travel",
+     "scope": "group",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "name": "John Doe",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "exact",
+    "participant_count": 5,
+    "my_share_minor": 137700,
+    "my_net_minor": -137700,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "ea3b54e6-17ae-59bb-a915-e55a525338cb",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Scooter rentals",
+    "date": "2026-09-19",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 240000,
+    "currency": "INR",
+    "category": {
+     "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+     "key": "transport",
+     "label": "Transport",
+     "icon": "transport",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+     "name": "Priya Nair",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 40000,
+    "my_net_minor": -40000,
+    "settled": true,
+    "by_admin": true,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "eb7a276c-b18c-573a-9a0a-74c45dbc122a",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Beach shack lunch",
+    "date": "2026-09-18",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 216000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+     "name": "Aman Verma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 36000,
+    "my_net_minor": -36000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "59424173-0ad9-5fbf-9866-2a081d44a28d",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Late-night pizza",
+    "date": "2026-09-17",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 114000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "name": "John Doe",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "exact",
+    "participant_count": 6,
+    "my_share_minor": 20300,
+    "my_net_minor": -20300,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "8c300bf9-eaea-573a-8db3-87575b4d12f3",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Drinks at Curlies",
+    "date": "2026-09-16",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 165000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+     "name": "Vivek Iyer",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 27500,
+    "my_net_minor": -27500,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "1f8f16a1-bf9d-5d3b-8f7d-48512fcbfafb",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Chai and bhajiyas",
+    "date": "2026-09-16",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 6000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+     "name": "Aman Verma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 1000,
+    "my_net_minor": -1000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "ee48e3fe-a622-5b5f-9b20-b7d55762500f",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Fish thali at Ritz Classic",
+    "date": "2026-09-15",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 245000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+     "name": "Priya Nair",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 5,
+    "my_share_minor": 49000,
+    "my_net_minor": -49000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "49e8f68c-8d8e-54b5-a1fb-5990b56f174c",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Groceries for the villa",
+    "date": "2026-09-14",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 240000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+     "name": "Vivek Iyer",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 40000,
+    "my_net_minor": -40000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "b0211144-d162-5200-97d8-724a424af143",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Breakfast at Artjuna",
+    "date": "2026-09-13",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 120000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "name": "Rahul Sharma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 20000,
+    "my_net_minor": 100000,
+    "settled": false,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "4e02df56-8074-5a49-a8dc-85406e69455e",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Parasailing",
+    "date": "2026-09-13",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 350000,
+    "currency": "INR",
+    "category": {
+     "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+     "key": "entertainment",
+     "label": "Fun",
+     "icon": "entertainment",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "470aad14-41da-5c6e-863d-947a249fb114",
+     "name": "Kabir Mehta",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 4,
+    "my_share_minor": 87500,
+    "my_net_minor": -87500,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "eaf63a5c-f0d4-55a6-b2db-cd6f6a914886",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Cab from Madgaon station",
+    "date": "2026-09-12",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 128000,
+    "currency": "INR",
+    "category": {
+     "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+     "key": "transport",
+     "label": "Transport",
+     "icon": "transport",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+     "name": "Priya Nair",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 5,
+    "my_share_minor": 25600,
+    "my_net_minor": -25600,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "e4dcc557-2e41-5bcc-9d45-ad658ccb9b1f",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Train to Goa",
+    "date": "2026-09-12",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 668000,
+    "currency": "INR",
+    "category": {
+     "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+     "key": "travel",
+     "label": "Travel",
+     "icon": "travel",
+     "scope": "group",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+     "name": "Aman Verma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 5,
+    "my_share_minor": 133600,
+    "my_net_minor": -133600,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "00633eac-0516-58e4-9279-69b74853ece8",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Villa in Anjuna",
+    "date": "2026-09-12",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 1120000,
+    "currency": "INR",
+    "category": {
+     "id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+     "key": "stay",
+     "label": "Stay",
+     "icon": "rent",
+     "scope": "group",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "name": "Rahul Sharma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 5,
+    "my_share_minor": 224000,
+    "my_net_minor": 896000,
+    "settled": false,
+    "by_admin": false,
+    "deleted_at": null
+   }
+  ],
+  "feed_deleted": [],
+  "categories": [
+   {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+    "key": "transport",
+    "label": "Transport",
+    "icon": "transport",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+    "key": "shopping",
+    "label": "Shopping",
+    "icon": "shopping",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+    "key": "entertainment",
+    "label": "Fun",
+    "icon": "entertainment",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+    "key": "travel",
+    "label": "Travel",
+    "icon": "travel",
+    "scope": "group",
+    "owner_id": null
+   },
+   {
+    "id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+    "key": "stay",
+    "label": "Stay",
+    "icon": "rent",
+    "scope": "group",
+    "owner_id": null
+   },
+   {
+    "id": "81c9635a-b258-5ac2-bce7-a3619e4ebc93",
+    "key": "rent",
+    "label": "Rent",
+    "icon": "rent",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+    "key": "bills",
+    "label": "Bills",
+    "icon": "bills",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "42220069-ff05-57ab-8292-dc10b4f2ce83",
+    "key": "health",
+    "label": "Health",
+    "icon": "health",
+    "scope": "personal",
+    "owner_id": null
+   },
+   {
+    "id": "6614cb5e-301f-57f1-85d4-ae8a8838fe7c",
+    "key": "income",
+    "label": "Income",
+    "icon": "income",
+    "scope": "personal",
+    "owner_id": null
+   },
+   {
+    "id": "45e00ef2-b34a-56d4-9d3a-4ad2456709aa",
+    "key": "other",
+    "label": "Other",
+    "icon": "other",
+    "scope": "all",
+    "owner_id": null
+   }
+  ],
+  "categories_group": [
+   {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+    "key": "transport",
+    "label": "Transport",
+    "icon": "transport",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+    "key": "shopping",
+    "label": "Shopping",
+    "icon": "shopping",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+    "key": "entertainment",
+    "label": "Fun",
+    "icon": "entertainment",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+    "key": "travel",
+    "label": "Travel",
+    "icon": "travel",
+    "scope": "group",
+    "owner_id": null
+   },
+   {
+    "id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+    "key": "stay",
+    "label": "Stay",
+    "icon": "rent",
+    "scope": "group",
+    "owner_id": null
+   },
+   {
+    "id": "81c9635a-b258-5ac2-bce7-a3619e4ebc93",
+    "key": "rent",
+    "label": "Rent",
+    "icon": "rent",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+    "key": "bills",
+    "label": "Bills",
+    "icon": "bills",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "45e00ef2-b34a-56d4-9d3a-4ad2456709aa",
+    "key": "other",
+    "label": "Other",
+    "icon": "other",
+    "scope": "all",
+    "owner_id": null
+   }
+  ],
+  "categories_personal": [
+   {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+    "key": "transport",
+    "label": "Transport",
+    "icon": "transport",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "5474fb6d-07fb-557a-9bf4-560d10bee16d",
+    "key": "shopping",
+    "label": "Shopping",
+    "icon": "shopping",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+    "key": "entertainment",
+    "label": "Fun",
+    "icon": "entertainment",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "81c9635a-b258-5ac2-bce7-a3619e4ebc93",
+    "key": "rent",
+    "label": "Rent",
+    "icon": "rent",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "a5fc7a4a-1bc0-5c91-94f5-51c7faa69855",
+    "key": "bills",
+    "label": "Bills",
+    "icon": "bills",
+    "scope": "all",
+    "owner_id": null
+   },
+   {
+    "id": "42220069-ff05-57ab-8292-dc10b4f2ce83",
+    "key": "health",
+    "label": "Health",
+    "icon": "health",
+    "scope": "personal",
+    "owner_id": null
+   },
+   {
+    "id": "6614cb5e-301f-57f1-85d4-ae8a8838fe7c",
+    "key": "income",
+    "label": "Income",
+    "icon": "income",
+    "scope": "personal",
+    "owner_id": null
+   },
+   {
+    "id": "45e00ef2-b34a-56d4-9d3a-4ad2456709aa",
+    "key": "other",
+    "label": "Other",
+    "icon": "other",
+    "scope": "all",
+    "owner_id": null
+   }
+  ],
+  "group:7d18fd9a-32aa-594f-addc-9dc9936a976c": {
+   "id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "name": "Goa Trip",
+   "icon": "travel",
+   "currency": "INR",
+   "created_at": "2026-09-10T14:30:00Z",
+   "archived_at": null,
+   "members": [
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "role": "member",
+     "joined_at": "2026-09-10T14:30:00Z",
+     "placeholder_name": null,
+     "invite_email": null
+    },
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "role": "owner",
+     "joined_at": "2026-09-10T14:30:00Z",
+     "placeholder_name": null,
+     "invite_email": null
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "role": "member",
+     "joined_at": "2026-09-10T14:30:00Z",
+     "placeholder_name": null,
+     "invite_email": null
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "role": "member",
+     "joined_at": "2026-09-10T14:30:00Z",
+     "placeholder_name": null,
+     "invite_email": null
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "role": "member",
+     "joined_at": "2026-09-10T14:30:00Z",
+     "placeholder_name": null,
+     "invite_email": null
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "role": "member",
+     "joined_at": "2026-09-21T04:35:00Z",
+     "placeholder_name": "Kabir M.",
+     "invite_email": null
+    }
+   ],
+   "total_spent_minor": 4826000,
+   "my_net_minor": 451800,
+   "last_activity_at": "2026-09-23T16:10:00Z",
+   "version": 1
+  },
+  "group_balances:7d18fd9a-32aa-594f-addc-9dc9936a976c": {
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "currency": "INR",
+   "net_minor": 451800,
+   "you_owe_minor": 67500,
+   "you_are_owed_minor": 519300,
+   "people": [
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": -67500
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": 221500
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": 129400
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": 118400
+    },
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": 50000
+    }
+   ],
+   "members": [
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": -340800
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": -304200
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": -7300
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": 451800
+    },
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": 115000
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "net_minor": 85500
+    }
+   ],
+   "suggested": [
+    {
+     "from_user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "to_user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "amount_minor": 340800
+    },
+    {
+     "from_user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "to_user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "amount_minor": 115000
+    },
+    {
+     "from_user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "to_user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "amount_minor": 111000
+    },
+    {
+     "from_user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "to_user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "amount_minor": 78200
+    },
+    {
+     "from_user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "to_user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "amount_minor": 7300
+    }
+   ]
+  },
+  "feed:7d18fd9a-32aa-594f-addc-9dc9936a976c": [
+   {
+    "kind": "expense",
+    "id": "5764ab9e-66b4-5785-9691-a18ff571a114",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Dinner at Thalassa",
+    "date": "2026-09-23",
+    "created_at": "2026-09-23T16:10:00Z",
+    "amount_minor": 180000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "name": "Rahul Sharma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 4,
+    "my_share_minor": 45000,
+    "my_net_minor": 135000,
+    "settled": false,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "51b0947b-c74e-5296-b0b5-efcb40be6f8e",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Uber to airport",
+    "date": "2026-09-22",
+    "created_at": "2026-09-22T01:35:00Z",
+    "amount_minor": 62000,
+    "currency": "INR",
+    "category": {
+     "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+     "key": "transport",
+     "label": "Transport",
+     "icon": "transport",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "name": "John Doe",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 2,
+    "my_share_minor": 31000,
+    "my_net_minor": -31000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "settlement",
+    "id": "4f4828a3-184c-5eb3-a9e0-0238f81c470f",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": null,
+    "date": "2026-09-22",
+    "created_at": "2026-09-22T01:20:00Z",
+    "amount_minor": 50000,
+    "currency": "INR",
+    "category": null,
+    "payer": {
+     "id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "name": "John Doe",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": {
+     "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "name": "Rahul Sharma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "method": "upi",
+    "participant_count": 2,
+    "my_share_minor": 0,
+    "my_net_minor": -50000,
+    "settled": false,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "ade685ec-92cc-5aa5-9440-758b6106ae2c",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Return tickets",
+    "date": "2026-09-20",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 972000,
+    "currency": "INR",
+    "category": {
+     "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+     "key": "travel",
+     "label": "Travel",
+     "icon": "travel",
+     "scope": "group",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "name": "John Doe",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "exact",
+    "participant_count": 5,
+    "my_share_minor": 137700,
+    "my_net_minor": -137700,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "ea3b54e6-17ae-59bb-a915-e55a525338cb",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Scooter rentals",
+    "date": "2026-09-19",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 240000,
+    "currency": "INR",
+    "category": {
+     "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+     "key": "transport",
+     "label": "Transport",
+     "icon": "transport",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+     "name": "Priya Nair",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 40000,
+    "my_net_minor": -40000,
+    "settled": true,
+    "by_admin": true,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "eb7a276c-b18c-573a-9a0a-74c45dbc122a",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Beach shack lunch",
+    "date": "2026-09-18",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 216000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+     "name": "Aman Verma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 36000,
+    "my_net_minor": -36000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "59424173-0ad9-5fbf-9866-2a081d44a28d",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Late-night pizza",
+    "date": "2026-09-17",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 114000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "49eaa721-4d30-5296-a193-d18818ade774",
+     "name": "John Doe",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "exact",
+    "participant_count": 6,
+    "my_share_minor": 20300,
+    "my_net_minor": -20300,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "8c300bf9-eaea-573a-8db3-87575b4d12f3",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Drinks at Curlies",
+    "date": "2026-09-16",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 165000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+     "name": "Vivek Iyer",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 27500,
+    "my_net_minor": -27500,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "1f8f16a1-bf9d-5d3b-8f7d-48512fcbfafb",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Chai and bhajiyas",
+    "date": "2026-09-16",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 6000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+     "name": "Aman Verma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 1000,
+    "my_net_minor": -1000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "ee48e3fe-a622-5b5f-9b20-b7d55762500f",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Fish thali at Ritz Classic",
+    "date": "2026-09-15",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 245000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+     "name": "Priya Nair",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 5,
+    "my_share_minor": 49000,
+    "my_net_minor": -49000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "49e8f68c-8d8e-54b5-a1fb-5990b56f174c",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Groceries for the villa",
+    "date": "2026-09-14",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 240000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+     "name": "Vivek Iyer",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 40000,
+    "my_net_minor": -40000,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "b0211144-d162-5200-97d8-724a424af143",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Breakfast at Artjuna",
+    "date": "2026-09-13",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 120000,
+    "currency": "INR",
+    "category": {
+     "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+     "key": "food",
+     "label": "Food",
+     "icon": "food",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "name": "Rahul Sharma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 6,
+    "my_share_minor": 20000,
+    "my_net_minor": 100000,
+    "settled": false,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "4e02df56-8074-5a49-a8dc-85406e69455e",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Parasailing",
+    "date": "2026-09-13",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 350000,
+    "currency": "INR",
+    "category": {
+     "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+     "key": "entertainment",
+     "label": "Fun",
+     "icon": "entertainment",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "470aad14-41da-5c6e-863d-947a249fb114",
+     "name": "Kabir Mehta",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 4,
+    "my_share_minor": 87500,
+    "my_net_minor": -87500,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "eaf63a5c-f0d4-55a6-b2db-cd6f6a914886",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Cab from Madgaon station",
+    "date": "2026-09-12",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 128000,
+    "currency": "INR",
+    "category": {
+     "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+     "key": "transport",
+     "label": "Transport",
+     "icon": "transport",
+     "scope": "all",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+     "name": "Priya Nair",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 5,
+    "my_share_minor": 25600,
+    "my_net_minor": -25600,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "e4dcc557-2e41-5bcc-9d45-ad658ccb9b1f",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Train to Goa",
+    "date": "2026-09-12",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 668000,
+    "currency": "INR",
+    "category": {
+     "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+     "key": "travel",
+     "label": "Travel",
+     "icon": "travel",
+     "scope": "group",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+     "name": "Aman Verma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 5,
+    "my_share_minor": 133600,
+    "my_net_minor": -133600,
+    "settled": true,
+    "by_admin": false,
+    "deleted_at": null
+   },
+   {
+    "kind": "expense",
+    "id": "00633eac-0516-58e4-9279-69b74853ece8",
+    "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+    "group_name": "Goa Trip",
+    "title": "Villa in Anjuna",
+    "date": "2026-09-12",
+    "created_at": "2026-09-22T04:30:00Z",
+    "amount_minor": 1120000,
+    "currency": "INR",
+    "category": {
+     "id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+     "key": "stay",
+     "label": "Stay",
+     "icon": "rent",
+     "scope": "group",
+     "owner_id": null
+    },
+    "payer": {
+     "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+     "name": "Rahul Sharma",
+     "avatar_url": null,
+     "is_placeholder": false
+    },
+    "to_user": null,
+    "method": "equal",
+    "participant_count": 5,
+    "my_share_minor": 224000,
+    "my_net_minor": 896000,
+    "settled": false,
+    "by_admin": false,
+    "deleted_at": null
+   }
+  ],
+  "expense:5764ab9e-66b4-5785-9691-a18ff571a114": {
+   "id": "5764ab9e-66b4-5785-9691-a18ff571a114",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Dinner at Thalassa",
+   "amount_minor": 180000,
+   "currency": "INR",
+   "payer": {
+    "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+    "name": "Rahul Sharma",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-23",
+   "category": {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 45000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 45000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 45000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 45000,
+     "input_value": null,
+     "status": "owes"
+    }
+   ],
+   "my_share_minor": 45000,
+   "my_net_minor": 135000,
+   "created_by": {
+    "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+    "name": "Rahul Sharma",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": null,
+   "created_at": "2026-09-23T16:10:00Z",
+   "updated_at": "2026-09-23T16:10:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:51b0947b-c74e-5296-b0b5-efcb40be6f8e": {
+   "id": "51b0947b-c74e-5296-b0b5-efcb40be6f8e",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Uber to airport",
+   "amount_minor": 62000,
+   "currency": "INR",
+   "payer": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-22",
+   "category": {
+    "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+    "key": "transport",
+    "label": "Transport",
+    "icon": "transport",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 31000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 31000,
+     "input_value": null,
+     "status": "settled"
+    }
+   ],
+   "my_share_minor": 31000,
+   "my_net_minor": -31000,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": null,
+   "created_at": "2026-09-22T01:35:00Z",
+   "updated_at": "2026-09-22T01:35:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:ade685ec-92cc-5aa5-9440-758b6106ae2c": {
+   "id": "ade685ec-92cc-5aa5-9440-758b6106ae2c",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Return tickets",
+   "amount_minor": 972000,
+   "currency": "INR",
+   "payer": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-20",
+   "category": {
+    "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+    "key": "travel",
+    "label": "Travel",
+    "icon": "travel",
+    "scope": "group",
+    "owner_id": null
+   },
+   "notes": "Fares depended on when each person booked. Vivek took the overnight bus.",
+   "split_method": "exact",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 302500,
+     "input_value": "302500",
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 137700,
+     "input_value": "137700",
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 235300,
+     "input_value": "235300",
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 249300,
+     "input_value": "249300",
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 47200,
+     "input_value": "47200",
+     "status": "owes"
+    }
+   ],
+   "my_share_minor": 137700,
+   "my_net_minor": -137700,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:ea3b54e6-17ae-59bb-a915-e55a525338cb": {
+   "id": "ea3b54e6-17ae-59bb-a915-e55a525338cb",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Scooter rentals",
+   "amount_minor": 240000,
+   "currency": "INR",
+   "payer": {
+    "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+    "name": "Priya Nair",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-19",
+   "category": {
+    "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+    "key": "transport",
+    "label": "Transport",
+    "icon": "transport",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "settled"
+    }
+   ],
+   "my_share_minor": 40000,
+   "my_net_minor": -40000,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": "49eaa721-4d30-5296-a193-d18818ade774",
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-23T15:40:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:eb7a276c-b18c-573a-9a0a-74c45dbc122a": {
+   "id": "eb7a276c-b18c-573a-9a0a-74c45dbc122a",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Beach shack lunch",
+   "amount_minor": 216000,
+   "currency": "INR",
+   "payer": {
+    "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+    "name": "Aman Verma",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-18",
+   "category": {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 36000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 36000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 36000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 36000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 36000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 36000,
+     "input_value": null,
+     "status": "settled"
+    }
+   ],
+   "my_share_minor": 36000,
+   "my_net_minor": -36000,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:59424173-0ad9-5fbf-9866-2a081d44a28d": {
+   "id": "59424173-0ad9-5fbf-9866-2a081d44a28d",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Late-night pizza",
+   "amount_minor": 114000,
+   "currency": "INR",
+   "payer": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-17",
+   "category": {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": "Kabir only had one slice",
+   "split_method": "exact",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20300,
+     "input_value": "20300",
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20300,
+     "input_value": "20300",
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20300,
+     "input_value": "20300",
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20300,
+     "input_value": "20300",
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20300,
+     "input_value": "20300",
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 12500,
+     "input_value": "12500",
+     "status": "settled"
+    }
+   ],
+   "my_share_minor": 20300,
+   "my_net_minor": -20300,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:8c300bf9-eaea-573a-8db3-87575b4d12f3": {
+   "id": "8c300bf9-eaea-573a-8db3-87575b4d12f3",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Drinks at Curlies",
+   "amount_minor": 165000,
+   "currency": "INR",
+   "payer": {
+    "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+    "name": "Vivek Iyer",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-16",
+   "category": {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 27500,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 27500,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 27500,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 27500,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 27500,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 27500,
+     "input_value": null,
+     "status": "settled"
+    }
+   ],
+   "my_share_minor": 27500,
+   "my_net_minor": -27500,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:1f8f16a1-bf9d-5d3b-8f7d-48512fcbfafb": {
+   "id": "1f8f16a1-bf9d-5d3b-8f7d-48512fcbfafb",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Chai and bhajiyas",
+   "amount_minor": 6000,
+   "currency": "INR",
+   "payer": {
+    "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+    "name": "Aman Verma",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-16",
+   "category": {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 1000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 1000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 1000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 1000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 1000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 1000,
+     "input_value": null,
+     "status": "settled"
+    }
+   ],
+   "my_share_minor": 1000,
+   "my_net_minor": -1000,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:ee48e3fe-a622-5b5f-9b20-b7d55762500f": {
+   "id": "ee48e3fe-a622-5b5f-9b20-b7d55762500f",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Fish thali at Ritz Classic",
+   "amount_minor": 245000,
+   "currency": "INR",
+   "payer": {
+    "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+    "name": "Priya Nair",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-15",
+   "category": {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 49000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 49000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 49000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 49000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 49000,
+     "input_value": null,
+     "status": "owes"
+    }
+   ],
+   "my_share_minor": 49000,
+   "my_net_minor": -49000,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:49e8f68c-8d8e-54b5-a1fb-5990b56f174c": {
+   "id": "49e8f68c-8d8e-54b5-a1fb-5990b56f174c",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Groceries for the villa",
+   "amount_minor": 240000,
+   "currency": "INR",
+   "payer": {
+    "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+    "name": "Vivek Iyer",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-14",
+   "category": {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 40000,
+     "input_value": null,
+     "status": "settled"
+    }
+   ],
+   "my_share_minor": 40000,
+   "my_net_minor": -40000,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:b0211144-d162-5200-97d8-724a424af143": {
+   "id": "b0211144-d162-5200-97d8-724a424af143",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Breakfast at Artjuna",
+   "amount_minor": 120000,
+   "currency": "INR",
+   "payer": {
+    "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+    "name": "Rahul Sharma",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-13",
+   "category": {
+    "id": "2965731c-da35-5826-a263-1d92c2f5d6a1",
+    "key": "food",
+    "label": "Food",
+    "icon": "food",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 20000,
+     "input_value": null,
+     "status": "settled"
+    }
+   ],
+   "my_share_minor": 20000,
+   "my_net_minor": 100000,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:4e02df56-8074-5a49-a8dc-85406e69455e": {
+   "id": "4e02df56-8074-5a49-a8dc-85406e69455e",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Parasailing",
+   "amount_minor": 350000,
+   "currency": "INR",
+   "payer": {
+    "id": "470aad14-41da-5c6e-863d-947a249fb114",
+    "name": "Kabir Mehta",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-13",
+   "category": {
+    "id": "ba3646aa-b081-5504-b51d-2a5f485150fc",
+    "key": "entertainment",
+    "label": "Fun",
+    "icon": "entertainment",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 87500,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 87500,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 87500,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "470aad14-41da-5c6e-863d-947a249fb114",
+      "name": "Kabir Mehta",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 87500,
+     "input_value": null,
+     "status": "paid"
+    }
+   ],
+   "my_share_minor": 87500,
+   "my_net_minor": -87500,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:eaf63a5c-f0d4-55a6-b2db-cd6f6a914886": {
+   "id": "eaf63a5c-f0d4-55a6-b2db-cd6f6a914886",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Cab from Madgaon station",
+   "amount_minor": 128000,
+   "currency": "INR",
+   "payer": {
+    "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+    "name": "Priya Nair",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-12",
+   "category": {
+    "id": "b92615d7-5600-5e62-8a96-38195d08dce7",
+    "key": "transport",
+    "label": "Transport",
+    "icon": "transport",
+    "scope": "all",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 25600,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 25600,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 25600,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 25600,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 25600,
+     "input_value": null,
+     "status": "owes"
+    }
+   ],
+   "my_share_minor": 25600,
+   "my_net_minor": -25600,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:e4dcc557-2e41-5bcc-9d45-ad658ccb9b1f": {
+   "id": "e4dcc557-2e41-5bcc-9d45-ad658ccb9b1f",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Train to Goa",
+   "amount_minor": 668000,
+   "currency": "INR",
+   "payer": {
+    "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+    "name": "Aman Verma",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-12",
+   "category": {
+    "id": "c237ab49-4e1d-58ab-b1f1-1da9eb2c3769",
+    "key": "travel",
+    "label": "Travel",
+    "icon": "travel",
+    "scope": "group",
+    "owner_id": null
+   },
+   "notes": "Kabir came separately",
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 133600,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 133600,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 133600,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 133600,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 133600,
+     "input_value": null,
+     "status": "owes"
+    }
+   ],
+   "my_share_minor": 133600,
+   "my_net_minor": -133600,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "expense:00633eac-0516-58e4-9279-69b74853ece8": {
+   "id": "00633eac-0516-58e4-9279-69b74853ece8",
+   "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+   "description": "Villa in Anjuna",
+   "amount_minor": 1120000,
+   "currency": "INR",
+   "payer": {
+    "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+    "name": "Rahul Sharma",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "date": "2026-09-12",
+   "category": {
+    "id": "ce5d7af5-d41e-5874-a2cf-0321e4d0ce5f",
+    "key": "stay",
+    "label": "Stay",
+    "icon": "rent",
+    "scope": "group",
+    "owner_id": null
+   },
+   "notes": null,
+   "split_method": "equal",
+   "splits": [
+    {
+     "user": {
+      "id": "49eaa721-4d30-5296-a193-d18818ade774",
+      "name": "John Doe",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 224000,
+     "input_value": null,
+     "status": "settled"
+    },
+    {
+     "user": {
+      "id": "0029a2cc-64dc-5e7b-9779-4245e0d9e4dd",
+      "name": "Rahul Sharma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 224000,
+     "input_value": null,
+     "status": "paid"
+    },
+    {
+     "user": {
+      "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+      "name": "Aman Verma",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 224000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+      "name": "Priya Nair",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 224000,
+     "input_value": null,
+     "status": "owes"
+    },
+    {
+     "user": {
+      "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+      "name": "Vivek Iyer",
+      "avatar_url": null,
+      "is_placeholder": false
+     },
+     "share_minor": 224000,
+     "input_value": null,
+     "status": "owes"
+    }
+   ],
+   "my_share_minor": 224000,
+   "my_net_minor": 896000,
+   "created_by": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "acting_admin_id": null,
+   "import_batch_id": "f320da61-b38e-5775-bc11-9c8530a78ae7",
+   "created_at": "2026-09-22T04:30:00Z",
+   "updated_at": "2026-09-22T04:30:00Z",
+   "deleted_at": null,
+   "version": 1
+  },
+  "settle_up:d357f895-5db4-581e-a545-3b97bf5556b3:INR": {
+   "friend": {
+    "id": "d357f895-5db4-581e-a545-3b97bf5556b3",
+    "name": "Priya Nair",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "currency": "INR",
+   "net_minor": 340800,
+   "groups": [
+    {
+     "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+     "name": "Goa Trip",
+     "net_minor": 340800
+    }
+   ]
+  },
+  "settle_up:be046739-5c23-5236-8ec1-7de3cb402d82:INR": {
+   "friend": {
+    "id": "be046739-5c23-5236-8ec1-7de3cb402d82",
+    "name": "Vivek Iyer",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "currency": "INR",
+   "net_minor": 111000,
+   "groups": [
+    {
+     "group_id": "7d18fd9a-32aa-594f-addc-9dc9936a976c",
+     "name": "Goa Trip",
+     "net_minor": 111000
+    }
+   ]
+  },
+  "settle_up:79d60af4-527b-59bd-9a0f-6d369e4f55b8:INR": {
+   "friend": {
+    "id": "79d60af4-527b-59bd-9a0f-6d369e4f55b8",
+    "name": "Aman Verma",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "currency": "INR",
+   "net_minor": 0,
+   "groups": []
+  },
+  "settle_up:49eaa721-4d30-5296-a193-d18818ade774:INR": {
+   "friend": {
+    "id": "49eaa721-4d30-5296-a193-d18818ade774",
+    "name": "John Doe",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "currency": "INR",
+   "net_minor": 0,
+   "groups": []
+  },
+  "settle_up:470aad14-41da-5c6e-863d-947a249fb114:INR": {
+   "friend": {
+    "id": "470aad14-41da-5c6e-863d-947a249fb114",
+    "name": "Kabir Mehta",
+    "avatar_url": null,
+    "is_placeholder": false
+   },
+   "currency": "INR",
+   "net_minor": 0,
+   "groups": []
+  },
+  "personal_summary:2026-07-01": {
+   "month": "2026-07",
+   "month_label": "July",
+   "currency": "INR",
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "left_over_minor": 0,
+   "group_share_minor": 0,
+   "by_category": []
+  },
+  "personal_summary:2026-08-01": {
+   "month": "2026-08",
+   "month_label": "August",
+   "currency": "INR",
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "left_over_minor": 0,
+   "group_share_minor": 0,
+   "by_category": []
+  },
+  "personal_summary:2026-09-01": {
+   "month": "2026-09",
+   "month_label": "September",
+   "currency": "INR",
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "left_over_minor": 0,
+   "group_share_minor": 918200,
+   "by_category": []
+  },
+  "personal_list": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "count": 0
+  },
+  "personal_list:sep_expense": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "count": 0
+  },
+  "personal_deleted": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "count": 0
+  },
+  "personal_list:just_in": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "count": 0
+  },
+  "personal_list:upi": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "count": 0
+  },
+  "personal_list:hdfc": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "count": 0
+  },
+  "personal_list:transfers": {
+   "items": [],
+   "spent_minor": 0,
+   "income_minor": 0,
+   "refunds_minor": 0,
+   "count": 0
+  },
+  "personal_accounts": [],
+  "personal_accounts_reported": [],
+  "personal_goals": [],
+  "personal_goals_deleted": [],
+  "goal_contributions": [],
+  "goal_contributions_deleted": [],
+  "allocation_rules": [],
+  "allocation_rules_deleted": [],
+  "allocation_plans": [],
+  "allocation_plans_deleted": []
+ }
+}

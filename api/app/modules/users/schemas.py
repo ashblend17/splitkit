@@ -1,9 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import Field
-
-from app.core.schemas import Schema
+from app.core.schemas import Currency, Schema, Text
 
 
 class UserOut(Schema):
@@ -28,11 +26,13 @@ class UserBrief(Schema):
 
 
 class UserUpdate(Schema):
+    """Fields left out or sent as null stay as they are (generated clients send nulls)."""
+
     version: int | None = None
     """The version you edited. If it changed since, the update gets a 409."""
-    name: str | None = Field(default=None, min_length=1, max_length=80)
+    name: Text(80) | None = None
     avatar_url: str | None = None
-    currency: str | None = Field(default=None, pattern="^[A-Z]{3}$")
+    currency: Currency | None = None
 
 
 def brief(user) -> UserBrief:

@@ -4,7 +4,7 @@
   "subtitle": "12 – 23 Sep · 6 members",
   "cards": [
     {
-      "id": "2d762d8f-9b16-4cb3-a8da-06cb06c2177f",
+      "id": "7aba54ac-c728-5750-abf1-4194f63e4b5f",
       "type": "total_spend",
       "title": "Total group spending",
       "period_label": "All time",
@@ -18,9 +18,9 @@
       }
     },
     {
-      "id": "e67c7786-6c29-481d-b288-4e77636beea1",
+      "id": "3cf9a31b-eb89-5b69-a548-90d992ea7055",
       "type": "spending_trend",
-      "title": "Spending per day",
+      "title": "Spending over time",
       "period_label": "12 – 23 Sep",
       "source": "group_daily",
       "headline": "Peak ₹19,160 on 12 Sep",
@@ -90,7 +90,7 @@
       "stat": null
     },
     {
-      "id": "3e57c717-9bce-4711-a431-1ef01e073f8f",
+      "id": "a4d6c379-31a9-5a4d-837d-4921551a0d01",
       "type": "spending_by_category",
       "title": "By category",
       "period_label": "All time",
@@ -122,7 +122,7 @@
       "stat": null
     },
     {
-      "id": "e30038bf-d51c-461c-a8e9-223be70374a0",
+      "id": "66394bcb-7f7e-5b7b-8939-2808d21dd986",
       "type": "paid_by_member",
       "title": "Who paid",
       "period_label": "All time",

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
@@ -20,6 +21,7 @@ class GroupListPage extends ConsumerStatefulWidget {
 
 class _GroupListPageState extends ConsumerState<GroupListPage> {
   final _search = TextEditingController();
+  bool _showArchived = false;
 
   @override
   void initState() {
@@ -45,7 +47,41 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
   @override
   Widget build(BuildContext context) {
     final groups = ref.watch(groupsProvider);
+    final archived = ref.watch(archivedGroupsProvider).value ?? const <GroupOut>[];
     final q = _search.text.trim().toLowerCase();
+    bool matches(GroupOut g) => g.name.toLowerCase().contains(q);
+    final wide = isWideLayout(context);
+    final search = Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: SkColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: SkColors.line),
+      ),
+      child: Row(
+        children: [
+          SkIcon('search', size: 18, color: SkColors.ink2),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _search,
+              style: SkText.body(15, 400),
+              decoration: InputDecoration(
+                isCollapsed: true,
+                contentPadding: EdgeInsets.zero,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                hintText: 'Search groups',
+                hintStyle: SkText.body(15, 400, color: SkColors.ink2),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -56,9 +92,9 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
             await ref.read(groupsProvider.future);
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+            padding: tabPagePadding(context),
             children: [
-              ContentWidth(
+              TabPageWidth(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -67,6 +103,8 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
                         Expanded(
                           child: Semantics(header: true, child: Text('Groups', style: SkText.title)),
                         ),
+                        // Desktop: search beside the title, as on Home.
+                        if (wide) ...[SizedBox(width: 320, child: search), const SizedBox(width: 12)],
                         SkButton(
                           'New group',
                           icon: 'plus',
@@ -76,65 +114,36 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: SkColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: SkColors.line),
-                      ),
-                      child: Row(
-                        children: [
-                          const SkIcon('search', size: 18, color: SkColors.ink2),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: TextField(
-                              controller: _search,
-                              style: SkText.body(15, 400),
-                              decoration: InputDecoration(
-                                isCollapsed: true,
-                                contentPadding: EdgeInsets.zero,
-                                filled: false,
-                                border: InputBorder.none,
-                                enabledBorder: InputBorder.none,
-                                focusedBorder: InputBorder.none,
-                                hintText: 'Search groups',
-                                hintStyle: SkText.body(15, 400, color: SkColors.ink2),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    if (!wide) ...[const SizedBox(height: 16), search],
                     const SizedBox(height: 16),
                     AsyncBody(
                       value: groups,
                       onRetry: () => ref.invalidate(groupsProvider),
                       builder: (all) {
-                        final shown = all.where((g) => g.name.toLowerCase().contains(q)).toList();
-                        if (all.isEmpty) {
-                          return EmptyState(
-                            title: 'No groups yet',
-                            body: 'Make a group for your flat, a trip or a dinner, then add what people paid.',
-                            actionLabel: 'New group',
-                            onAction: _newGroup,
-                          );
-                        }
-                        if (shown.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              'No group called “${_search.text.trim()}”',
-                              textAlign: TextAlign.center,
-                              style: SkText.body(15, 500, color: SkColors.ink2),
-                            ),
-                          );
-                        }
+                        final shown = all.where(matches).toList();
+                        final shownArchived = archived.where(matches).toList();
                         return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            for (final g in shown) ...[_card(g), const SizedBox(height: 10)],
+                            if (all.isEmpty)
+                              EmptyState(
+                                title: 'No groups yet',
+                                body: 'Make a group for your flat, a trip or a dinner, then add what people paid.',
+                                actionLabel: 'New group',
+                                onAction: _newGroup,
+                              )
+                            else if (shown.isEmpty && shownArchived.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text(
+                                  'No group called “${_search.text.trim()}”',
+                                  textAlign: TextAlign.center,
+                                  style: SkText.body(15, 500, color: SkColors.ink2),
+                                ),
+                              ),
+                            if (shown.isNotEmpty)
+                              CardColumns(minWidth: 340, gap: 10, children: [for (final g in shown) _card(g)]),
+                            if (shownArchived.isNotEmpty) ..._archived(shownArchived, searching: q.isNotEmpty),
                           ],
                         );
                       },
@@ -147,6 +156,33 @@ class _GroupListPageState extends ConsumerState<GroupListPage> {
         ),
       ),
     );
+  }
+
+  /// Archived groups, folded away under the others (open while searching finds one).
+  List<Widget> _archived(List<GroupOut> groups, {required bool searching}) {
+    final open = _showArchived || searching;
+    return [
+      const SizedBox(height: 16),
+      Semantics(
+        button: true,
+        expanded: open,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: searching ? null : () => setState(() => _showArchived = !_showArchived),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Row(
+              children: [
+                Expanded(child: Text('Archived (${groups.length})', style: SkText.body(14, 600, color: SkColors.ink2))),
+                if (!searching) SkIcon(open ? 'up' : 'down', size: 18, color: SkColors.ink2),
+              ],
+            ),
+          ),
+        ),
+      ),
+      if (open)
+        CardColumns(minWidth: 340, gap: 10, children: [for (final g in groups) Opacity(opacity: 0.7, child: _card(g))]),
+    ];
   }
 
   Widget _card(GroupOut g) {
@@ -205,9 +241,8 @@ class _NewGroupFormState extends ConsumerState<_NewGroupForm> {
     }
     setState(() => _busy = true);
     try {
-      final g = await ref
-          .read(apiProvider)
-          .groups
+      final id = await ref
+          .read(writesProvider)
           .createGroup(
             GroupIn(
               name: _name.text.trim(),
@@ -215,7 +250,7 @@ class _NewGroupFormState extends ConsumerState<_NewGroupForm> {
               currency: GroupInCurrencyEnum.fromJson(_currency)!,
             ),
           );
-      refreshLedger(ref.invalidate);
+      final g = await ref.read(groupProvider(id).future);
       if (mounted) Navigator.of(context).pop(g);
     } catch (e) {
       if (mounted) {
@@ -241,6 +276,9 @@ class _NewGroupFormState extends ConsumerState<_NewGroupForm> {
             hint: 'Goa Trip, Flatmates…',
             autofocus: true,
             errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
             onSubmitted: (_) => _create(),
           ),
           const SizedBox(height: 14),

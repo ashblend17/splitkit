@@ -65,3 +65,11 @@ def simplify[P: Hashable](nets: dict[P, int]) -> list[Flow[P]]:
         debtors = [x for x in debtors if x[0]]
         creditors = [x for x in creditors if x[0]]
     return payments
+
+
+def planned[P: Hashable](me: P, flows: Iterable[Flow[P]]) -> dict[P, int]:
+    """What the group's fewest payments (`simplify` of the positions) have between me and each
+    other person: the balances Home and settling with a friend use. Positive: they pay me.
+    Negative: I pay them. Adds up to my position."""
+    pos = positions(flows)
+    return pairwise(me, simplify({p: n for p, n in pos.items() if n}))

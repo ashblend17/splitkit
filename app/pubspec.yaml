@@ -1,12 +1,13 @@
-name: splitkit
-description: "A new Flutter project."
+name: app
+description: "Split group expenses and keep track of your own money."
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0
 
 environment:
   sdk: ^3.8.1
 
 dependencies:
+  clock: ^1.1.2
   decimal: ^3.2.6
   flutter:
     sdk: flutter
@@ -15,15 +16,28 @@ dependencies:
   go_router: ^17.0.0
   intl: ^0.20.2
   path_drawing: ^1.0.1
-  splitkit_api:
-    path: packages/splitkit_api
+  api_client:
+    path: packages/api_client
   rational: ^2.2.3
   flutter_riverpod: ^3.3.2
   shared_preferences: ^2.5.3
   http: ^1.6.0
+  sembast: ^3.8.5+1
+  sembast_web: ^2.4.2
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  uuid: ^4.6.0
+  file_picker: ^11.0.3
+  cupertino_icons: ^1.0.8
+  fuzzywuzzy: ^1.2.0
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  # The on-device timing test (integration_test/, test_driver/); both come with the SDK.
+  integration_test:
+    sdk: flutter
+  flutter_driver:
     sdk: flutter
   flutter_lints: ^5.0.0
 

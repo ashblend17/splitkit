@@ -8,7 +8,7 @@ from app.core.events import record
 from app.core.versioning import check_version, client_id, replayed_create
 from app.modules.auth.deps import Actor
 from app.modules.balances import repository as ledger
-from app.modules.balances.engine import pairwise
+from app.modules.balances.engine import planned
 from app.modules.groups import repository as groups
 from app.modules.groups.models import Group
 from app.modules.groups.service import active_member_ids, require_member
@@ -132,7 +132,20 @@ def set_deleted(
     settlement = _load(session, actor, settlement_id)
     if (settlement.deleted_at is not None) != deleted:
         check_version(settlement, version)
+        if not deleted:
+            # e.g. a payment between a placeholder and the account it was linked to
+            # (groups/linking.py): bringing it back would give someone who left a balance.
+            current = active_member_ids(session, settlement.group_id)
+            gone = [u for u in (settlement.from_user, settlement.to_user) if u not in current]
+            if gone:
+                name = session.get(User, gone[0]).name
+                raise ApiError(
+                    409,
+                    "member_left",
+                    f"{name} isn't in this group any more, so this can't come back",
+                )
         settlement.deleted_at = datetime.now(UTC) if deleted else None
+        settlement.acting_admin_id = actor.admin_id
         action = "settlement.delete" if deleted else "settlement.restore"
         record(
             session, actor, action, "settlement", settlement.id, settlement.group_id, obj=settlement
@@ -144,8 +157,8 @@ def set_deleted(
 def _shared_balances(
     session: Session, actor: Actor, friend_id: uuid.UUID, currency: str
 ) -> tuple[User, list[tuple[Group, int]]]:
-    """Your pairwise balance with a friend in each group you are both current members of,
-    oldest group first. Positive: they owe you."""
+    """What each group's fewest payments have between you and a friend, in each group you are
+    both current members of, oldest group first. Positive: they pay you."""
     friend = session.get(User, friend_id)
     if friend is None or friend_id == actor.user_id:
         raise not_found("Person")
@@ -160,7 +173,7 @@ def _shared_balances(
     shared.sort(key=lambda g: g.created_at)
     flows = ledger.flows_by_group(session, [g.id for g in shared])
     return friend, [
-        (g, pairwise(actor.user_id, flows.get(g.id, [])).get(friend_id, 0)) for g in shared
+        (g, planned(actor.user_id, flows.get(g.id, [])).get(friend_id, 0)) for g in shared
     ]
 
 

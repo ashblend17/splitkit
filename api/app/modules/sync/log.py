@@ -8,8 +8,10 @@ touch the same streams can't deadlock) and inserts one change_log row per entry.
 
 Streams:
 - `group:<id>`: the group, its members (with their names), expenses with splits, settlements.
-- `user:<id>`: profile, personal transactions, own categories, layouts, and memberships (which
-  group streams this user should follow).
+- `user:<id>`: profile, personal transactions, accounts, goals, goal contributions,
+  allocation rules and plans, holdings, reminder decisions and schedules, own categories,
+  learned category rules, layouts, and memberships (which group streams this user should
+  follow).
 - `global`: system categories and default layouts. Written by migrations and the seed only, so
   clients get it from a snapshot.
 """
@@ -22,8 +24,10 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import event, inspect, select, text
+from sqlalchemy import event, func, inspect, select, text
 from sqlalchemy.orm import Session
+
+from app.core.fixed_names import ID_SEED
 
 if TYPE_CHECKING:
     from app.modules.auth.deps import Actor
@@ -89,7 +93,16 @@ def _category(session: Session, category_id: uuid.UUID | None) -> dict[str, Any]
     if category_id is None:
         return None
     c = session.get(Category, category_id)
-    return {"id": str(c.id), "key": c.key, "label": c.label, "icon": c.icon} if c else None
+    if c is None:
+        return None
+    return {
+        "id": str(c.id),
+        "key": c.key,
+        "label": c.label,
+        "icon": c.icon,
+        "scope": c.scope,
+        "owner_id": _json(c.owner_id),
+    }
 
 
 def _member_entries(session: Session, m: Any) -> list[Entry]:
@@ -118,10 +131,20 @@ def _member_entries(session: Session, m: Any) -> list[Entry]:
 def entries_for(session: Session, obj: Any) -> list[Entry]:
     """Full-state entries for one changed object. Also used to build snapshots."""
     from app.modules.analytics.models import AnalyticsConfiguration
-    from app.modules.categories.models import Category
+    from app.modules.categories.models import Category, CategoryRule
     from app.modules.expenses.models import Expense
-    from app.modules.groups.models import Group, GroupMember
-    from app.modules.personal.models import PersonalTransaction
+    from app.modules.groups.models import ActivityEvent, Group, GroupMember
+    from app.modules.personal.models import (
+        PersonalAccount,
+        PersonalAllocationPlan,
+        PersonalAllocationRule,
+        PersonalGoal,
+        PersonalGoalContribution,
+        PersonalHolding,
+        PersonalReminderSchedule,
+        PersonalReminderState,
+        PersonalTransaction,
+    )
     from app.modules.settlements.models import Settlement
     from app.modules.users.models import User
 
@@ -154,9 +177,12 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
                 )
             ]
         case Group():
-            return [
-                Entry(group_stream(obj.id), "group", obj.id, "upsert", _columns(obj), obj.version)
-            ]
+            # Clients keep it current from the `at` of later group-stream changes.
+            last = session.scalar(
+                select(func.max(ActivityEvent.at)).where(ActivityEvent.group_id == obj.id)
+            )
+            data = {**_columns(obj), "last_activity_at": _json(last)}
+            return [Entry(group_stream(obj.id), "group", obj.id, "upsert", data, obj.version)]
         case GroupMember():
             return _member_entries(session, obj)
         case PersonalTransaction():
@@ -170,9 +196,38 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
                     obj.version,
                 )
             ]
+        case (
+            PersonalAccount()
+            | PersonalGoal()
+            | PersonalGoalContribution()
+            | PersonalAllocationRule()
+            | PersonalAllocationPlan()
+            | PersonalHolding()
+            | PersonalReminderState()
+            | PersonalReminderSchedule()
+        ):
+            entity = {
+                PersonalAccount: "personal_account",
+                PersonalGoal: "personal_goal",
+                PersonalGoalContribution: "personal_goal_contribution",
+                PersonalAllocationRule: "personal_allocation_rule",
+                PersonalAllocationPlan: "personal_allocation_plan",
+                PersonalHolding: "personal_holding",
+                PersonalReminderState: "personal_reminder_state",
+                PersonalReminderSchedule: "personal_reminder_schedule",
+            }[type(obj)]
+            return [
+                Entry(
+                    user_stream(obj.user_id), entity, obj.id, "upsert", _columns(obj), obj.version
+                )
+            ]
         case Category():
             stream = GLOBAL if obj.owner_id is None else user_stream(obj.owner_id)
             return [Entry(stream, "category", obj.id, "upsert", _columns(obj))]
+        case CategoryRule():
+            return [
+                Entry(user_stream(obj.user_id), "category_rule", obj.id, "upsert", _columns(obj))
+            ]
         case User():
             profile = Entry(
                 user_stream(obj.id),
@@ -193,7 +248,7 @@ def entries_for(session: Session, obj: Any) -> list[Entry]:
 
 def layout_id(owner_id: uuid.UUID | None, scope: str) -> uuid.UUID:
     """A stable entity id for a user's (or the default) layout of one dashboard."""
-    return uuid.uuid5(uuid.NAMESPACE_URL, f"splitkit:layout:{owner_id or 'default'}:{scope}")
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"{ID_SEED}:layout:{owner_id or 'default'}:{scope}")
 
 
 def layout_entry(owner_id: uuid.UUID | None, scope: str, rows: list[Any]) -> Entry:

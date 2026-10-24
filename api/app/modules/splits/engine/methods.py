@@ -31,7 +31,7 @@ def _values(inputs: list[SplitInput]) -> list[Decimal]:
     values = []
     for i in inputs:
         if i.value is None:
-            raise ValueError(f"Missing value for {i.user_id}")
+            raise ValueError("Give everyone in the split a value")
         if isinstance(i.value, float):
             raise TypeError("Split values must be Decimal or int, never float")
         values.append(Decimal(i.value))
@@ -72,7 +72,10 @@ class EqualSplit(_Base):
     key = "equal"
     label = "Equal"
     symbol = "="
-    hint = "Everyone ticked pays the same. Untick anyone who is not involved."
+    hint = (
+        "Everyone ticked pays the same. Tap a name to split with only them, "
+        "or untick anyone who is not involved."
+    )
 
     def validate(self, total_minor, inputs, currency="INR"):
         if failed := _check_common(total_minor, inputs, currency):
@@ -100,7 +103,7 @@ class ExactSplit(_Base):
             return failed
         values = _values(inputs)
         if any(v != v.to_integral_value() for v in values):
-            raise ValueError("Exact amounts must be whole minor units")
+            raise ValueError("Exact amounts can have at most two decimal places")
         if any(v < 0 for v in values):
             return Validation(False, total_minor - int(sum(values)), "Amounts can't be negative")
         remaining = total_minor - int(sum(values))

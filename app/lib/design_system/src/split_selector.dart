@@ -53,11 +53,29 @@ class SplitController extends ChangeNotifier {
     if (key == _method) return;
     registry.get(key);
     _method = key;
+    // Shares start from the equal split, one each for whoever is ticked, so "2 for a couple"
+    // is one edit rather than one per person.
+    if (key == 'shares' && (_values['shares']?.values.every((v) => v.trim().isEmpty) ?? true)) {
+      _values['shares'] = {for (final p in people) p.id: _included.contains(p.id) ? '1' : ''};
+    }
     notifyListeners();
   }
 
   void toggle(String id) {
     _included.contains(id) ? _included.remove(id) : _included.add(id);
+    notifyListeners();
+  }
+
+  bool get everyoneIncluded => people.every((p) => _included.contains(p.id));
+
+  /// A tap on a person's row rather than its checkbox. With everyone ticked (as a new split
+  /// starts) it ticks only them, so "just Rahul and me" is two taps, not one per person left
+  /// out; after that each tap ticks or unticks one person, as the checkbox does.
+  void tapRow(String id) {
+    if (!everyoneIncluded) return toggle(id);
+    _included
+      ..clear()
+      ..add(id);
     notifyListeners();
   }
 
@@ -186,7 +204,7 @@ class SplitMethodTabs extends StatelessWidget {
           decoration: BoxDecoration(
             color: on ? SkColors.surface : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: on ? const [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))] : null,
+            boxShadow: on ? [BoxShadow(color: SkPalette.shadowInk, blurRadius: 3, offset: Offset(0, 1))] : null,
           ),
           alignment: Alignment.center,
           child: ExcludeSemantics(
@@ -432,14 +450,9 @@ class _PersonRowState extends State<_PersonRow> {
     final p = widget.person;
     final equal = c.method == 'equal';
     final on = c.isIncluded(p.id);
-    return Container(
+    final row = Container(
       constraints: const BoxConstraints(minHeight: 68),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: SkColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: SkColors.line),
-      ),
       child: Row(
         children: [
           if (equal) ...[
@@ -484,10 +497,50 @@ class _PersonRowState extends State<_PersonRow> {
               },
               label: '${c.splitMethod.label} for ${p.name}',
               onChanged: (t) => c.setValue(p.id, t),
+              // What the API keeps: money to the paisa, percentages and shares to 4 places.
+              formatter: c.method == 'exact'
+                  ? const SplitValueFormatter(whole: maxAmountDigits, places: 2)
+                  : const SplitValueFormatter(whole: 6, places: 4),
             ),
         ],
       ),
     );
+    return Semantics(
+      onTapHint: !equal
+          ? null
+          : c.everyoneIncluded
+          ? 'Split with ${p.name} only'
+          : on
+          ? 'Leave ${p.name} out'
+          : 'Include ${p.name}',
+      child: Material(
+        color: SkColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: SkColors.line),
+        ),
+        clipBehavior: Clip.antiAlias,
+        // Equally only: the other methods' rows are for typing.
+        child: InkWell(onTap: equal ? () => c.tapRow(p.id) : null, child: row),
+      ),
+    );
+  }
+}
+
+/// Digits and one decimal point, with at most [whole] digits before it and [places] after.
+/// Grouping commas are dropped. A key that would break that is ignored.
+class SplitValueFormatter extends TextInputFormatter {
+  const SplitValueFormatter({required this.whole, required this.places});
+
+  final int whole;
+  final int places;
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text.replaceAll(',', '');
+    final ok = RegExp('^\\d{0,$whole}(\\.\\d{0,$places})?\$').hasMatch(text);
+    if (!ok) return oldValue;
+    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
   }
 }
 
@@ -498,7 +551,10 @@ class _ValueInput extends StatelessWidget {
     required this.suffix,
     required this.label,
     required this.onChanged,
+    required this.formatter,
   });
+
+  final TextInputFormatter formatter;
 
   final TextEditingController controller;
   final String prefix;
@@ -532,7 +588,7 @@ class _ValueInput extends StatelessWidget {
                 onChanged: onChanged,
                 textAlign: TextAlign.right,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                inputFormatters: [formatter],
                 style: SkText.body(16, 700),
                 decoration: InputDecoration(
                   isCollapsed: true,

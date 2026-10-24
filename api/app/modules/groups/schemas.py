@@ -2,9 +2,9 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import EmailStr, Field, model_validator
+from pydantic import EmailStr, model_validator
 
-from app.core.schemas import Schema
+from app.core.schemas import Currency, Schema, Text
 from app.modules.users.schemas import UserBrief
 
 Icon = Literal[
@@ -15,15 +15,15 @@ Icon = Literal[
 class GroupIn(Schema):
     id: uuid.UUID | None = None
     """Create only: an id made on the device, so a retried create doesn't make a duplicate."""
-    name: str = Field(min_length=1, max_length=80)
+    name: Text(80)
     icon: Icon = "groups"
-    currency: Literal["INR", "USD", "EUR"] = "INR"
+    currency: Currency = "INR"
 
 
 class GroupUpdate(Schema):
     version: int | None = None
     """The version you edited. If it changed since, the update gets a 409."""
-    name: str | None = Field(default=None, min_length=1, max_length=80)
+    name: Text(80) | None = None
     icon: Icon | None = None
     archived: bool | None = None
 
@@ -33,6 +33,8 @@ class MemberOut(Schema):
     role: str
     joined_at: datetime
     placeholder_name: str | None
+    invite_email: str | None
+    """Placeholders only: who signing up with this email takes this place."""
 
 
 class GroupOut(Schema):
@@ -53,13 +55,22 @@ class GroupOut(Schema):
 
 
 class AddMemberIn(Schema):
-    """Add an existing account by email, or a placeholder person by name (no account)."""
+    """Add an existing account by email, or a placeholder person by name (no account).
+
+    With both: the account if that email has one, otherwise a placeholder with this name,
+    invited by the email (signing up with it takes the placeholder's place)."""
 
     email: EmailStr | None = None
-    name: str | None = Field(default=None, min_length=1, max_length=80)
+    name: Text(80) | None = None
 
     @model_validator(mode="after")
-    def _exactly_one(self):
-        if (self.email is None) == (self.name is None):
-            raise ValueError("Give either an email or a name")
+    def _one_at_least(self):
+        if self.email is None and self.name is None:
+            raise ValueError("Give an email or a name")
         return self
+
+
+class LinkMemberIn(Schema):
+    """The account a placeholder member is linked to."""
+
+    email: EmailStr

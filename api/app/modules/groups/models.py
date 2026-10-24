@@ -18,6 +18,11 @@ class Group(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = now_default()
     archived_at: Mapped[datetime | None]
+    # Set when a Tricount import created the group. Plain FK, no relationship (see expenses);
+    # use_alter because import_batches.group_id points back here.
+    import_batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("import_batches.id", use_alter=True)
+    )
     version: Mapped[int] = mapped_column(server_default="1")
 
     __mapper_args__ = {"version_id_col": version}
@@ -25,7 +30,14 @@ class Group(Base):
 
 class GroupMember(Base):
     __tablename__ = "group_members"
-    __table_args__ = (CheckConstraint("role IN ('owner', 'member')", name="role"),)
+    __table_args__ = (
+        CheckConstraint("role IN ('owner', 'member')", name="role"),
+        Index(
+            "ix_group_members_invite_email",
+            "invite_email",
+            postgresql_where=text("invite_email IS NOT NULL"),
+        ),
+    )
 
     group_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("groups.id"), primary_key=True)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), primary_key=True, index=True)
@@ -34,6 +46,10 @@ class GroupMember(Base):
     left_at: Mapped[datetime | None]
     placeholder_name: Mapped[str | None]
     """The name this person had before being linked to an account, e.g. "Kabir M." from Tricount."""
+    invite_email: Mapped[str | None]
+    """Placeholders only: signing up with this email takes over the placeholder (lowercase)."""
+    import_batch_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_batches.id"))
+    """Set when a Tricount import added this membership, so undoing the batch can end it."""
 
 
 class ActivityEvent(Base):

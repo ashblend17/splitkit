@@ -111,7 +111,7 @@ SplitValidation? _checkCommon(int totalMinor, List<SplitInput> inputs, String cu
 }
 
 List<Decimal> _values(List<SplitInput> inputs) => [
-  for (final i in inputs) i.value ?? (throw ArgumentError('Missing value for ${i.userId}')),
+  for (final i in inputs) i.value ?? (throw ArgumentError('Give everyone in the split a value')),
 ];
 
 abstract class _Base implements SplitMethod {
@@ -137,7 +137,8 @@ class EqualSplit extends _Base {
   @override
   String get symbol => '=';
   @override
-  String get hint => 'Everyone ticked pays the same. Untick anyone who is not involved.';
+  String get hint =>
+      'Everyone ticked pays the same. Tap a name to split with only them, or untick anyone who is not involved.';
 
   @override
   SplitValidation validate(int totalMinor, List<SplitInput> inputs, {String currency = 'INR'}) {
@@ -172,7 +173,7 @@ class ExactSplit extends _Base {
     final failed = _checkCommon(totalMinor, inputs, currency);
     if (failed != null) return failed;
     final values = _values(inputs);
-    if (values.any((v) => !v.isInteger)) throw ArgumentError('Exact amounts must be whole minor units');
+    if (values.any((v) => !v.isInteger)) throw ArgumentError('Exact amounts can have at most two decimal places');
     final allocated = values.fold(0, (a, v) => a + v.toBigInt().toInt());
     final remaining = totalMinor - allocated;
     if (values.any((v) => v < Decimal.zero)) return SplitValidation(false, remaining, "Amounts can't be negative");

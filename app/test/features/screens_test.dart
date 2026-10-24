@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/design_system/design_system.dart';
+import 'package:go_router/go_router.dart';
+import 'package:app/core/api/api.dart';
+import 'package:app/core/data/providers.dart';
+import 'package:app/design_system/design_system.dart';
 
 import '../fake_backend.dart';
 import '../helpers.dart';
@@ -30,23 +33,26 @@ void main() {
     be.postResponses['/api/v1/auth/login'] = (200, {...fixture('login'), 'access_token': 't'});
     await pumpApp(tester, token: null, backend: be);
     await tester.enterText(find.byType(TextField).at(0), 'admin@example.com');
-    await tester.enterText(find.byType(TextField).at(1), 'dev-password');
+    await tester.enterText(find.byType(TextField).at(1), 'correct-password');
     await tester.tap(find.text('Log in'));
     await tester.pumpAndSettle();
 
     expect(find.text('Hi, John'), findsOneWidget);
     expect(find.text('Overall, you are owed'), findsOneWidget);
-    expect(find.text('₹1,470'), findsOneWidget);
-    expect(find.text('Kabir'), findsOneWidget);
-    expect(find.text('you owe ₹750'), findsOneWidget);
+    expect(find.text('₹1,470'), findsNWidgets(2)); // overall, and you are owed
+    // Each group's fewest payments, added up: Vivek pays you in both groups.
+    expect(find.text('Vivek'), findsOneWidget);
+    expect(find.text('owes you ₹1,470'), findsOneWidget);
+    expect(find.text('you owe ₹750'), findsNothing); // Kabir, one-to-one only
     expect(find.text('Dinner at Thalassa'), findsOneWidget);
     expect(find.text('Rahul paid ₹1,800 · split 4 ways'), findsOneWidget);
   });
 
   testWidgets('Home cards use the money language, including settled shares', (tester) async {
     await pumpApp(tester);
+    // Goa Trip's fewest payments have you paying nobody, so your share there is settled.
     final dinner = tester.widget<TransactionCard>(find.widgetWithText(TransactionCard, 'Dinner at Thalassa'));
-    expect((dinner.label, dinner.amount), ('you owe', '₹450'));
+    expect((dinner.label, dinner.amount, dinner.tone.name), ('your share', '₹450', 'settled'));
     await tester.scrollUntilVisible(find.text('Electricity bill'), 200, scrollable: find.byType(Scrollable).first);
     final bill = tester.widget<TransactionCard>(find.widgetWithText(TransactionCard, 'Electricity bill'));
     expect((bill.label, bill.amount, bill.tone.name), ('your share', '₹800', 'settled'));
@@ -57,58 +63,258 @@ void main() {
   testWidgets('deep link to group balances', (tester) async {
     final be = FakeBackend();
     await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}/balances');
-    expect(find.text('In this group, overall you are owed'), findsOneWidget);
+    // A tab of the group's page: its header and all four tabs stay.
+    expect(find.text('Goa Trip'), findsOneWidget);
+    for (final tab in ['Expenses', 'Balances', 'Analytics', 'Members']) {
+      expect(find.text(tab), findsOneWidget, reason: tab);
+    }
+    expect(find.text('You get'), findsOneWidget);
+    expect(find.text('Pays you ₹1,150'), findsOneWidget); // Vivek, in the fewest payments
+    expect(find.text('Record payment'), findsOneWidget);
+    expect(find.text('Settle'), findsNothing);
+    // One-to-one, in the table below: no buttons.
     expect(find.text('You owe ₹750'), findsOneWidget);
     expect(find.text('Owes you ₹1,550'), findsOneWidget);
     expect(find.text('All square'), findsOneWidget);
-    expect(find.text('Settle'), findsNWidgets(2));
-    expect(find.text('Record payment'), findsNWidgets(2));
+  });
+
+  testWidgets("a group's balances lead with the fewest payments, one-to-one below", (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}/balances', size: const Size(390, 1400));
+    double y(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(y('FEWEST PAYMENTS'), lessThan(y('Pays you ₹1,150')));
+    expect(y('Pays you ₹1,150'), lessThan(y('₹3,408'))); // Priya pays Rahul
+    expect(y('₹3,408'), lessThan(y('ONE-TO-ONE BALANCES')));
+    expect(y('ONE-TO-ONE BALANCES'), lessThan(y('You owe ₹750')));
+
+    await tester.tap(find.text('Record payment'));
+    await tester.pumpAndSettle();
+    expect(find.text('Full balance ₹1,150'), findsOneWidget);
+    expect(find.text('After this, you and Vivek are all square.'), findsOneWidget);
+  });
+
+  testWidgets("a group's Settle up opens your payment in the fewest payments", (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}');
+    expect(find.text('You pay'), findsOneWidget);
+    expect(find.text('You get'), findsOneWidget);
+    await tester.tap(find.widgetWithText(SkButton, 'Settle up'));
+    await tester.pumpAndSettle();
+    expect(find.text('Full balance ₹1,150'), findsOneWidget);
+    expect(find.text('After this, you and Vivek are all square.'), findsOneWidget);
   });
 
   testWidgets('expense detail shows your part and each share', (tester) async {
     final be = FakeBackend();
     await pumpApp(tester, backend: be, location: '/expenses/${be.dinnerId}');
     expect(find.text('Dinner at Thalassa'), findsOneWidget);
-    expect(find.text('You owe Rahul'), findsOneWidget);
+    // Goa Trip's fewest payments have you paying nobody (you're owed), so your share is
+    // settled, as on Home; Aman and Vivek still pay someone.
+    expect(find.text('Your share is settled'), findsOneWidget);
     expect(find.text('Split equally between 4'), findsOneWidget);
-    expect(find.text('Owes'), findsNWidgets(3));
+    expect(find.text('Owes'), findsNWidgets(2));
+    expect(find.text('Settled'), findsOneWidget);
     expect(find.text('Paid'), findsOneWidget);
-    expect(find.text('Settle up'), findsOneWidget);
+    expect(find.text('Settle up'), findsNothing);
+  });
+
+  testWidgets("an expense's Settle up opens your payment in the group's fewest payments", (tester) async {
+    final be = FakeBackend();
+    // Vivek overpays you in Goa Trip, so there you now pay someone: Kabir, by the plan.
+    final goa = be.snapshots['group:${be.goa['id']}'] as Map;
+    final paid = (goa['entities'] as List).firstWhere((e) => e['entity'] == 'settlement') as Map;
+    final vivek = be.friendId, me = (paid['data'] as Map)['from_user'];
+    (goa['entities'] as List).add({
+      ...paid,
+      'entity_id': 'a1b2c3d4-0000-4000-8000-000000000001',
+      'data': {
+        ...paid['data'] as Map,
+        'id': 'a1b2c3d4-0000-4000-8000-000000000001',
+        'from_user': vivek,
+        'to_user': me,
+        'amount_minor': 200000,
+      },
+    });
+    await pumpApp(tester, backend: be, location: '/expenses/${be.dinnerId}');
+    expect(find.text('You owe Rahul'), findsOneWidget);
+    expect(find.text('Owes'), findsNWidgets(3));
+    await tester.tap(find.text('Settle up'));
+    await tester.pumpAndSettle();
+    expect(find.text('Full balance ₹850'), findsOneWidget);
+    expect(find.text('After this, you and Kabir are all square.'), findsOneWidget);
+  });
+
+  testWidgets('a deleted expense says what it was, with nothing to settle', (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/expenses/${be.dinnerId}');
+    final router = tester.widget<MaterialApp>(find.byType(MaterialApp)).routerConfig as GoRouter;
+    await tester.tap(find.bySemanticsLabel('Delete expense'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete').last);
+    await tester.pumpAndSettle();
+    router.go('/expenses/${be.dinnerId}');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Deleted.'), findsOneWidget);
+    expect(find.text('You owed Rahul'), findsOneWidget);
+    expect(find.text('Settle up'), findsNothing);
+    expect(find.text('Owes'), findsNothing);
+  });
+
+  testWidgets('history says what changed in words, and Tricount edits say so', (tester) async {
+    final be = FakeBackend();
+    const tricount = {'id': '1a352678-7c38-5085-8131-bbcad6d0ae9d', 'name': 'Tricount', 'avatar_url': null, 'is_placeholder': true};
+    be.get['/api/v1/expenses/${be.dinnerId}/history'] = [
+      {
+        'action': 'expense.update',
+        'person': tricount,
+        'admin': null,
+        'at': '2026-09-24T10:00:00Z',
+        'diff': {
+          'amount_minor': {'from': 165000, 'to': 180000},
+          'description': {'from': 'Dinner', 'to': 'Dinner at Thalassa'},
+          'via': 'tricount',
+        },
+      },
+      {
+        // Older servers sent the new amount on its own.
+        'action': 'expense.update',
+        'person': tricount,
+        'admin': null,
+        'at': '2026-09-24T11:00:00Z',
+        'diff': {'via': 'tricount', 'amount_minor': 180000},
+      },
+      {
+        // An equal split's shares follow the amount: that's not a change to the split.
+        'action': 'expense.update',
+        'person': {'id': 'r', 'name': 'Rahul Sharma', 'avatar_url': null, 'is_placeholder': false},
+        'admin': null,
+        'at': '2026-09-24T12:00:00Z',
+        'diff': {
+          'splits': {'from': {'a': 1500, 'b': 1500, 'c': 1500}, 'to': {'a': 2000, 'b': 2000, 'c': 2000}},
+          'amount_minor': {'from': 4500, 'to': 6000},
+        },
+      },
+      {
+        'action': 'expense.update',
+        'person': {'id': 'r', 'name': 'Rahul Sharma', 'avatar_url': null, 'is_placeholder': false},
+        'admin': null,
+        'at': '2026-09-24T13:00:00Z',
+        'diff': {
+          'splits': {'from': {'a': 2000, 'b': 2000, 'c': 2000}, 'to': {'a': 3000, 'b': 1500, 'c': 1500}},
+        },
+      },
+    ];
+    await pumpApp(tester, backend: be, location: '/expenses/${be.dinnerId}');
+    await tester.scrollUntilVisible(find.textContaining('Edited in Tricount').first, 300, scrollable: find.byType(Scrollable).first);
+    expect(find.textContaining('Edited in Tricount · amount ₹1,650 → ₹1,800, description'), findsOneWidget);
+    expect(find.textContaining('Edited in Tricount · amount ·'), findsOneWidget);
+    expect(find.textContaining('via'), findsNothing);
+    expect(find.textContaining('amount_minor'), findsNothing);
+    expect(find.textContaining('Edited by Rahul · amount ₹45 → ₹60 ·'), findsOneWidget);
+    expect(find.textContaining('Edited by Rahul · split ·'), findsOneWidget);
+  });
+
+  testWidgets('settling up uses the balance currency, not the profile one', (tester) async {
+    final be = FakeBackend();
+    final me = ((fixture('login') as Map)['user'] as Map)['id'];
+    for (final e in (be.snapshots['user:$me'] as Map)['entities'] as List) {
+      if (e['entity'] == 'profile') e['data']['currency'] = 'USD'; // every group is in rupees
+    }
+    await pumpApp(tester, backend: be);
+
+    await tester.dragUntilVisible(find.text('Vivek'), find.byType(SingleChildScrollView).first, const Offset(-200, 0));
+    await tester.tap(find.text('Vivek'));
+    await tester.pumpAndSettle();
+    expect(find.text('Settle up with Vivek'), findsOneWidget);
+    expect(find.text('Full balance ₹1,470'), findsOneWidget);
+  });
+
+  testWidgets('settling with groups that go both ways says which way each goes', (tester) async {
+    final be = FakeBackend();
+    final plan = Map<String, dynamic>.from(fixture('settle_up_plan') as Map);
+    final groups = [for (final g in plan['groups'] as List) Map<String, dynamic>.from(g as Map)];
+    // Still ₹1,470 in all, but in Goa Trip you pay Vivek ₹50.
+    groups[0]['net_minor'] = 152000;
+    groups[1]['net_minor'] = -5000;
+    final mixed = SettleUpPlanOut.fromJson({...plan, 'groups': groups})!;
+    await pumpApp(tester, backend: be, overrides: [settleUpPlanProvider.overrideWith((ref, key) async => mixed)]);
+    await tester.dragUntilVisible(find.text('Vivek'), find.byType(SingleChildScrollView).first, const Offset(-200, 0));
+    await tester.tap(find.text('Vivek'));
+    await tester.pumpAndSettle();
+    expect(find.text('Recorded in 2 groups: Vivek pays you ₹1,520 in Flatmates · you pay ₹50 in Goa Trip'), findsOneWidget);
+  });
+
+  testWidgets("payment sheets open over the tab bar, from a group's balances too", (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/groups/${be.goa['id']}/balances');
+    await tester.tap(find.text('Record payment'));
+    await tester.pumpAndSettle();
+    final sheet = tester.element(find.text('Record a payment'));
+    expect(ModalRoute.of(sheet)!.navigator, Navigator.of(sheet, rootNavigator: true));
   });
 
   testWidgets('settle up with a friend across groups', (tester) async {
     final be = FakeBackend();
-    be.postResponses['/api/v1/friends/${be.amanId}/settle-up'] = (201, {'settlements': <dynamic>[], 'remaining_net_minor': 0});
     await pumpApp(tester, backend: be);
 
-    await tester.dragUntilVisible(find.text('Aman'), find.byType(SingleChildScrollView).first, const Offset(-200, 0));
-    await tester.tap(find.text('Aman'));
+    await tester.dragUntilVisible(find.text('Vivek'), find.byType(SingleChildScrollView).first, const Offset(-200, 0));
+    await tester.tap(find.text('Vivek'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Settle up with Aman'), findsOneWidget);
-    expect(find.text('Full balance ₹1,170'), findsOneWidget);
-    expect(find.text('After this, you and Aman are all square.'), findsOneWidget);
-    expect(find.text('Recorded in 2 groups: Flatmates ₹320 · Goa Trip ₹850'), findsOneWidget);
+    // What each group's fewest payments have Vivek paying you, added up (as Home says).
+    expect(find.text('Settle up with Vivek'), findsOneWidget);
+    expect(find.text('Full balance ₹1,470'), findsOneWidget);
+    expect(find.text('After this, you and Vivek are all square.'), findsOneWidget);
+    expect(find.text('Recorded in 2 groups: Flatmates ₹320 · Goa Trip ₹1,150'), findsOneWidget);
 
     // A part payment pays down the oldest group first.
     await tester.tap(find.text('Part payment'));
     await tester.pump();
     await tester.enterText(find.byType(TextField).first, '500');
     await tester.pumpAndSettle();
-    expect(find.text('Aman will still owe you ₹670.'), findsOneWidget);
+    expect(find.text('Vivek will still owe you ₹970.'), findsOneWidget);
     expect(find.text('Pays down the oldest group first: Flatmates ₹320 · Goa Trip ₹180'), findsOneWidget);
 
     await tester.tap(find.text('Record ₹500 payment'));
     await tester.pumpAndSettle();
+    // Planned on the device, oldest group first, one payment per group (each with its own id,
+    // so a retry can't record it twice).
+    final groups = {for (final g in fixture('groups') as List) g['name']: g['id']};
+    expect([for (final (m, p, _) in be.writes) (m, p)], [
+      ('POST', '/api/v1/groups/${groups['Flatmates']}/settlements'),
+      ('POST', '/api/v1/groups/${groups['Goa Trip']}/settlements'),
+    ]);
+    expect([for (final w in be.writes) (w.$3['from_user'], w.$3['amount_minor'], w.$3['method'])], [
+      (be.friendId, 32000, 'upi'),
+      (be.friendId, 18000, 'upi'),
+    ]);
+    expect(be.writes.every((w) => w.$3['id'] != null), isTrue);
+    expect(find.text('Payment recorded in 2 groups'), findsOneWidget);
+  });
+
+  testWidgets('Enter in the description saves a split that is ready, and only then', (tester) async {
+    final be = FakeBackend();
+    await pumpApp(tester, backend: be, location: '/expenses/new?group=${be.goa['id']}');
+    await tester.enterText(find.byType(TextField).at(1), 'Chai');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(be.writes, isEmpty, reason: 'no amount yet');
+
+    await tester.enterText(find.byType(TextField).at(0), '45');
+    await tester.showKeyboard(find.byType(TextField).at(1));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
     final (method, path, body) = be.writes.single;
-    expect((method, path), ('POST', '/api/v1/friends/${be.amanId}/settle-up'));
-    expect((body['amount_minor'], body['method'], body['currency']), (50000, 'upi', 'INR'));
-    expect(find.text('Payment recorded'), findsOneWidget);
+    expect((method, path, body['amount_minor'], body['description']), (
+      'POST',
+      '/api/v1/groups/${be.goa['id']}/expenses',
+      4500,
+      'Chai',
+    ));
   });
 
   testWidgets('add split: amount, description, equal split, save', (tester) async {
     final be = FakeBackend();
-    be.postResponses['/api/v1/groups/${be.goa['id']}/expenses'] = (201, fixture('expense'));
     await pumpApp(tester, backend: be, location: '/expenses/new?group=${be.goa['id']}');
 
     expect(find.text('Enter an amount'), findsOneWidget);
@@ -128,7 +334,10 @@ void main() {
     expect((body['amount_minor'], body['description'], (body['split'] as Map)['method']), (180000, 'Dinner at Thalassa', 'equal'));
     expect(((body['split'] as Map)['inputs'] as List).length, 6);
     expect(body['category_id'], isNotNull);
-    // Lands on the saved expense.
-    expect(find.text('You owe Rahul'), findsOneWidget);
+    expect(body['id'], isNotNull); // made on the device, so a retry can't add it twice
+    // Lands on the saved expense, shown from the device before the server has confirmed it.
+    expect(find.text('Dinner at Thalassa'), findsOneWidget);
+    expect(find.text('Split equally between 6'), findsOneWidget);
+    expect(find.text('Paid'), findsOneWidget);
   });
 }

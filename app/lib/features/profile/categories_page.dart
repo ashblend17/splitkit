@@ -96,7 +96,7 @@ class CategoriesPage extends ConsumerWidget {
             constraints: const BoxConstraints(minHeight: 52),
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              border: i == cats.length - 1 ? null : const Border(bottom: BorderSide(color: SkPalette.divider)),
+              border: i == cats.length - 1 ? null : Border(bottom: BorderSide(color: SkPalette.divider)),
             ),
             child: Row(
               children: [
@@ -221,7 +221,16 @@ class _NewCategoryState extends ConsumerState<_NewCategory> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          SkTextField(label: 'Name', controller: _label, hint: 'Pets, gym, gifts…', autofocus: true, errorText: _error),
+          SkTextField(
+            label: 'Name',
+            controller: _label,
+            hint: 'Pets, gym, gifts…',
+            autofocus: true,
+            errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+          ),
           const SizedBox(height: 14),
           Text('Icon', style: SkText.body(13, 600)),
           const SizedBox(height: 6),

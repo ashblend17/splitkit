@@ -16,10 +16,17 @@ Scope = Literal["personal", "group"]
 
 @router.get("/personal", response_model=DashboardOut)
 def personal_dashboard(
-    actor: CurrentActor, session: DbSession, period: Period = "month", on: date | None = None
+    actor: CurrentActor,
+    session: DbSession,
+    period: Period = "month",
+    on: date | None = None,
+    group_share: bool = True,
 ):
-    """One card per row of your analytics layout. `on` is today in your time zone."""
-    return service.personal_dashboard(session, actor, period, on or date.today())
+    """One card per row of your analytics layout. `on` is today in your time zone. With
+    `group_share` (the default), your share of group expenses counts as spending in the trend,
+    categories, daily average, needs and wants and savings rate; the app sends false when its
+    cash flow leaves the share out."""
+    return service.personal_dashboard(session, actor, period, on or date.today(), group_share)
 
 
 @router.get("/groups/{group_id}", response_model=DashboardOut)

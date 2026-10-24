@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/splits/split_engine.dart';
+import 'package:app/core/splits/split_engine.dart';
 
 void main() {
   final vectors = (jsonDecode(File('../shared/split_vectors.json').readAsStringSync()) as Map)['cases'] as List;

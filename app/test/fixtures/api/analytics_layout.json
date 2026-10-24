@@ -2,7 +2,7 @@
   "cards": [
     {
       "type": "spending_trend",
-      "title": "Monthly spending",
+      "title": "Spending over time",
       "period": "last_6_months",
       "source": "personal_monthly",
       "params": {
@@ -31,12 +31,47 @@
       "params": {
         "compare": "previous_month"
       }
+    },
+    {
+      "type": "spending_by_account",
+      "title": "By account",
+      "period": "this_month",
+      "source": "personal_by_account",
+      "params": {}
+    },
+    {
+      "type": "spending_by_channel",
+      "title": "By payment mode",
+      "period": "this_month",
+      "source": "personal_by_channel",
+      "params": {}
+    },
+    {
+      "type": "top_merchants",
+      "title": "Top merchants",
+      "period": "this_month",
+      "source": "personal_top_merchants",
+      "params": {}
+    },
+    {
+      "type": "savings_rate",
+      "title": "Savings rate",
+      "period": "this_month",
+      "source": "personal_savings_rate",
+      "params": {}
+    },
+    {
+      "type": "need_vs_want",
+      "title": "Needs and wants",
+      "period": "this_month",
+      "source": "personal_need_want",
+      "params": {}
     }
   ],
   "available": [
     {
       "type": "spending_trend",
-      "title": "Monthly spending",
+      "title": "Spending over time",
       "period": "last_6_months",
       "source": "personal_monthly",
       "params": {
@@ -65,6 +100,41 @@
       "params": {
         "compare": "previous_month"
       }
+    },
+    {
+      "type": "spending_by_account",
+      "title": "By account",
+      "period": "this_month",
+      "source": "personal_by_account",
+      "params": {}
+    },
+    {
+      "type": "spending_by_channel",
+      "title": "By payment mode",
+      "period": "this_month",
+      "source": "personal_by_channel",
+      "params": {}
+    },
+    {
+      "type": "top_merchants",
+      "title": "Top merchants",
+      "period": "this_month",
+      "source": "personal_top_merchants",
+      "params": {}
+    },
+    {
+      "type": "savings_rate",
+      "title": "Savings rate",
+      "period": "this_month",
+      "source": "personal_savings_rate",
+      "params": {}
+    },
+    {
+      "type": "need_vs_want",
+      "title": "Needs and wants",
+      "period": "this_month",
+      "source": "personal_need_want",
+      "params": {}
     }
   ],
   "customised": false

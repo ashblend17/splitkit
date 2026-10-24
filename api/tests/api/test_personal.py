@@ -18,6 +18,24 @@ def test_september_summary_matches_personal_mockup(client, seeded):
     ]
     # Goa Trip share (₹10,830) + Flatmates September shares (₹5,000 + ₹800 + ₹800 + ₹780)
     assert s["group_share_minor"] == 1083000 + 738000
+    # The card bill and the cash withdrawal moved money between accounts: not spending.
+    assert s["refunds_minor"] == 0
+
+
+def test_september_lists_the_transfers_without_counting_them(client, seeded):
+    h = login(client, "john")
+    every = client.get(f"{API}/personal/transactions?start=2026-09-01&end=2026-09-30", headers=h)
+    moves = client.get(
+        f"{API}/personal/transactions?start=2026-09-01&end=2026-09-30&type=transfer", headers=h
+    ).json()
+    assert (moves["count"], moves["spent_minor"], moves["income_minor"]) == (4, 0, 0)
+    assert {(i["description"], i["direction"]) for i in moves["items"]} == {
+        ("Credit card bill", "out"),
+        ("Credit card bill", "in"),
+        ("Cash withdrawal", "out"),
+        ("Cash withdrawal", "in"),
+    }
+    assert every.json()["spent_minor"] == 3245000  # the same as the summary's
 
 
 def test_history_filters_match_history_mockup(client, seeded):
@@ -28,8 +46,12 @@ def test_history_filters_match_history_mockup(client, seeded):
         headers=headers,
     ).json()
     assert r["spent_minor"] == 876000  # "Total ₹8,760"
-    assert r["count"] == 10 and r["income_minor"] == 0
-    assert r["items"][0]["description"] == "Swiggy order"
+    # The mockup's 10, plus Uber to airport and Groceries: split in Goa and Flatmates, so
+    # listed but not counted.
+    assert r["count"] == 12 and r["income_minor"] == 0
+    not_counted = [i["description"] for i in r["items"] if not i["counted"]]
+    assert not_counted == ["Groceries", "Uber to airport"]
+    assert r["items"][1]["description"] == "Swiggy order"
     assert {i["category"]["label"] for i in r["items"]} == {"Food", "Transport"}
 
 
@@ -87,3 +109,28 @@ def test_group_only_categories_are_rejected(client, seeded):
         },
     )
     assert r.status_code == 422 and r.json()["error"]["code"] == "unknown_category"
+
+
+def test_totals_only_count_your_current_currency(client, seeded):
+    headers = login(client, "john")
+    client.patch(f"{API}/me", headers=headers, json={"currency": "USD"})
+    body = {"type": "expense", "amount_minor": 1250, "description": "Coffee", "date": "2026-09-20"}
+    assert (
+        client.post(f"{API}/personal/transactions", headers=headers, json=body).status_code == 201
+    )
+    s = client.get(f"{API}/personal/summary?month=2026-09-23", headers=headers).json()
+    # The rupee entries and INR groups aren't added to dollars.
+    assert (s["currency"], s["spent_minor"], s["income_minor"], s["group_share_minor"]) == (
+        "USD",
+        1250,
+        0,
+        0,
+    )
+    listed = client.get(
+        f"{API}/personal/transactions?start=2026-09-01&end=2026-09-30", headers=headers
+    ).json()
+    assert listed["spent_minor"] == 1250 and listed["count"] > 1
+    assert {i["currency"] for i in listed["items"]} == {"INR", "USD"}
+    cards = client.get(f"{API}/analytics/personal?on=2026-09-23", headers=headers).json()["cards"]
+    monthly = next(c for c in cards if c["source"] == "personal_monthly")
+    assert monthly["headline"] == "$12.50"

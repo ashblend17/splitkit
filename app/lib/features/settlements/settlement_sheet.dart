@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
@@ -33,22 +35,46 @@ class GroupPaymentTarget {
 Future<void> showGroupPaymentSheet(BuildContext context, GroupPaymentTarget target) =>
     _show(context, _PaymentSheet(group: target));
 
-/// "Settle up with Aman": one payment across every group you share, saved as one settlement
-/// per group so each group's balance stays right.
-Future<void> showFriendSettleUpSheet(BuildContext context, UserBrief friend) =>
-    _show(context, _PaymentSheet(friend: friend));
+/// "Settle up with Aman": one payment across every group you share in [currency], saved as one
+/// settlement per group so each group's balance stays right. [from]: start from a payment your
+/// bank told you about (a personal entry).
+Future<void> showFriendSettleUpSheet(
+  BuildContext context,
+  UserBrief friend, {
+  required String currency,
+  PaymentFrom? from,
+}) => _show(context, _PaymentSheet(friend: friend, currency: currency, from: from));
+
+/// A payment the sheet starts from: one read from your bank (a personal entry), which gets
+/// linked to it once it's saved.
+class PaymentFrom {
+  const PaymentFrom({required this.amountMinor, required this.date, required this.method, required this.onSaved});
+  final int amountMinor;
+  final DateTime date;
+
+  /// upi, bank, cash or other.
+  final String method;
+
+  /// Called with the payments recorded (one per group), before the sheet closes.
+  final Future<void> Function(List<String> ids) onSaved;
+}
 
 Future<void> _show(BuildContext context, Widget sheet) => showModalBottomSheet<void>(
   context: context,
+  useRootNavigator: true, // over the tab bar, not under it
   isScrollControlled: true,
   backgroundColor: Colors.transparent,
   builder: (_) => sheet,
 );
 
 class _PaymentSheet extends ConsumerStatefulWidget {
-  const _PaymentSheet({this.group, this.friend});
+  const _PaymentSheet({this.group, this.friend, this.currency, this.from});
   final GroupPaymentTarget? group;
   final UserBrief? friend;
+  final PaymentFrom? from;
+
+  /// Friend settle-up only: the currency of the balance being settled.
+  final String? currency;
 
   @override
   ConsumerState<_PaymentSheet> createState() => _PaymentSheetState();
@@ -61,8 +87,8 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   int? _amountMinor;
   bool _full = true;
   bool _initialised = false;
-  String _method = 'upi';
-  DateTime _date = DateTime.now();
+  late String _method = widget.from?.method ?? 'upi';
+  late DateTime _date = widget.from?.date ?? appClock.now();
   bool _busy = false;
 
   @override
@@ -82,12 +108,13 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
   Widget build(BuildContext context) {
     final me = ref.watch(meProvider);
     if (widget.friend != null) {
-      final plan = ref.watch(settleUpPlanProvider(widget.friend!.id));
+      final key = (friendId: widget.friend!.id, currency: widget.currency!);
+      final plan = ref.watch(settleUpPlanProvider(key));
       return _frame(
         title: 'Settle up with ${firstName(widget.friend!.name)}',
         child: AsyncBody(
           value: plan,
-          onRetry: () => ref.invalidate(settleUpPlanProvider(widget.friend!.id)),
+          onRetry: () => ref.invalidate(settleUpPlanProvider(key)),
           skeletonRows: 2,
           builder: (p) {
             final youPay = p.netMinor < 0;
@@ -95,6 +122,15 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             if (!_initialised) {
               _initialised = true;
               _setFull(full, p.currency);
+              // What the bank says was paid, unless that's everything owed anyway.
+              if (widget.from case final from? when from.amountMinor != full) {
+                _full = false;
+                _amountMinor = from.amountMinor;
+                _amount.text = formatMinor(
+                  from.amountMinor,
+                  currency: p.currency,
+                ).substring(currencySymbol(p.currency).length);
+              }
             }
             final from = youPay ? _meBrief(me) : p.friend;
             final to = youPay ? p.friend : _meBrief(me);
@@ -123,7 +159,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
       padding: EdgeInsets.only(bottom: bottom),
       child: Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.94),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: SkColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(SkRadius.sheet)),
         ),
@@ -185,8 +221,9 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     final remaining = fullMinor - amount;
     final overLimit = friendPlan != null && amount > fullMinor;
     final status = _status(me.id, from, to, fullMinor, remaining, currency);
-    final canSubmit =
-        !_busy && !overLimit && (amount > 0 || (friendPlan != null && fullMinor == 0 && friendPlan.groups.isNotEmpty));
+    // Square overall but not in every group: payments that cancel out per group.
+    final squareUp = friendPlan != null && fullMinor == 0 && friendPlan.groups.isNotEmpty;
+    final canSubmit = !_busy && !overLimit && (amount > 0 || squareUp);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -256,7 +293,11 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
         ],
         const SizedBox(height: 18),
         SkButton(
-          amount == 0 ? 'Mark all square' : 'Record ${money(amount, currency)} payment',
+          amount > 0
+              ? 'Record ${money(amount, currency)} payment'
+              : squareUp
+              ? 'Mark all square'
+              : 'Enter an amount',
           onPressed: canSubmit ? () => _submit(from: from, to: to, fullMinor: fullMinor, friendPlan: friendPlan) : null,
           size: SkButtonSize.large,
           expand: true,
@@ -313,7 +354,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
       child: Row(
         children: [
           side(from, 'pays', onTap: pick(true)),
-          const Expanded(
+          Expanded(
             child: Row(
               children: [
                 Expanded(
@@ -433,8 +474,18 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     final full = amount == p.netMinor.abs();
     final lines = <String>[];
     if (full) {
+      // When the groups go both ways, say which way each one goes: it isn't all one payment.
+      final mixed = p.groups.any((g) => (g.netMinor > 0) != (p.netMinor > 0));
+      final friend = firstName(p.friend.name);
       for (final g in p.groups) {
-        lines.add('${g.name} ${money(g.netMinor.abs(), c)}');
+        final m = money(g.netMinor.abs(), c);
+        lines.add(
+          !mixed
+              ? '${g.name} $m'
+              : g.netMinor > 0
+              ? '$friend pays you $m in ${g.name}'
+              : 'you pay $m in ${g.name}',
+        );
       }
       return 'Recorded in ${p.groups.length} groups: ${lines.join(' · ')}';
     }
@@ -499,7 +550,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     color: SkColors.surface,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
-      side: const BorderSide(color: SkColors.line, width: 1.5),
+      side: BorderSide(color: SkColors.line, width: 1.5),
     ),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
@@ -508,7 +559,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
           context: context,
           initialDate: _date,
           firstDate: DateTime(2000),
-          lastDate: DateTime.now().add(const Duration(days: 365)),
+          lastDate: appClock.now().add(const Duration(days: 365)),
         );
         if (picked != null) setState(() => _date = picked);
       },
@@ -562,37 +613,36 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
     SettleUpPlanOut? friendPlan,
   }) async {
     setState(() => _busy = true);
-    final api = ref.read(apiProvider);
+    final writes = ref.read(writesProvider);
     final note = _note.text.trim().isEmpty ? null : _note.text.trim();
     final amount = _amountMinor ?? 0;
     try {
       final List<String> createdIds;
       if (friendPlan != null) {
-        final out = await api.settlements.settleUp(
+        createdIds = await writes.settleUp(
           widget.friend!.id,
-          SettleUpIn(
-            amountMinor: amount == fullMinor ? null : amount,
-            date: apiDate(_date),
-            method: SettleUpInMethodEnum.fromJson(_method)!,
-            note: note,
-            currency: friendPlan.currency,
-          ),
+          amountMinor: amount == fullMinor ? null : amount,
+          date: _date,
+          method: _method,
+          note: note,
+          currency: friendPlan.currency,
         );
-        createdIds = [for (final s in out!.settlements) s.id];
       } else {
-        final out = await api.settlements.createSettlement(
-          _target!.group.id,
-          SettlementIn(
-            fromUser: from.id,
-            toUser: to.id,
-            amountMinor: amount,
-            date: apiDate(_date),
-            method: SettlementInMethodEnum.fromJson(_method)!,
-            note: note,
+        createdIds = [
+          await writes.createSettlement(
+            _target!.group.id,
+            SettlementIn(
+              fromUser: from.id,
+              toUser: to.id,
+              amountMinor: amount,
+              date: apiDate(_date),
+              method: SettlementInMethodEnum.fromJson(_method)!,
+              note: note,
+            ),
           ),
-        );
-        createdIds = [out!.id];
+        ];
       }
+      await widget.from?.onSaved(createdIds);
       refreshLedger(ref.invalidate);
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -611,7 +661,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
               textColor: SkColors.brandSoft,
               onPressed: () async {
                 for (final id in createdIds) {
-                  await api.settlements.deleteSettlement(id);
+                  await writes.deleteSettlement(id);
                 }
                 refreshLedger(container.invalidate);
               },

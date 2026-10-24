@@ -4,12 +4,12 @@
   "subtitle": null,
   "cards": [
     {
-      "id": "c29205e6-cfa6-4d95-811a-725f0a7d7111",
+      "id": "dad804e4-4c60-5f17-8e33-94c13c550cb3",
       "type": "spending_trend",
-      "title": "Monthly spending",
+      "title": "Spending over time",
       "period_label": "Last 6 months",
       "source": "personal_monthly",
-      "headline": "₹32,450",
+      "headline": "₹50,660",
       "bars": [
         {
           "label": "Apr",
@@ -28,25 +28,26 @@
         },
         {
           "label": "Jul",
-          "value_minor": 3592000,
+          "value_minor": 4101000,
           "highlight": false
         },
         {
           "label": "Aug",
-          "value_minor": 3077500,
+          "value_minor": 3691500,
           "highlight": false
         },
         {
           "label": "Sep",
-          "value_minor": 3245000,
+          "value_minor": 5066000,
           "highlight": true
         }
       ],
       "rows": [],
-      "stat": null
+      "stat": null,
+      "averages": null
     },
     {
-      "id": "770fa246-88ff-4fce-9d58-358078e26dea",
+      "id": "c0408923-233c-5c4b-b5be-9370591d0c29",
       "type": "spending_by_category",
       "title": "Spending by category",
       "period_label": "September",
@@ -56,37 +57,106 @@
       "rows": [
         {
           "label": "Rent",
-          "value_minor": 1800000
+          "value_minor": 2300000
         },
         {
           "label": "Food",
-          "value_minor": 582000
+          "value_minor": 820800
+        },
+        {
+          "label": "Travel",
+          "value_minor": 436100
         },
         {
           "label": "Transport",
-          "value_minor": 294000
+          "value_minor": 390600
         },
         {
           "label": "Shopping",
-          "value_minor": 231000
+          "value_minor": 309000
         },
         {
           "label": "Fun",
-          "value_minor": 164900
+          "value_minor": 252400
+        },
+        {
+          "label": "Stay",
+          "value_minor": 224000
         },
         {
           "label": "Bills",
-          "value_minor": 112000
+          "value_minor": 192000
+        },
+        {
+          "label": "Other",
+          "value_minor": 80000
         },
         {
           "label": "Health",
           "value_minor": 61100
         }
       ],
-      "stat": null
+      "stat": null,
+      "averages": {
+        "label": "Average of 5 months",
+        "now_label": "September so far",
+        "unit": "month",
+        "rows": [
+          {
+            "label": "Rent",
+            "average_minor": 2000000,
+            "now_minor": 2300000
+          },
+          {
+            "label": "Food",
+            "average_minor": 421800,
+            "now_minor": 820800
+          },
+          {
+            "label": "Shopping",
+            "average_minor": 268200,
+            "now_minor": 309000
+          },
+          {
+            "label": "Transport",
+            "average_minor": 209700,
+            "now_minor": 390600
+          },
+          {
+            "label": "Bills",
+            "average_minor": 127600,
+            "now_minor": 192000
+          },
+          {
+            "label": "Fun",
+            "average_minor": 74000,
+            "now_minor": 252400
+          },
+          {
+            "label": "Health",
+            "average_minor": 47800,
+            "now_minor": 61100
+          },
+          {
+            "label": "Other",
+            "average_minor": 32000,
+            "now_minor": 80000
+          },
+          {
+            "label": "Travel",
+            "average_minor": 0,
+            "now_minor": 436100
+          },
+          {
+            "label": "Stay",
+            "average_minor": 0,
+            "now_minor": 224000
+          }
+        ]
+      }
     },
     {
-      "id": "f93e3db0-7d8e-4861-9505-0ecd0102178b",
+      "id": "4801303e-4440-5e34-b4b1-5072e1f77110",
       "type": "personal_vs_group",
       "title": "Personal vs group",
       "period_label": "September",
@@ -103,10 +173,11 @@
           "value_minor": 1821000
         }
       ],
-      "stat": null
+      "stat": null,
+      "averages": null
     },
     {
-      "id": "b7e7155b-983c-4e1f-908b-71d21ccae814",
+      "id": "1228e1ee-6276-58cd-9a76-c6453c445acc",
       "type": "average_daily",
       "title": "Average per day",
       "period_label": "1 – 23 Sep",
@@ -115,9 +186,125 @@
       "bars": [],
       "rows": [],
       "stat": {
-        "value_minor": 141100,
-        "note": "August averaged ₹993 per day"
-      }
+        "value_minor": 220300,
+        "note": "August averaged ₹1,191 per day"
+      },
+      "averages": null
+    },
+    {
+      "id": "217a6f35-849b-5b1a-b462-b5dfdd481ccf",
+      "type": "spending_by_account",
+      "title": "By account",
+      "period_label": "September",
+      "source": "personal_by_account",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "HDFC ··4821",
+          "value_minor": 88600
+        },
+        {
+          "label": "ICICI Credit card ··9012",
+          "value_minor": 34000
+        }
+      ],
+      "stat": null,
+      "averages": null
+    },
+    {
+      "id": "7314db44-43a6-52e0-a827-864728a16513",
+      "type": "spending_by_channel",
+      "title": "By payment mode",
+      "period_label": "September",
+      "source": "personal_by_channel",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Bank transfer",
+          "value_minor": 1800000
+        },
+        {
+          "label": "Not said",
+          "value_minor": 1136400
+        },
+        {
+          "label": "UPI",
+          "value_minor": 274600
+        },
+        {
+          "label": "Card",
+          "value_minor": 34000
+        }
+      ],
+      "stat": null,
+      "averages": null
+    },
+    {
+      "id": "0de3b09d-7e6b-52e9-9494-eb6718552bc1",
+      "type": "top_merchants",
+      "title": "Top merchants",
+      "period_label": "September",
+      "source": "personal_top_merchants",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Swiggy order",
+          "value_minor": 48600
+        },
+        {
+          "label": "Rapido ride",
+          "value_minor": 40000
+        },
+        {
+          "label": "Blue Tokai coffee",
+          "value_minor": 34000
+        }
+      ],
+      "stat": null,
+      "averages": null
+    },
+    {
+      "id": "ea6cde56-d84e-5611-a14d-9480fe692b74",
+      "type": "savings_rate",
+      "title": "Savings rate",
+      "period_label": "September",
+      "source": "personal_savings_rate",
+      "headline": "40%",
+      "bars": [],
+      "rows": [],
+      "stat": {
+        "value_minor": 3434000,
+        "note": "₹34,340 saved of ₹85,000 income"
+      },
+      "averages": null
+    },
+    {
+      "id": "f887ef88-3f91-5c9d-ba23-dc757d95c031",
+      "type": "need_vs_want",
+      "title": "Needs and wants",
+      "period_label": "September",
+      "source": "personal_need_want",
+      "headline": null,
+      "bars": [],
+      "rows": [
+        {
+          "label": "Needs",
+          "value_minor": 3764500
+        },
+        {
+          "label": "Wants",
+          "value_minor": 1221500
+        },
+        {
+          "label": "Not sorted",
+          "value_minor": 80000
+        }
+      ],
+      "stat": null,
+      "averages": null
     }
   ]
 }

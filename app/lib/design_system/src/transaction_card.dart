@@ -84,7 +84,7 @@ class TransactionCard extends StatelessWidget {
                         ),
                         if (adminBadge) ...[
                           const SizedBox(width: 6),
-                          const _Pill('Admin', background: SkColors.adminBand, foreground: SkColors.adminInk),
+                          _Pill('Admin', background: SkColors.adminBand, foreground: SkColors.adminInk),
                         ],
                         const SizedBox(width: 6),
                         Text(when, style: SkText.body(12, 400, color: SkColors.ink3)),
@@ -144,7 +144,7 @@ class _SettledBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SkIcon('check', size: 12, color: SkColors.ink2),
+          SkIcon('check', size: 12, color: SkColors.ink2),
           const SizedBox(width: 4),
           Text('Settled', style: SkText.body(11, 600, color: SkColors.ink2)),
         ],

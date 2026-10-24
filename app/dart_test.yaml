@@ -1,0 +1,6 @@
+# Test tags (package:test reads this file; flutter test too).
+tags:
+  # test/perf: VM benchmarks over a heavy synced dataset, with time ceilings.
+  perf:
+  # test/live: end to end against a real API; skipped unless LIVE_API is set.
+  live:

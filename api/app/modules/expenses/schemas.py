@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import Field
 
-from app.core.schemas import DecimalStr, Schema
+from app.core.schemas import AmountMinor, DecimalStr, EntryDate, Schema, Text
 from app.modules.categories.schemas import CategoryOut
 from app.modules.splits.schemas import SplitIn
 from app.modules.users.schemas import UserBrief
@@ -15,10 +15,10 @@ class ExpenseIn(Schema):
     """Create only: an id made on the device, so a retried create doesn't make a duplicate."""
     version: int | None = None
     """Update only: the version you edited. If it changed since, the update gets a 409."""
-    description: str = Field(min_length=1, max_length=200)
-    amount_minor: int = Field(gt=0)
+    description: Text(200)
+    amount_minor: AmountMinor
     payer_id: uuid.UUID
-    date: date
+    date: EntryDate
     category_id: uuid.UUID | None = None
     notes: str | None = Field(default=None, max_length=2000)
     split: SplitIn
@@ -29,8 +29,8 @@ class SplitOut(Schema):
     share_minor: int
     input_value: DecimalStr | None
     status: Literal["paid", "owes", "settled"]
-    """paid: the payer. owes: still owes the payer in this group. settled: square with the
-    payer in this group (by payments or other expenses)."""
+    """paid: the payer. owes: the group's fewest payments still have them paying someone.
+    settled: they pay nobody in this group now (by payments or other expenses)."""
 
 
 class ExpenseOut(Schema):

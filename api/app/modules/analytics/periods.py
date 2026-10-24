@@ -78,25 +78,68 @@ def trend_buckets(period: Period, on: date) -> list[Span]:
     return [Span(m, min(month_end(m), on), f"{m:%b}") for m in months]
 
 
+AVERAGE_COUNT = {"week": 8, "month": 6, "year": 12}
+"""How many full weeks (Week) or months (Month, Year) a category average looks back over."""
+
+
+def average_spans(period: Period, on: date) -> tuple[list[Span], Span]:
+    """What a category average is worked out over, oldest first, and the week or month under
+    way it's set against: on Week, the 8 weeks before the last 7 days; on Month and Year, the
+    6 or 12 whole months before this one, against this month so far."""
+    count = AVERAGE_COUNT[period]
+    if period == "week":
+        past = [
+            Span(on - timedelta(days=7 * k + 6), on - timedelta(days=7 * k), "")
+            for k in range(count, 0, -1)
+        ]
+        return past, Span(on - timedelta(days=6), on, "Last 7 days")
+    start = month_start(on)
+    months = [add_months(start, -k) for k in range(count, 0, -1)]
+    return [Span(m, month_end(m), f"{m:%b}") for m in months], Span(start, on, f"{on:%B} so far")
+
+
 def trend_label(period: Period) -> str:
     return {"week": "Last 7 days", "month": "Last 6 months", "year": "Last 12 months"}[period]
 
 
-def adaptive_buckets(start: date, end: date) -> list[Span]:
-    """Buckets for a group's whole history: days up to 2 weeks, weeks up to ~3 months,
-    months beyond that."""
+MAX_MONTH_BARS = 24
+
+
+def bucket_kind(start: date, end: date) -> Literal["day", "week", "month", "year"]:
+    """What one bar of adaptive_buckets covers for this span."""
     days = (end - start).days + 1
     if days <= 14:
-        return [Span(d, d, f"{d.day}") for d in (start + timedelta(days=i) for i in range(days))]
+        return "day"
     if days <= 92:
+        return "week"
+    months = (end.year - start.year) * 12 + end.month - start.month + 1
+    return "month" if months <= MAX_MONTH_BARS else "year"
+
+
+def adaptive_buckets(start: date, end: date) -> list[Span]:
+    """Buckets for a group's whole history: days up to 2 weeks, weeks up to ~3 months,
+    months up to two years, then whole years (so the chart never gets more than 24 bars)."""
+    days = (end - start).days + 1
+    kind = bucket_kind(start, end)
+    if kind == "day":
+        return [Span(d, d, f"{d.day}") for d in (start + timedelta(days=i) for i in range(days))]
+    if kind == "week":
         spans, s = [], start
         while s <= end:
             e = min(s + timedelta(days=6), end)
             spans.append(Span(s, e, f"{s.day} {s:%b}"))
             s = e + timedelta(days=1)
         return spans
+    if kind == "year":
+        return [
+            Span(max(date(y, 1, 1), start), min(date(y, 12, 31), end), str(y))
+            for y in range(start.year, end.year + 1)
+        ]
+    # Across a new year, January's bar shows the year ("Nov, Dec, 2026, Feb").
+    crosses = start.year != end.year
     spans, m = [], month_start(start)
     while m <= end:
-        spans.append(Span(max(m, start), min(month_end(m), end), f"{m:%b}"))
+        label = str(m.year) if crosses and m.month == 1 else f"{m:%b}"
+        spans.append(Span(max(m, start), min(month_end(m), end), label))
         m = add_months(m, 1)
     return spans

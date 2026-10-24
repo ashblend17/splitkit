@@ -2,27 +2,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/analytics/group_analytics_page.dart';
+import '../../features/admin/admin_dashboard_page.dart';
+import '../../features/admin/admin_users_page.dart';
+import '../../features/admin/audit_log_page.dart';
 import '../../features/analytics/personal_analytics_page.dart';
 import '../../features/auth/login_page.dart';
 import '../../features/auth/register_page.dart';
 import '../../features/expenses/add_expense_page.dart';
 import '../../features/expenses/expense_detail_page.dart';
+import '../../features/goals/goal_detail_page.dart';
+import '../../features/goals/goals_page.dart';
+import '../../features/goals/rules_page.dart';
 import '../../features/gallery/components_gallery_page.dart';
-import '../../features/groups/group_balances_page.dart';
 import '../../features/groups/group_detail_page.dart';
 import '../../features/groups/group_list_page.dart';
 import '../../features/groups/group_trash_page.dart';
 import '../../features/home/home_page.dart';
+import '../../features/import_tricount/import_done_page.dart';
+import '../../features/import_tricount/import_review_page.dart';
+import '../../features/import_tricount/import_upload_page.dart';
+import '../../features/tricount_sync/tricount_sync_page.dart';
+import '../../features/personal/accounts_page.dart';
 import '../../features/personal/personal_history_page.dart';
 import '../../features/personal/personal_page.dart';
 import '../../features/profile/categories_page.dart';
 import '../../features/profile/profile_page.dart';
+import '../../features/shell/app_mode.dart';
+import '../../features/sms/sms_setup_page.dart';
 import '../../features/shell/app_shell.dart';
+import '../../features/shell/not_found_page.dart';
 import '../../features/shell/splash_page.dart';
+import '../integrations.dart';
+import '../local/providers.dart';
 import '../session/session.dart';
 
 final _rootKey = GlobalKey<NavigatorState>();
+
+/// Every tab of a group is the same page (one key per group): moving between tabs updates it
+/// in place, with no page transition, rather than stacking a page per tab.
+Page<void> _groupPage(GoRouterState s, GroupTab tab) {
+  final groupId = s.pathParameters['gid']!;
+  return MaterialPage(
+    key: ValueKey('group:$groupId'),
+    child: GroupDetailPage(groupId: groupId, tab: tab),
+  );
+}
 
 /// Re-runs redirects whenever the session changes (login, logout, 401).
 class _SessionListenable extends ChangeNotifier {
@@ -34,10 +58,12 @@ class _SessionListenable extends ChangeNotifier {
 final routerProvider = Provider<GoRouter>((ref) {
   final listenable = _SessionListenable(ref);
   ref.onDispose(listenable.dispose);
+  runLocalDataWhileSignedIn(ref);
   return GoRouter(
     navigatorKey: _rootKey,
-    initialLocation: '/home',
+    initialLocation: homeOf(ref.read(savedAppModeProvider)),
     refreshListenable: listenable,
+    errorBuilder: (_, _) => const NotFoundPage(),
     redirect: (context, state) {
       final session = ref.read(sessionProvider);
       final path = state.uri.path;
@@ -54,7 +80,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         return withFrom('/login');
       }
       if (path == '/login' || path == '/register' || path == '/splash' || path == '/') {
-        return from != null && from.startsWith('/') && !from.startsWith('/splash') ? from : '/home';
+        return from != null && from.startsWith('/') && !from.startsWith('/splash')
+            ? from
+            : homeOf(ref.read(appModeProvider));
+      }
+      // The admin area is for admins only (the API refuses everyone else too).
+      if ((path == '/admin' || path.startsWith('/admin/')) && !session.value!.isAdmin) {
+        return homeOf(ref.read(appModeProvider));
       }
       return null;
     },
@@ -63,6 +95,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, _) => const RegisterPage()),
       GoRoute(path: '/gallery', builder: (_, _) => const ComponentsGalleryPage()),
+      // Pages that moved into Personal's own tabs.
+      GoRoute(path: '/personal/history', redirect: (_, _) => '/personal/transactions'),
+      GoRoute(path: '/profile/history', redirect: (_, _) => '/personal/transactions'),
+      GoRoute(path: '/profile/analytics', redirect: (_, _) => '/personal/insights'),
       StatefulShellRoute.indexedStack(
         builder: (_, state, shell) => AppShell(shell: shell, location: state.uri.path),
         branches: [
@@ -77,34 +113,71 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: ':gid',
-                    builder: (_, s) => GroupDetailPage(groupId: s.pathParameters['gid']!),
+                    pageBuilder: (_, s) => _groupPage(s, GroupTab.expenses),
                     routes: [
-                      GoRoute(
-                        path: 'balances',
-                        builder: (_, s) => GroupBalancesPage(groupId: s.pathParameters['gid']!),
-                      ),
                       GoRoute(
                         path: 'deleted',
                         builder: (_, s) => GroupTrashPage(groupId: s.pathParameters['gid']!),
                       ),
+                      // Tricount sync (deletable module: features/tricount_sync).
                       GoRoute(
-                        path: 'analytics',
-                        builder: (_, s) => GroupAnalyticsPage(groupId: s.pathParameters['gid']!),
+                        path: 'tricount',
+                        builder: (_, s) => TricountSyncPage(groupId: s.pathParameters['gid']!),
                       ),
                     ],
                   ),
+                  for (final tab in [GroupTab.balances, GroupTab.analytics, GroupTab.members])
+                    GoRoute(path: ':gid/${tab.name}', pageBuilder: (_, s) => _groupPage(s, tab)),
                 ],
+              ),
+            ],
+          ),
+          // Personal's tabs: Overview, Transactions, Goals, Insights. AppShell's keys follow this order.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/personal',
+                builder: (_, _) => const PersonalPage(),
+                // Your accounts and net worth (from Overview).
+                routes: [GoRoute(path: 'accounts', builder: (_, _) => const AccountsPage())],
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/personal',
-                builder: (_, _) => const PersonalPage(),
-                routes: [GoRoute(path: 'history', builder: (_, _) => const PersonalHistoryPage())],
+                path: '/personal/transactions',
+                // ?account_id=: an account's entries (from Overview and Accounts); ?account=, a bank
+                // SMS label, from links made before accounts.
+                builder: (_, s) => PersonalHistoryPage(
+                  accountId: s.uri.queryParameters['account_id'],
+                  account: s.uri.queryParameters['account'],
+                ),
               ),
             ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/personal/goals',
+                // No Goals tab while Features.goals is off.
+                redirect: (_, _) => ref.read(featuresProvider).goals ? null : '/personal',
+                builder: (_, _) => const GoalsPage(),
+                // The allocation rules page goes first here, so 'rules' isn't taken for a goal's id.
+                routes: [
+                  GoRoute(
+                    path: 'rules',
+                    // No rules page while Features.allocationRules is off.
+                    redirect: (_, _) => ref.read(featuresProvider).allocationRules ? null : '/personal/goals',
+                    builder: (_, _) => const RulesPage(),
+                  ),
+                  GoRoute(path: ':goalId', builder: (_, s) => GoalDetailPage(goalId: s.pathParameters['goalId']!)),
+                ],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/personal/insights', builder: (_, _) => const PersonalAnalyticsPage())],
           ),
           StatefulShellBranch(
             routes: [
@@ -112,8 +185,42 @@ final routerProvider = Provider<GoRouter>((ref) {
                 path: '/profile',
                 builder: (_, _) => const ProfilePage(),
                 routes: [
-                  GoRoute(path: 'analytics', builder: (_, _) => const PersonalAnalyticsPage()),
                   GoRoute(path: 'categories', builder: (_, _) => const CategoriesPage()),
+                  // Bank SMS, Android (features/sms).
+                  GoRoute(
+                    path: 'sms',
+                    builder: (_, _) => const SmsSetupPage(),
+                    routes: [GoRoute(path: 'skipped', builder: (_, _) => const SmsSkippedPage())],
+                  ),
+                  // Tricount import (deletable module: features/import_tricount).
+                  GoRoute(
+                    path: 'import',
+                    builder: (_, _) => const ImportUploadPage(),
+                    routes: [
+                      GoRoute(path: 'review', builder: (_, _) => const ImportReviewPage()),
+                      GoRoute(
+                        path: 'done/:bid',
+                        builder: (_, s) => ImportDonePage(batchId: s.pathParameters['bid']!),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Admin (screens 16 and 17, plus the audit log). Last, so the branch index matches
+          // AppShell's keys; non-admins never see its tab and are redirected away.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin',
+                builder: (_, _) => const AdminDashboardPage(),
+                routes: [
+                  GoRoute(
+                    path: 'users',
+                    builder: (_, s) => AdminUsersPage(initialQuery: s.uri.queryParameters['q'] ?? ''),
+                  ),
+                  GoRoute(path: 'audit', builder: (_, _) => const AuditLogPage()),
                 ],
               ),
             ],
@@ -123,7 +230,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/expenses/new',
         parentNavigatorKey: _rootKey,
-        builder: (_, s) => AddExpensePage(groupId: s.uri.queryParameters['group']),
+        // ?from_txn=<id>: split one of your personal entries, linked to it.
+        builder: (_, s) =>
+            AddExpensePage(groupId: s.uri.queryParameters['group'], fromTxnId: s.uri.queryParameters['from_txn']),
       ),
       GoRoute(
         path: '/expenses/:eid',

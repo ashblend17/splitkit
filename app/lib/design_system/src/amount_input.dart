@@ -4,12 +4,14 @@ import 'package:flutter/services.dart';
 import '../../core/money/money.dart';
 import '../../core/theme/theme.dart';
 
-/// Keeps digits and one decimal point (max 2 places) and regroups the whole part in the
-/// Indian style as you type: "180000" -> "1,80,000".
-class IndianAmountFormatter extends TextInputFormatter {
-  const IndianAmountFormatter({this.decimals = 2});
+/// Keeps digits and one decimal point (max 2 places) and regroups the whole part as you type,
+/// the way [formatMinor] shows the currency: "180000" -> "1,80,000" in rupees, "180,000" in
+/// dollars and euros.
+class AmountFormatter extends TextInputFormatter {
+  const AmountFormatter({this.decimals = 2, this.currency = 'INR'});
 
   final int decimals;
+  final String currency;
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
@@ -23,8 +25,10 @@ class IndianAmountFormatter extends TextInputFormatter {
     }
     final parts = raw.split('.');
     var whole = parts.first.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+    if (whole.length > maxAmountDigits) return oldValue; // past ₹9,99,99,999: ignore the key
     if (whole.isEmpty && parts.length > 1) whole = '0';
-    final text = parts.length > 1 ? '${groupIndian(whole)}.${parts[1]}' : groupIndian(whole);
+    final grouped = currency == 'INR' ? groupIndian(whole) : groupThousands(whole);
+    final text = parts.length > 1 ? '$grouped.${parts[1]}' : grouped;
     return TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
@@ -83,6 +87,45 @@ class _AmountInputState extends State<AmountInput> {
     super.dispose();
   }
 
+  /// Long amounts get smaller so they still fit the field ("9,99,99,999.99" at full size
+  /// would be cut off at the left).
+  double _scale(String text) => text.length <= 7 ? 1 : (7 / text.length).clamp(0.5, 1);
+
+  Widget _figure(double scale) => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(currencySymbol(widget.currency), style: SkText.display(widget.symbolSize * scale, 600, color: SkColors.ink3)),
+          const SizedBox(width: 6),
+          IntrinsicWidth(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 80, maxWidth: 260),
+              child: TextField(
+                controller: _controller,
+                autofocus: widget.autofocus,
+                textAlign: TextAlign.center,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [AmountFormatter(currency: widget.currency)],
+                onChanged: (t) => widget.onChanged?.call(parseMinor(t, currency: widget.currency)),
+                style: SkText.display(widget.fontSize * scale, 800),
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  hintText: '0',
+                  hintStyle: SkText.display(widget.fontSize * scale, 800, color: SkColors.lineStrong),
+                  semanticCounterText: '',
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -90,46 +133,16 @@ class _AmountInputState extends State<AmountInput> {
       children: [
         Text(widget.label, style: SkText.body(13, 600, color: SkColors.ink2)),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(currencySymbol(widget.currency), style: SkText.display(widget.symbolSize, 600, color: SkColors.ink3)),
-            const SizedBox(width: 6),
-            IntrinsicWidth(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 80, maxWidth: 260),
-                child: TextField(
-                  controller: _controller,
-                  autofocus: widget.autofocus,
-                  textAlign: TextAlign.center,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: const [IndianAmountFormatter()],
-                  onChanged: (t) => widget.onChanged?.call(parseMinor(t, currency: widget.currency)),
-                  style: SkText.display(widget.fontSize, 800),
-                  decoration: InputDecoration(
-                    isCollapsed: true,
-                    contentPadding: EdgeInsets.zero,
-                    filled: false,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    hintText: '0',
-                    hintStyle: SkText.display(widget.fontSize, 800, color: SkColors.lineStrong),
-                    semanticCounterText: '',
-                  ),
-                ),
-              ),
-            ),
-          ],
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _controller,
+          builder: (context, value, _) => _figure(_scale(value.text)),
         ),
         if (widget.showCurrencyChip) const SizedBox(height: 8),
         if (widget.showCurrencyChip)
           Center(
             child: Material(
               color: SkColors.paper,
-              shape: const StadiumBorder(side: BorderSide(color: SkColors.line)),
+              shape: StadiumBorder(side: BorderSide(color: SkColors.line)),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: widget.onCurrencyTap,

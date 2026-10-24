@@ -28,7 +28,7 @@
     "participant_count": 4,
     "my_share_minor": 45000,
     "my_net_minor": -45000,
-    "settled": false,
+    "settled": true,
     "by_admin": false,
     "deleted_at": null
   },

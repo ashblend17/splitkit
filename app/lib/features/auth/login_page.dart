@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
+import '../../core/config.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import 'server_sheet.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -71,7 +73,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             width: 56,
                             height: 56,
                             decoration: BoxDecoration(color: SkColors.ink, borderRadius: BorderRadius.circular(16)),
-                            child: const Center(child: SkIcon('settle', size: 28, color: Colors.white)),
+                            child: Center(child: SkIcon('settle', size: 28, color: SkColors.onFill)),
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -93,6 +95,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           autofillHints: const [AutofillHints.email],
                           textInputAction: TextInputAction.next,
                           errorText: _emailError,
+                          onChanged: (_) {
+                            if (_emailError != null) setState(() => _emailError = null);
+                          },
                         ),
                         const SizedBox(height: 16),
                         SkTextField(
@@ -104,6 +109,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           textInputAction: TextInputAction.done,
                           onSubmitted: (_) => _submit(),
                           errorText: _error,
+                          onChanged: (_) {
+                            if (_error != null) setState(() => _error = null);
+                          },
                         ),
                         const SizedBox(height: 16),
                         SkButton(
@@ -133,6 +141,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           textAlign: TextAlign.center,
                           style: SkText.body(13, 400, color: SkColors.ink3),
                         ),
+                        if (AppConfig.devTools) const ServerLink(),
                       ],
                     ),
                   ),

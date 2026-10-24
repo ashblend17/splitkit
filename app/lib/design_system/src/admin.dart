@@ -14,6 +14,8 @@ class AdminBanner extends StatelessWidget {
     this.wide = false,
     this.modeNote = 'Read-only · any change is logged as Admin',
     this.onSwitchUser,
+    this.modeAction,
+    this.onModeAction,
   });
 
   final String viewingAs;
@@ -23,6 +25,10 @@ class AdminBanner extends StatelessWidget {
   final bool wide;
   final String modeNote;
   final VoidCallback? onSwitchUser;
+
+  /// "Allow edits" or "Make read-only", when the mode can be changed from here.
+  final String? modeAction;
+  final VoidCallback? onModeAction;
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +43,13 @@ class AdminBanner extends StatelessWidget {
           child: Container(
             constraints: const BoxConstraints(minHeight: 52),
             padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: SkColors.adminBand,
               border: Border(bottom: BorderSide(color: SkColors.adminInk, width: 2)),
             ),
             child: Row(
               children: [
-                const SkIcon('shield', size: 20, color: SkColors.adminInk),
+                SkIcon('shield', size: 20, color: SkColors.adminInk),
                 const SizedBox(width: 10),
                 Expanded(
                   child: ExcludeSemantics(
@@ -89,6 +95,16 @@ class AdminBanner extends StatelessWidget {
                     label: 'Switch user',
                     icon: 'swap',
                     onTap: onSwitchUser!,
+                    background: const Color(0x141B1403),
+                    foreground: SkColors.adminInk,
+                    weight: 600,
+                  ),
+                ],
+                if (modeAction != null && onModeAction != null) ...[
+                  const SizedBox(width: 10),
+                  _BannerButton(
+                    label: modeAction!,
+                    onTap: onModeAction!,
                     background: const Color(0x141B1403),
                     foreground: SkColors.adminInk,
                     weight: 600,
@@ -263,7 +279,7 @@ class UserSwitcher extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(color: SkColors.adminBand, borderRadius: BorderRadius.circular(10)),
                   alignment: Alignment.center,
-                  child: const SkIcon('eye', size: 20, color: SkColors.adminInk),
+                  child: SkIcon('eye', size: 20, color: SkColors.adminInk),
                 ),
                 const SizedBox(width: 16),
                 Flexible(

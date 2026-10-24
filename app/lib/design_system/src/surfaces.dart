@@ -10,19 +10,22 @@ class SkCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.radius = SkRadius.card,
-    this.borderColor = SkColors.line,
+    Color? borderColor,
     this.borderWidth = 1,
-    this.color = SkColors.surface,
+    Color? color,
     this.onTap,
     this.semanticLabel,
-  });
+  }) : _borderColor = borderColor,
+       _color = color;
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final double radius;
-  final Color borderColor;
+  final Color? _borderColor;
+  Color get borderColor => _borderColor ?? SkColors.line;
   final double borderWidth;
-  final Color color;
+  final Color? _color;
+  Color get color => _color ?? SkColors.surface;
   final VoidCallback? onTap;
   final String? semanticLabel;
 

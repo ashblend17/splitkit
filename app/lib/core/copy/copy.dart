@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 
 import '../../design_system/design_system.dart';
 import '../api/api.dart';
+import '../clock.dart';
+import '../finance/finance.dart' show FinanceEngine;
 import '../money/money.dart';
 import '../theme/theme.dart';
 
@@ -14,7 +16,7 @@ DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
 
 /// "Today", "Yesterday", "Mon, 21 Sep", or "21 Sep 2025" for other years.
 String dayLabel(DateTime date, {DateTime? now}) {
-  final today = _day(now ?? DateTime.now());
+  final today = _day(now ?? appClock.now());
   final day = _day(date);
   final diff = today.difference(day).inDays;
   if (diff == 0) return 'Today';
@@ -39,7 +41,7 @@ String formDateLabel(DateTime date, {DateTime? now}) {
 /// "Active today", "Active yesterday", "3 days ago", "Last week", "12 Aug".
 String activityLabel(DateTime? at, {DateTime? now}) {
   if (at == null) return 'No activity yet';
-  final days = _day(now ?? DateTime.now()).difference(_day(at.toLocal())).inDays;
+  final days = _day(now ?? appClock.now()).difference(_day(at.toLocal())).inDays;
   if (days <= 0) return 'Active today';
   if (days == 1) return 'Active yesterday';
   if (days < 7) return '$days days ago';
@@ -169,22 +171,94 @@ String compactMoney(int minor, String currency) {
   return '${currencySymbol(currency)}${k}k';
 }
 
-/// A personal entry as a [TransactionCard]: "Swiggy order · Food · UPI · spent ₹486".
-TxnView personalView(PersonalTxnOut t) {
-  final income = t.type == PersonalTxnOutTypeEnum.income;
+/// How a personal entry was paid (personal_transactions.channel), in the order the sheet
+/// offers them. ATM only comes from bank SMS.
+const channelLabels = {
+  'upi': 'UPI',
+  'card': 'Card',
+  'bank': 'Bank transfer',
+  'cash': 'Cash',
+  'other': 'Other',
+  'atm': 'ATM',
+};
+
+/// "From an SMS · HDFC ··4821 · balance after ₹42,276": where an entry the app read came from.
+String smsOrigin(PersonalTxnOut t) => [
+  'From an SMS',
+  ?t.account,
+  if (t.balanceMinor case final b?) 'balance after ${money(b, t.currency)}',
+].join(' · ');
+
+/// The entry's category as a list shows it. A payment to a friend needs none; a transfer, a
+/// balance correction, a refund or an investment with none says what it is.
+String? categoryLabel(PersonalTxnOut t) =>
+    t.category?.label ??
+    switch (t.type.value) {
+      'income' => 'Income',
+      'transfer' => 'Transfer',
+      'adjustment' => 'Balance correction',
+      'refund' => 'Refund',
+      'investment_contribution' || 'investment_withdrawal' => 'Investment',
+      _ => t.settlementId != null ? null : 'Uncategorised',
+    };
+
+/// "Split, not counted": an entry that became a split or a payment, left out of the totals.
+String? notCounted(PersonalTxnOut t) =>
+    t.counted ? null : (t.settlementId != null ? 'Payment, not counted' : 'Split, not counted');
+
+/// A personal entry as every list shows it (a [TransactionCard], a Transactions row): "Swiggy
+/// order · Food · UPI · spent ₹486". A transfer half names the account on the other side ("To
+/// ICICI Credit card ··9012", "From HDFC ··4821", read from [finance]) and is money moved, in a
+/// neutral tone; a refund is money back; a balance correction and investments say what they are.
+/// Money coming in has a "+". [brief] leaves out how it was paid and the note (Transactions).
+TxnView personalView(PersonalTxnOut t, {FinanceEngine? finance, bool brief = false}) {
+  final type = t.type.value;
+  final comesIn = t.direction == PersonalTxnOutDirectionEnum.in_;
+  final paidWith = channelLabels[t.channel?.value] ?? ((t.notes ?? '').isEmpty ? null : t.notes);
+  String? accountName(String? id) => id == null ? null : finance?.account(id)?.name;
+  String moved() {
+    final other = accountName(finance?.partnerLeg(t.id)?.accountId) ?? 'another account';
+    return comesIn ? 'From $other' : 'To $other';
+  }
+
+  final what = switch (type) {
+    'transfer' => moved(),
+    'adjustment' => ['Balance correction', ?accountName(t.accountId)].join(' · '),
+    _ => categoryLabel(t),
+  };
   return TxnView(
     title: t.description,
-    subtitle: [
-      t.category?.label ?? (income ? 'Income' : 'Uncategorised'),
-      if ((t.notes ?? '').isNotEmpty) t.notes!,
-    ].join(' · '),
-    tag: 'Personal',
-    label: income ? 'received' : 'spent',
-    amount: income ? formatMinor(t.amountMinor, currency: t.currency, signed: true) : money(t.amountMinor, t.currency),
-    glyph: glyphOr(t.category?.icon, income ? 'income' : 'other'),
-    tone: income ? MoneyTone.income : MoneyTone.expense,
+    subtitle: [?what, if (notCounted(t) case final note?) note else if (!brief) ?paidWith].join(' · '),
+    tag: t.source_ == PersonalTxnOutSource_Enum.sms ? 'From SMS' : 'Personal',
+    label: switch (type) {
+      'income' => 'received',
+      'transfer' => 'moved',
+      'refund' => 'refunded',
+      'adjustment' => 'correction',
+      'investment_contribution' => 'invested',
+      'investment_withdrawal' => 'withdrawn',
+      _ => 'spent',
+    },
+    amount: comesIn ? formatMinor(t.amountMinor, currency: t.currency, signed: true) : money(t.amountMinor, t.currency),
+    glyph: switch (type) {
+      'transfer' => 'swap',
+      'adjustment' => 'edit',
+      'investment_contribution' || 'investment_withdrawal' => 'chart',
+      'refund' => glyphOr(t.category?.icon, 'refresh'),
+      _ => glyphOr(t.category?.icon, type == 'income' ? 'income' : 'other'),
+    },
+    tone: switch (type) {
+      'income' || 'refund' => MoneyTone.income,
+      'expense' => MoneyTone.expense,
+      _ => MoneyTone.neutral,
+    },
   );
 }
+
+/// The icon tile colours of a personal entry's row: Personal's own, or grey for money that only
+/// moved (a transfer, a correction, an investment).
+(Color, Color) personalTile(TxnView v) =>
+    v.tone == MoneyTone.neutral ? (SkColors.sunken, SkColors.ink2) : (SkColors.personalSoft, SkColors.personalInk);
 
 /// "Sep 2026".
 String shortMonthLabel(DateTime month) => DateFormat('MMM y').format(month);

@@ -26,7 +26,7 @@ class GroupBalancesOut(Schema):
     you_owe_minor: int
     you_are_owed_minor: int
     people: list[PersonBalance]
-    """Your pairwise balance with each other member: "You owe Rahul ₹500"."""
+    """Your one-to-one balance with each other member: "You owe Rahul ₹500"."""
     members: list[PersonBalance]
     """Everyone's overall position in the group. Sums to zero."""
     suggested: list[SuggestedPayment]
@@ -44,7 +44,8 @@ class FriendBalance(Schema):
     user: UserBrief
     currency: str
     net_minor: int
-    """Summed across every group you share. Positive: they owe you."""
+    """What each group's fewest payments (`suggested`) have between you, summed across every
+    group you share. Positive: they pay you."""
 
 
 class GroupNet(Schema):
@@ -83,6 +84,6 @@ class FeedItem(Schema):
     my_net_minor: int
     """Effect on your balance. Positive: you are owed more / owe less."""
     settled: bool
-    """Expenses you didn't pay for: you are square with the payer in this group now."""
+    """Expenses you didn't pay for: the group's fewest payments have you paying nobody now."""
     by_admin: bool
     deleted_at: datetime | None

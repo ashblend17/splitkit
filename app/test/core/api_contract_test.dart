@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:splitkit/core/api/api.dart';
+import 'package:app/core/api/api.dart';
 
 /// Real responses captured from the seeded API (test/fixtures/api) must parse with the
 /// generated client. Catches drift between server output and the OpenAPI spec.
@@ -23,7 +23,7 @@ void main() {
 
   test('overall and group balances', () {
     final overall = OverallBalancesOut.fromJson(fixture('balances'))!;
-    expect(overall.totals.single.youOweMinor, 125000);
+    expect((overall.totals.single.youOweMinor, overall.totals.single.youAreOwedMinor), (0, 147000));
     final goa = GroupBalancesOut.fromJson(fixture('group_balances'))!;
     expect(goa.people.map((p) => (p.user.name, p.netMinor)).first, ('Kabir Mehta', -75000));
     expect(goa.suggested, isNotEmpty);
@@ -50,6 +50,50 @@ void main() {
       'shares',
     ]);
     expect(CategoryOut.listFromJson(fixture('categories')).first.label, 'Food');
+  });
+
+  test('personal accounts, and the labels with what their bank reported', () {
+    final accounts = PersonalAccountOut.listFromJson(fixture('personal_accounts'));
+    final hdfc = accounts.firstWhere((a) => a.smsLabel == 'HDFC ··4821');
+    expect(
+      (hdfc.type, hdfc.openingBalanceMinor, hdfc.status),
+      (PersonalAccountOutTypeEnum.bank, 2748000, PersonalAccountOutStatusEnum.active),
+    );
+    expect(accounts.map((a) => a.type), contains(PersonalAccountOutTypeEnum.creditCard));
+    final reported = AccountOut.listFromJson(fixture('personal_accounts_reported'));
+    expect((reported.first.account, reported.first.balanceMinor), ('HDFC ··4821', 3993600));
+  });
+
+  test('goals, one per tracking mode, and the Ladakh trip\'s contributions', () {
+    final goals = PersonalGoalOut.listFromJson(fixture('personal_goals'));
+    expect(
+      [for (final g in goals) (g.name, g.trackingMode.value, g.priority)],
+      [('Emergency fund', 'linked_balance', 0), ('Ladakh trip', 'contribution', 1), ('Gold coins', 'manual', 2)],
+    );
+    expect(goals[0].linkedAccountId, isNotNull);
+    expect(goals[2].manualProgressMinor, 6800000);
+    final date = goals[1].targetDate!;
+    expect((date.year, date.month, date.day), (2027, 5, 31));
+    final contributions = PersonalGoalContributionOut.listFromJson(fixture('goal_contributions'));
+    expect(
+      [for (final c in contributions) (c.amountMinor, c.note, c.transactionId != null, c.goalId == goals[1].id)],
+      [(200000, 'Trip jar', true, true), (1500000, 'Saved before I started tracking', false, true)],
+    );
+  });
+
+  test('allocation rules (a percentage to a goal, a fixed amount to an account) and their plans', () {
+    final rules = PersonalAllocationRuleOut.listFromJson(fixture('allocation_rules'));
+    expect(
+      [for (final r in rules) (r.name, r.kind.value, r.percentBp, r.amountMinor, r.goalId != null, r.priority)],
+      [(null, 'percentage', 1000, null, true, 0), ('Emergency top-up', 'fixed', null, 500000, false, 1)],
+    );
+    expect(rules.first.trigger.value, 'income_recorded');
+    final plans = PersonalAllocationPlanOut.listFromJson(fixture('allocation_plans'));
+    expect(
+      [for (final p in plans) (p.ruleId, p.snapshotKind.value, p.plannedMinor)],
+      [(rules[0].id, 'percentage', 850000), (rules[1].id, 'fixed', 500000)],
+    );
+    expect(plans.map((p) => p.sourceTransactionId).toSet(), hasLength(1));
   });
 
   test('error bodies surface the human message', () {

@@ -1,0 +1,492 @@
+//
+// AUTO-GENERATED FILE, DO NOT MODIFY!
+//
+// @dart=2.18
+
+// ignore_for_file: unused_element, unused_import
+// ignore_for_file: always_put_required_named_parameters_first
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: lines_longer_than_80_chars
+
+part of openapi.api;
+
+class ApiClient {
+  ApiClient({this.basePath = 'http://localhost', this.authentication,});
+
+  final String basePath;
+  final Authentication? authentication;
+
+  var _client = Client();
+  final _defaultHeaderMap = <String, String>{};
+
+  /// Returns the current HTTP [Client] instance to use in this class.
+  ///
+  /// The return value is guaranteed to never be null.
+  Client get client => _client;
+
+  /// Requests to use a new HTTP [Client] in this class.
+  set client(Client newClient) {
+    _client = newClient;
+  }
+
+  Map<String, String> get defaultHeaderMap => _defaultHeaderMap;
+
+  void addDefaultHeader(String key, String value) {
+     _defaultHeaderMap[key] = value;
+  }
+
+  // We don't use a Map<String, String> for queryParams.
+  // If collectionFormat is 'multi', a key might appear multiple times.
+  Future<Response> invokeAPI(
+    String path,
+    String method,
+    List<QueryParam> queryParams,
+    Object? body,
+    Map<String, String> headerParams,
+    Map<String, String> formParams,
+    String? contentType,
+  ) async {
+    await authentication?.applyToParams(queryParams, headerParams);
+
+    headerParams.addAll(_defaultHeaderMap);
+    if (contentType != null) {
+      headerParams['Content-Type'] = contentType;
+    }
+
+    final urlEncodedQueryParams = queryParams.map((param) => '$param');
+    final queryString = urlEncodedQueryParams.isNotEmpty ? '?${urlEncodedQueryParams.join('&')}' : '';
+    final uri = Uri.parse('$basePath$path$queryString');
+
+    try {
+      // Special case for uploading a single file which isn't a 'multipart/form-data'.
+      if (
+        body is MultipartFile && (contentType == null ||
+        !contentType.toLowerCase().startsWith('multipart/form-data'))
+      ) {
+        final request = StreamedRequest(method, uri);
+        request.headers.addAll(headerParams);
+        request.contentLength = body.length;
+        body.finalize().listen(
+          request.sink.add,
+          onDone: request.sink.close,
+          // ignore: avoid_types_on_closure_parameters
+          onError: (Object error, StackTrace trace) => request.sink.close(),
+          cancelOnError: true,
+        );
+        final response = await _client.send(request);
+        return Response.fromStream(response);
+      }
+
+      if (body is MultipartRequest) {
+        final request = MultipartRequest(method, uri);
+        request.fields.addAll(body.fields);
+        request.files.addAll(body.files);
+        request.headers.addAll(body.headers);
+        request.headers.addAll(headerParams);
+        final response = await _client.send(request);
+        return Response.fromStream(response);
+      }
+
+      final msgBody = contentType == 'application/x-www-form-urlencoded'
+        ? formParams
+        : await serializeAsync(body);
+      final nullableHeaderParams = headerParams.isEmpty ? null : headerParams;
+
+      switch(method) {
+        case 'POST': return await _client.post(uri, headers: nullableHeaderParams, body: msgBody,);
+        case 'PUT': return await _client.put(uri, headers: nullableHeaderParams, body: msgBody,);
+        case 'DELETE': return await _client.delete(uri, headers: nullableHeaderParams, body: msgBody,);
+        case 'PATCH': return await _client.patch(uri, headers: nullableHeaderParams, body: msgBody,);
+        case 'HEAD': return await _client.head(uri, headers: nullableHeaderParams,);
+        case 'GET': return await _client.get(uri, headers: nullableHeaderParams,);
+      }
+    } on SocketException catch (error, trace) {
+      throw ApiException.withInner(
+        HttpStatus.badRequest,
+        'Socket operation failed: $method $path',
+        error,
+        trace,
+      );
+    } on TlsException catch (error, trace) {
+      throw ApiException.withInner(
+        HttpStatus.badRequest,
+        'TLS/SSL communication failed: $method $path',
+        error,
+        trace,
+      );
+    } on IOException catch (error, trace) {
+      throw ApiException.withInner(
+        HttpStatus.badRequest,
+        'I/O operation failed: $method $path',
+        error,
+        trace,
+      );
+    } on ClientException catch (error, trace) {
+      throw ApiException.withInner(
+        HttpStatus.badRequest,
+        'HTTP connection failed: $method $path',
+        error,
+        trace,
+      );
+    } on Exception catch (error, trace) {
+      throw ApiException.withInner(
+        HttpStatus.badRequest,
+        'Exception occurred: $method $path',
+        error,
+        trace,
+      );
+    }
+
+    throw ApiException(
+      HttpStatus.badRequest,
+      'Invalid HTTP operation: $method $path',
+    );
+  }
+
+  Future<dynamic> deserializeAsync(String value, String targetType, {bool growable = false,}) async =>
+    // ignore: deprecated_member_use_from_same_package
+    deserialize(value, targetType, growable: growable);
+
+  @Deprecated('Scheduled for removal in OpenAPI Generator 6.x. Use deserializeAsync() instead.')
+  dynamic deserialize(String value, String targetType, {bool growable = false,}) {
+    // Remove all spaces. Necessary for regular expressions as well.
+    targetType = targetType.replaceAll(' ', ''); // ignore: parameter_assignments
+
+    // If the expected target type is String, nothing to do...
+    return targetType == 'String'
+      ? value
+      : fromJson(json.decode(value), targetType, growable: growable);
+  }
+
+  // ignore: deprecated_member_use_from_same_package
+  Future<String> serializeAsync(Object? value) async => serialize(value);
+
+  @Deprecated('Scheduled for removal in OpenAPI Generator 6.x. Use serializeAsync() instead.')
+  String serialize(Object? value) => value == null ? '' : json.encode(value);
+
+  /// Returns a native instance of an OpenAPI class matching the [specified type][targetType].
+  static dynamic fromJson(dynamic value, String targetType, {bool growable = false,}) {
+    try {
+      switch (targetType) {
+        case 'String':
+          return value is String ? value : value.toString();
+        case 'int':
+          return value is int ? value : int.parse('$value');
+        case 'double':
+          return value is double ? value : double.parse('$value');
+        case 'bool':
+          if (value is bool) {
+            return value;
+          }
+          final valueString = '$value'.toLowerCase();
+          return valueString == 'true' || valueString == '1';
+        case 'DateTime':
+          return value is DateTime ? value : DateTime.tryParse(value);
+        case 'AccountOut':
+          return AccountOut.fromJson(value);
+        case 'AddMemberIn':
+          return AddMemberIn.fromJson(value);
+        case 'AdminDashboardOut':
+          return AdminDashboardOut.fromJson(value);
+        case 'AdminSessionIn':
+          return AdminSessionIn.fromJson(value);
+        case 'AdminSessionOut':
+          return AdminSessionOut.fromJson(value);
+        case 'AdminSessionStartOut':
+          return AdminSessionStartOut.fromJson(value);
+        case 'AdminSessionUpdate':
+          return AdminSessionUpdate.fromJson(value);
+        case 'AdminSessionsPageOut':
+          return AdminSessionsPageOut.fromJson(value);
+        case 'AdminUserOut':
+          return AdminUserOut.fromJson(value);
+        case 'AdminUsersPageOut':
+          return AdminUsersPageOut.fromJson(value);
+        case 'AnalyticsCardOut':
+          return AnalyticsCardOut.fromJson(value);
+        case 'AuditEntryOut':
+          return AuditEntryOut.fromJson(value);
+        case 'AuditPageOut':
+          return AuditPageOut.fromJson(value);
+        case 'CategoryIn':
+          return CategoryIn.fromJson(value);
+        case 'CategoryMatchOut':
+          return CategoryMatchOut.fromJson(value);
+        case 'CategoryOptionOut':
+          return CategoryOptionOut.fromJson(value);
+        case 'CategoryOut':
+          return CategoryOut.fromJson(value);
+        case 'CategoryTotal':
+          return CategoryTotal.fromJson(value);
+        case 'ChartAverage':
+          return ChartAverage.fromJson(value);
+        case 'ChartAverages':
+          return ChartAverages.fromJson(value);
+        case 'ChartBar':
+          return ChartBar.fromJson(value);
+        case 'ChartRow':
+          return ChartRow.fromJson(value);
+        case 'ChartStat':
+          return ChartStat.fromJson(value);
+        case 'ConflictSideOut':
+          return ConflictSideOut.fromJson(value);
+        case 'CurrencyTotals':
+          return CurrencyTotals.fromJson(value);
+        case 'DashboardOut':
+          return DashboardOut.fromJson(value);
+        case 'ErrorBody':
+          return ErrorBody.fromJson(value);
+        case 'ErrorResponse':
+          return ErrorResponse.fromJson(value);
+        case 'ExpenseIn':
+          return ExpenseIn.fromJson(value);
+        case 'ExpenseOut':
+          return ExpenseOut.fromJson(value);
+        case 'FeedItem':
+          return FeedItem.fromJson(value);
+        case 'FriendBalance':
+          return FriendBalance.fromJson(value);
+        case 'FriendGroupBalance':
+          return FriendGroupBalance.fromJson(value);
+        case 'GroupBalancesOut':
+          return GroupBalancesOut.fromJson(value);
+        case 'GroupIn':
+          return GroupIn.fromJson(value);
+        case 'GroupNet':
+          return GroupNet.fromJson(value);
+        case 'GroupOut':
+          return GroupOut.fromJson(value);
+        case 'GroupRef':
+          return GroupRef.fromJson(value);
+        case 'GroupUpdate':
+          return GroupUpdate.fromJson(value);
+        case 'HistoryEntry':
+          return HistoryEntry.fromJson(value);
+        case 'ImportBatchOut':
+          return ImportBatchOut.fromJson(value);
+        case 'ImportPreviewOut':
+          return ImportPreviewOut.fromJson(value);
+        case 'ImportRowOut':
+          return ImportRowOut.fromJson(value);
+        case 'ImportStatsOut':
+          return ImportStatsOut.fromJson(value);
+        case 'ImportTotalsOut':
+          return ImportTotalsOut.fromJson(value);
+        case 'LayoutCard':
+          return LayoutCard.fromJson(value);
+        case 'LayoutIn':
+          return LayoutIn.fromJson(value);
+        case 'LayoutOut':
+          return LayoutOut.fromJson(value);
+        case 'LinkMemberIn':
+          return LinkMemberIn.fromJson(value);
+        case 'LoginIn':
+          return LoginIn.fromJson(value);
+        case 'MemberOut':
+          return MemberOut.fromJson(value);
+        case 'MoneyTotal':
+          return MoneyTotal.fromJson(value);
+        case 'OverallBalancesOut':
+          return OverallBalancesOut.fromJson(value);
+        case 'PersonBalance':
+          return PersonBalance.fromJson(value);
+        case 'PersonOut':
+          return PersonOut.fromJson(value);
+        case 'PersonalAccountIn':
+          return PersonalAccountIn.fromJson(value);
+        case 'PersonalAccountOut':
+          return PersonalAccountOut.fromJson(value);
+        case 'PersonalAllocationPlanIn':
+          return PersonalAllocationPlanIn.fromJson(value);
+        case 'PersonalAllocationPlanOut':
+          return PersonalAllocationPlanOut.fromJson(value);
+        case 'PersonalAllocationRuleIn':
+          return PersonalAllocationRuleIn.fromJson(value);
+        case 'PersonalAllocationRuleOut':
+          return PersonalAllocationRuleOut.fromJson(value);
+        case 'PersonalBatchIn':
+          return PersonalBatchIn.fromJson(value);
+        case 'PersonalBatchItem':
+          return PersonalBatchItem.fromJson(value);
+        case 'PersonalBatchOut':
+          return PersonalBatchOut.fromJson(value);
+        case 'PersonalBatchResult':
+          return PersonalBatchResult.fromJson(value);
+        case 'PersonalGoalContributionIn':
+          return PersonalGoalContributionIn.fromJson(value);
+        case 'PersonalGoalContributionOut':
+          return PersonalGoalContributionOut.fromJson(value);
+        case 'PersonalGoalIn':
+          return PersonalGoalIn.fromJson(value);
+        case 'PersonalGoalOut':
+          return PersonalGoalOut.fromJson(value);
+        case 'PersonalHoldingIn':
+          return PersonalHoldingIn.fromJson(value);
+        case 'PersonalHoldingOut':
+          return PersonalHoldingOut.fromJson(value);
+        case 'PersonalListOut':
+          return PersonalListOut.fromJson(value);
+        case 'PersonalMixedBatchIn':
+          return PersonalMixedBatchIn.fromJson(value);
+        case 'PersonalMixedBatchOut':
+          return PersonalMixedBatchOut.fromJson(value);
+        case 'PersonalReminderScheduleIn':
+          return PersonalReminderScheduleIn.fromJson(value);
+        case 'PersonalReminderScheduleOut':
+          return PersonalReminderScheduleOut.fromJson(value);
+        case 'PersonalReminderStateIn':
+          return PersonalReminderStateIn.fromJson(value);
+        case 'PersonalReminderStateOut':
+          return PersonalReminderStateOut.fromJson(value);
+        case 'PersonalSummaryOut':
+          return PersonalSummaryOut.fromJson(value);
+        case 'PersonalTxnIn':
+          return PersonalTxnIn.fromJson(value);
+        case 'PersonalTxnOut':
+          return PersonalTxnOut.fromJson(value);
+        case 'RegisterIn':
+          return RegisterIn.fromJson(value);
+        case 'ResolveConflictIn':
+          return ResolveConflictIn.fromJson(value);
+        case 'ReviewItemOut':
+          return ReviewItemOut.fromJson(value);
+        case 'RowIssueOut':
+          return RowIssueOut.fromJson(value);
+        case 'RowShareOut':
+          return RowShareOut.fromJson(value);
+        case 'SettleUpIn':
+          return SettleUpIn.fromJson(value);
+        case 'SettleUpOut':
+          return SettleUpOut.fromJson(value);
+        case 'SettleUpPlanOut':
+          return SettleUpPlanOut.fromJson(value);
+        case 'SettlementIn':
+          return SettlementIn.fromJson(value);
+        case 'SettlementOut':
+          return SettlementOut.fromJson(value);
+        case 'ShareOut':
+          return ShareOut.fromJson(value);
+        case 'SplitIn':
+          return SplitIn.fromJson(value);
+        case 'SplitInputIn':
+          return SplitInputIn.fromJson(value);
+        case 'SplitMethodOut':
+          return SplitMethodOut.fromJson(value);
+        case 'SplitOut':
+          return SplitOut.fromJson(value);
+        case 'SplitPreviewIn':
+          return SplitPreviewIn.fromJson(value);
+        case 'SplitPreviewOut':
+          return SplitPreviewOut.fromJson(value);
+        case 'SuggestedPayment':
+          return SuggestedPayment.fromJson(value);
+        case 'SyncChange':
+          return SyncChange.fromJson(value);
+        case 'SyncEntity':
+          return SyncEntity.fromJson(value);
+        case 'SyncIn':
+          return SyncIn.fromJson(value);
+        case 'SyncOut':
+          return SyncOut.fromJson(value);
+        case 'SyncSnapshotOut':
+          return SyncSnapshotOut.fromJson(value);
+        case 'SyncStreamOut':
+          return SyncStreamOut.fromJson(value);
+        case 'SystemOut':
+          return SystemOut.fromJson(value);
+        case 'TokenOut':
+          return TokenOut.fromJson(value);
+        case 'TricountConflictOut':
+          return TricountConflictOut.fromJson(value);
+        case 'TricountLinkIn':
+          return TricountLinkIn.fromJson(value);
+        case 'TricountLinkOut':
+          return TricountLinkOut.fromJson(value);
+        case 'TricountLinkPreviewIn':
+          return TricountLinkPreviewIn.fromJson(value);
+        case 'TricountLinkPreviewOut':
+          return TricountLinkPreviewOut.fromJson(value);
+        case 'TricountPersonIn':
+          return TricountPersonIn.fromJson(value);
+        case 'TricountPersonOut':
+          return TricountPersonOut.fromJson(value);
+        case 'TricountStatusOut':
+          return TricountStatusOut.fromJson(value);
+        case 'UserBrief':
+          return UserBrief.fromJson(value);
+        case 'UserOut':
+          return UserOut.fromJson(value);
+        case 'UserUpdate':
+          return UserUpdate.fromJson(value);
+        default:
+          dynamic match;
+          if (value is List && (match = _regList.firstMatch(targetType)?.group(1)) != null) {
+            return value
+              .map<dynamic>((dynamic v) => fromJson(v, match, growable: growable,))
+              .toList(growable: growable);
+          }
+          if (value is Set && (match = _regSet.firstMatch(targetType)?.group(1)) != null) {
+            return value
+              .map<dynamic>((dynamic v) => fromJson(v, match, growable: growable,))
+              .toSet();
+          }
+          if (value is Map && (match = _regMap.firstMatch(targetType)?.group(1)) != null) {
+            return Map<String, dynamic>.fromIterables(
+              value.keys.cast<String>(),
+              value.values.map<dynamic>((dynamic v) => fromJson(v, match, growable: growable,)),
+            );
+          }
+      }
+    } on Exception catch (error, trace) {
+      throw ApiException.withInner(HttpStatus.internalServerError, 'Exception during deserialization.', error, trace,);
+    }
+    throw ApiException(HttpStatus.internalServerError, 'Could not find a suitable class for deserialization',);
+  }
+}
+
+/// Primarily intended for use in an isolate.
+class DeserializationMessage {
+  const DeserializationMessage({
+    required this.json,
+    required this.targetType,
+    this.growable = false,
+  });
+
+  /// The JSON value to deserialize.
+  final String json;
+
+  /// Target type to deserialize to.
+  final String targetType;
+
+  /// Whether to make deserialized lists or maps growable.
+  final bool growable;
+}
+
+/// Primarily intended for use in an isolate.
+Future<dynamic> decodeAsync(DeserializationMessage message) async {
+  // Remove all spaces. Necessary for regular expressions as well.
+  final targetType = message.targetType.replaceAll(' ', '');
+
+  // If the expected target type is String, nothing to do...
+  return targetType == 'String'
+    ? message.json
+    : json.decode(message.json);
+}
+
+/// Primarily intended for use in an isolate.
+Future<dynamic> deserializeAsync(DeserializationMessage message) async {
+  // Remove all spaces. Necessary for regular expressions as well.
+  final targetType = message.targetType.replaceAll(' ', '');
+
+  // If the expected target type is String, nothing to do...
+  return targetType == 'String'
+    ? message.json
+    : ApiClient.fromJson(
+        json.decode(message.json),
+        targetType,
+        growable: message.growable,
+      );
+}
+
+/// Primarily intended for use in an isolate.
+Future<String> serializeAsync(Object? value) async => value == null ? '' : json.encode(value);

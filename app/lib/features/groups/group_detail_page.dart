@@ -5,29 +5,53 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/local/writes.dart';
 import '../../core/layout/layout.dart';
 import '../../core/money/money.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
+import '../analytics/group_analytics_tab.dart';
 import '../common/common.dart';
 import '../expenses/activity_table.dart';
 import '../expenses/feed_list.dart';
 import '../home/home_wide.dart' show ListCard;
 import '../settlements/settlement_sheet.dart';
+import '../tricount_sync/tricount_status_line.dart';
+import 'group_balances_tab.dart';
+import 'settle_plan.dart';
+import '../../core/config.dart';
 
-enum _Tab { expenses, balances, analytics, members }
+/// A group's tabs. Each has its own address (`/groups/<id>`, `/groups/<id>/balances`, ...), and
+/// all of them are this one page, so the header, tabs and width stay put and only what's under
+/// the tabs changes.
+enum GroupTab {
+  expenses('Expenses'),
+  balances('Balances'),
+  analytics('Analytics'),
+  members('Members');
+
+  const GroupTab(this.label);
+  final String label;
+
+  String path(String groupId) => this == expenses ? '/groups/$groupId' : '/groups/$groupId/$name';
+}
 
 class GroupDetailPage extends ConsumerStatefulWidget {
-  const GroupDetailPage({super.key, required this.groupId});
+  const GroupDetailPage({super.key, required this.groupId, this.tab = GroupTab.expenses});
   final String groupId;
+  final GroupTab tab;
 
   @override
   ConsumerState<GroupDetailPage> createState() => _GroupDetailPageState();
 }
 
 class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
-  _Tab _tab = _Tab.expenses;
+  GroupTab get _tab => widget.tab;
+
+  void _open(GroupTab tab) {
+    if (tab != _tab) context.go(tab.path(widget.groupId));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,39 +62,58 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
         body: AsyncBody(value: group, onRetry: () => ref.invalidate(groupProvider(widget.groupId)), builder: _desktop),
       );
     }
+    // On phones the shell floats "Add split" over this page.
     return Scaffold(
-      floatingActionButton: group.hasValue && layout.showsFab
-          ? Semantics(
-              label: 'Add expense to ${group.value!.name}',
-              child: AddSplitFab(onPressed: () => context.push('/expenses/new?group=${widget.groupId}')),
-            )
-          : null,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
           color: SkColors.brand,
           onRefresh: () async {
             refreshLedger(ref.invalidate);
+            if (_tab == GroupTab.analytics) ref.invalidate(groupDashboardProvider(widget.groupId));
             await ref.read(groupProvider(widget.groupId).future);
           },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-            children: [
-              ContentWidth(
-                child: AsyncBody(
-                  value: group,
-                  onRetry: () => ref.invalidate(groupProvider(widget.groupId)),
-                  builder: (g) => _content(g),
+          child: CustomScrollView(
+            slivers: paddedSlivers(const EdgeInsets.fromLTRB(16, 8, 16, 120), switch (AsyncBody.dataOf(group)) {
+              final g? => _content(g),
+              null => [
+                SliverToBoxAdapter(
+                  child: ContentWidth(
+                    child: AsyncBody(
+                      value: group,
+                      onRetry: () => ref.invalidate(groupProvider(widget.groupId)),
+                      builder: (_) => const SizedBox.shrink(),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            }),
           ),
         ),
       ),
     );
   }
 
-  Widget _content(GroupOut g) {
+  /// The group on a phone: its header, then the tab (the expenses as a list that builds only
+  /// the cards on screen).
+  List<Widget> _content(GroupOut g) => [
+    SliverToBoxAdapter(child: ContentWidth(child: _head(g))),
+    if (_tab == GroupTab.expenses)
+      ..._expenses(g)
+    else
+      SliverToBoxAdapter(
+        child: ContentWidth(
+          child: switch (_tab) {
+            GroupTab.balances => GroupBalancesTab(group: g),
+            GroupTab.analytics => GroupAnalyticsTab(groupId: g.id),
+            GroupTab.members => _MembersTab(group: g),
+            GroupTab.expenses => const SizedBox.shrink(), // above
+          },
+        ),
+      ),
+  ];
+
+  Widget _head(GroupOut g) {
     final n = g.members.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,21 +149,19 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             ),
           ],
         ),
+        _archivedLine(g),
+        TricountStatusLine(groupId: g.id),
         const SizedBox(height: 16),
         _summary(g),
         const SizedBox(height: 16),
         _tabs(),
         const SizedBox(height: 16),
-        switch (_tab) {
-          _Tab.expenses => _expenses(g),
-          _Tab.balances || _Tab.analytics => const SizedBox.shrink(),
-          _Tab.members => _MembersTab(group: g),
-        },
       ],
     );
   }
 
-  /// GroupDesktop: breadcrumb header, section tabs, the expense table and your balances.
+  /// GroupDesktop: breadcrumb header, section tabs, the tab (the expense table first) and your
+  /// balances beside it on every tab.
   Widget _desktop(GroupOut g) {
     final n = g.members.length;
     return Padding(
@@ -180,6 +221,8 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                         ),
                       ],
                     ),
+                    _archivedLine(g),
+                    TricountStatusLine(groupId: g.id),
                   ],
                 ),
               ),
@@ -195,16 +238,19 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             ],
           ),
           const SizedBox(height: 18),
-          _tabs(balancesLabel: 'Settlements'),
+          _tabs(),
           const SizedBox(height: 18),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: _tab == _Tab.members
-                      ? SingleChildScrollView(child: _MembersTab(group: g))
-                      : SkCard(padding: EdgeInsets.zero, child: _expenseTable(g)),
+                  child: switch (_tab) {
+                    GroupTab.expenses => SkCard(padding: EdgeInsets.zero, child: _expenseTable(g)),
+                    GroupTab.balances => SingleChildScrollView(child: GroupBalancesTab(group: g)),
+                    GroupTab.analytics => SingleChildScrollView(child: GroupAnalyticsTab(groupId: g.id)),
+                    GroupTab.members => SingleChildScrollView(child: _MembersTab(group: g)),
+                  },
                 ),
                 const SizedBox(width: 16),
                 SizedBox(width: 360, child: SingleChildScrollView(child: _balancesAside(g))),
@@ -217,7 +263,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
   }
 
   Widget _expenseTable(GroupOut g) {
-    final feed = ref.watch(feedProvider((groupId: g.id, deleted: false)));
+    final feed = ref.watch(feedProvider((groupId: g.id, deleted: false, limit: ref.watch(feedLimitProvider('group:${g.id}')))));
     return AsyncBody(
       value: feed,
       onRetry: () => ref.invalidate(feedProvider),
@@ -231,7 +277,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                 onAction: () => context.push('/expenses/new?group=${g.id}'),
               ),
             )
-          : ActivityTable(items: items, onHome: false),
+          : ActivityTable(items: items, onHome: false, footer: ShowOlder(list: 'group:${g.id}', shown: items.length)),
     );
   }
 
@@ -253,7 +299,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             : b.netMinor < 0
             ? 'In ${g.name}, you owe'
             : "In ${g.name}, you're all square";
-        final others = b.people.where((p) => p.user.id != me.id).toList();
+        final plan = SettlePlan(b, me.id);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -274,55 +320,47 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'You owe ${money(b.youOweMinor, g.currency)} · You are owed ${money(b.youAreOwedMinor, g.currency)}',
+                      'You pay ${money(plan.youPayMinor, g.currency)} · You get ${money(plan.youGetMinor, g.currency)}',
                       style: SkText.body(13, 400, color: ink),
                     ),
                   ],
                 ),
               ),
             ),
-            if (others.isNotEmpty) ...[
+            if (plan.mine.isNotEmpty) ...[
               const SizedBox(height: 12),
               ListCard(
-                title: 'Your balances',
+                title: 'To settle up',
                 children: [
-                  for (final (n, p) in others.indexed)
-                    FriendBalanceRow(
-                      person: SkPerson(id: p.user.id, name: firstName(p.user.name)),
-                      state: personRowState(p.netMinor, g.currency),
-                      tone: toneFor(p.netMinor),
-                      showDivider: n < others.length - 1,
-                      onTap: p.netMinor == 0 ? null : () => _settleWith(g, b, p),
-                      trailing: p.netMinor < 0
-                          ? SkButton(
-                              'Settle',
-                              variant: SkButtonVariant.strong,
-                              size: SkButtonSize.small,
-                              onPressed: () => _settleWith(g, b, p),
-                            )
-                          : null,
-                    ),
+                  for (final (n, p) in plan.mine.indexed)
+                    if (p.fromUser.id == me.id)
+                      FriendBalanceRow(
+                        person: SkPerson(id: p.toUser.id, name: firstName(p.toUser.name)),
+                        state: 'You pay ${money(p.amountMinor, g.currency)}',
+                        tone: MoneyTone.owe,
+                        showDivider: n < plan.mine.length - 1,
+                        onTap: () => showGroupPaymentSheet(context, plan.target(g, p)),
+                        trailing: SkButton(
+                          'Settle',
+                          variant: SkButtonVariant.strong,
+                          size: SkButtonSize.small,
+                          onPressed: () => showGroupPaymentSheet(context, plan.target(g, p)),
+                        ),
+                      )
+                    else
+                      FriendBalanceRow(
+                        person: SkPerson(id: p.fromUser.id, name: firstName(p.fromUser.name)),
+                        state: 'Pays you ${money(p.amountMinor, g.currency)}',
+                        tone: MoneyTone.owed,
+                        showDivider: n < plan.mine.length - 1,
+                        onTap: () => showGroupPaymentSheet(context, plan.target(g, p)),
+                      ),
                 ],
               ),
             ],
           ],
         );
       },
-    );
-  }
-
-  void _settleWith(GroupOut g, GroupBalancesOut b, PersonBalance p) {
-    final me = ref.read(meProvider);
-    final meBrief = UserBrief(id: me.id, name: me.name, avatarUrl: me.avatarUrl);
-    showGroupPaymentSheet(
-      context,
-      GroupPaymentTarget(
-        group: g,
-        members: b.people,
-        from: p.netMinor < 0 ? meBrief : p.user,
-        to: p.netMinor < 0 ? p.user : meBrief,
-        balanceMinor: p.netMinor.abs(),
-      ),
     );
   }
 
@@ -334,7 +372,12 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
         children: [
           Text(label, style: SkText.body(12, 600, color: SkColors.ink2)),
           const SizedBox(height: 2),
-          Text(value, style: SkText.display(20, weight, color: color)),
+          // Shrinks rather than wraps when three big amounts share a phone's width.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value, maxLines: 1, style: SkText.display(20, weight, color: color)),
+          ),
         ],
       ),
     );
@@ -346,20 +389,31 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
             value: balances,
             onRetry: () => ref.invalidate(groupBalancesProvider(g.id)),
             skeletonRows: 1,
-            builder: (b) => Row(
-              children: [
-                figure('You owe', money(b.youOweMinor, g.currency), SkColors.owe),
-                const SizedBox(width: 8),
-                figure('You are owed', money(b.youAreOwedMinor, g.currency), SkColors.owed),
-                const SizedBox(width: 8),
-                figure(
-                  'Net',
-                  formatMinor(b.netMinor, currency: g.currency, signed: true),
-                  textColorFor(b.netMinor),
-                  weight: 800,
-                ),
-              ],
-            ),
+            builder: (b) {
+              final plan = SettlePlan(b, ref.watch(meProvider).id);
+              return Row(
+                children: [
+                  figure(
+                    'You pay',
+                    money(plan.youPayMinor, g.currency),
+                    plan.youPayMinor == 0 ? SkColors.ink2 : SkColors.owe,
+                  ),
+                  const SizedBox(width: 8),
+                  figure(
+                    'You get',
+                    money(plan.youGetMinor, g.currency),
+                    plan.youGetMinor == 0 ? SkColors.ink2 : SkColors.owed,
+                  ),
+                  const SizedBox(width: 8),
+                  figure(
+                    'Net',
+                    formatMinor(b.netMinor, currency: g.currency, signed: true),
+                    textColorFor(b.netMinor),
+                    weight: 800,
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           Row(
@@ -381,7 +435,7 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
                   variant: SkButtonVariant.secondary,
                   size: SkButtonSize.small,
                   expand: true,
-                  onPressed: () => context.go('/groups/${g.id}/balances'),
+                  onPressed: () => _open(GroupTab.balances),
                 ),
               ),
             ],
@@ -391,29 +445,24 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
     );
   }
 
-  /// Start with the person you owe most; otherwise the person who owes you most.
+  /// Opens your largest payment in the group's fewest-payments plan.
   void _settleUp(GroupOut g, GroupBalancesOut b) {
-    final owe = [...b.people.where((p) => p.netMinor < 0)]..sort((a, c) => a.netMinor.compareTo(c.netMinor));
-    final owed = [...b.people.where((p) => p.netMinor > 0)]..sort((a, c) => c.netMinor.compareTo(a.netMinor));
-    if (owe.isEmpty && owed.isEmpty) {
+    final plan = SettlePlan(b, ref.read(meProvider).id);
+    if (plan.mine.isEmpty) {
       showMessage(context, "You're all square in ${g.name}");
       return;
     }
-    _settleWith(g, b, owe.isNotEmpty ? owe.first : owed.first);
+    showGroupPaymentSheet(context, plan.target(g, plan.mine.first));
   }
 
-  Widget _tabs({String balancesLabel = 'Balances'}) {
-    Widget tab(_Tab t, String label) {
+  Widget _tabs() {
+    Widget tab(GroupTab t) {
       final on = _tab == t;
       return Semantics(
         selected: on,
         button: true,
         child: InkWell(
-          onTap: () => switch (t) {
-            _Tab.balances => context.go('/groups/${widget.groupId}/balances'),
-            _Tab.analytics => context.go('/groups/${widget.groupId}/analytics'),
-            _ => setState(() => _tab = t),
-          },
+          onTap: () => _open(t),
           child: Container(
             height: 44,
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -421,47 +470,58 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
               border: Border(bottom: BorderSide(color: on ? SkColors.brand : Colors.transparent, width: 2.5)),
             ),
             alignment: Alignment.center,
-            child: Text(label, style: SkText.body(14, on ? 700 : 600, color: on ? SkColors.brandInk : SkColors.ink2)),
+            child: Text(t.label, style: SkText.body(14, on ? 700 : 600, color: on ? SkColors.brandInk : SkColors.ink2)),
           ),
         ),
       );
     }
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: SkColors.line)),
       ),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            tab(_Tab.expenses, 'Expenses'),
-            const SizedBox(width: 4),
-            tab(_Tab.balances, balancesLabel),
-            const SizedBox(width: 4),
-            tab(_Tab.analytics, 'Analytics'),
-            const SizedBox(width: 4),
-            tab(_Tab.members, 'Members'),
+            for (final (i, t) in GroupTab.values.indexed) ...[if (i > 0) const SizedBox(width: 4), tab(t)],
           ],
         ),
       ),
     );
   }
 
-  Widget _expenses(GroupOut g) {
-    final feed = ref.watch(feedProvider((groupId: g.id, deleted: false)));
-    return AsyncBody(
-      value: feed,
-      onRetry: () => ref.invalidate(feedProvider),
-      builder: (items) => items.isEmpty
-          ? EmptyState(
-              title: 'No expenses yet',
-              body: "Add the first one and we'll keep the balances.",
-              actionLabel: 'Add split',
-              onAction: () => context.push('/expenses/new?group=${g.id}'),
-            )
-          : FeedList(items: items, onHome: false, byDay: false),
-    );
+  List<Widget> _expenses(GroupOut g) {
+    final feed = ref.watch(feedProvider((groupId: g.id, deleted: false, limit: ref.watch(feedLimitProvider('group:${g.id}')))));
+    if (AsyncBody.dataOf(feed) case final items? when items.isNotEmpty) {
+      return [
+        SliverFeedList(items: items, onHome: false, byDay: false, frame: (row) => ContentWidth(child: row)),
+        SliverToBoxAdapter(child: ContentWidth(child: ShowOlder(list: 'group:${g.id}', shown: items.length))),
+      ];
+    }
+    return [
+      SliverToBoxAdapter(
+        child: ContentWidth(
+          child: AsyncBody(
+            value: feed,
+            onRetry: () => ref.invalidate(feedProvider),
+            builder: (_) => g.members.length < 2
+                ? EmptyState(
+                    title: 'Just you so far',
+                    body: "Add the people you're splitting with, then add what you spend.",
+                    actionLabel: 'Add people',
+                    onAction: () => addGroupMember(context, g),
+                  )
+                : EmptyState(
+                    title: 'No expenses yet',
+                    body: "Add the first one and we'll keep the balances.",
+                    actionLabel: 'Add split',
+                    onAction: () => context.push('/expenses/new?group=${g.id}'),
+                  ),
+          ),
+        ),
+      ),
+    ];
   }
 
   Future<void> _menu(GroupOut g) async {
@@ -473,6 +533,8 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
           for (final (key, glyph, label) in [
             ('members', 'groups', 'Members'),
             ('deleted', 'trash', 'Deleted items'),
+            ('tricount', 'swap', 'Sync with Tricount'),
+            ('leave', 'logout', 'Leave group'),
             ('archive', 'file', g.archivedAt == null ? 'Archive group' : 'Unarchive group'),
           ])
             Builder(
@@ -496,17 +558,83 @@ class _GroupDetailPageState extends ConsumerState<GroupDetailPage> {
     if (!mounted) return;
     switch (choice) {
       case 'members':
-        setState(() => _tab = _Tab.members);
+        _open(GroupTab.members);
       case 'deleted':
         context.go('/groups/${g.id}/deleted');
+      case 'tricount':
+        context.go('/groups/${g.id}/tricount');
+      case 'leave':
+        await _leave(g);
       case 'archive':
-        await ref.read(apiProvider).groups.updateGroup(g.id, GroupUpdate(archived: g.archivedAt == null));
-        refreshLedger(ref.invalidate);
-        if (mounted) {
-          showMessage(context, g.archivedAt == null ? '${g.name} archived' : '${g.name} is back');
-          if (g.archivedAt == null) context.go('/groups');
-        }
+        await _setArchived(g, g.archivedAt == null);
     }
+  }
+
+  /// Archiving goes back to the list, where the group now sits under "Archived".
+  Future<void> _setArchived(GroupOut g, bool archived) async {
+    final writes = ref.read(writesProvider);
+    await writes.setGroupArchived(g.id, archived);
+    if (!mounted) return;
+    if (!archived) return showMessage(context, '${g.name} is back');
+    showMessage(context, '${g.name} archived', actionLabel: 'Undo', onAction: () => writes.setGroupArchived(g.id, false));
+    context.go('/groups');
+  }
+
+  /// "Archived · Unarchive" under the name of an archived group.
+  Widget _archivedLine(GroupOut g) {
+    if (g.archivedAt == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          SkIcon('file', size: 14, color: SkColors.ink2),
+          const SizedBox(width: 6),
+          Text('Archived', style: SkText.body(13, 600, color: SkColors.ink2)),
+          const SizedBox(width: 4),
+          TextButton(onPressed: () => _setArchived(g, false), child: const Text('Unarchive')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _leave(GroupOut g) async {
+    final me = ref.read(meProvider);
+    final ok = await showConfirmDialog(
+      context,
+      title: 'Leave ${g.name}?',
+      body: "You'll stop seeing it. You need to be settled up with everyone in it first.",
+      confirmLabel: 'Leave group',
+    );
+    if (!ok || !mounted) return;
+    try {
+      await ref.read(apiProvider).groups.removeMember(g.id, me.id);
+      refreshLedger(ref.invalidate);
+      if (mounted) {
+        showMessage(context, 'You left ${g.name}');
+        context.go('/groups');
+      }
+    } catch (e) {
+      if (mounted) showMessage(context, apiErrorMessage(e));
+    }
+  }
+}
+
+/// Take someone out of the group (the owner only; they need to be settled up).
+Future<void> removeGroupMember(BuildContext context, WidgetRef ref, GroupOut group, MemberOut m) async {
+  final name = firstName(m.user.name);
+  final ok = await showConfirmDialog(
+    context,
+    title: 'Remove $name from ${group.name}?',
+    body: 'They stop seeing the group; their past expenses stay. They need to be settled up first.',
+    confirmLabel: 'Remove',
+  );
+  if (!ok || !context.mounted) return;
+  try {
+    await ref.read(apiProvider).groups.removeMember(group.id, m.user.id);
+    refreshLedger(ref.invalidate);
+    if (context.mounted) showMessage(context, '$name is no longer in ${group.name}');
+  } catch (e) {
+    if (context.mounted) showMessage(context, apiErrorMessage(e));
   }
 }
 
@@ -517,6 +645,7 @@ class _MembersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
+    final owner = group.members.any((m) => m.user.id == me.id && m.role == 'owner');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -526,9 +655,28 @@ class _MembersTab extends ConsumerWidget {
             subtitle: [
               if (m.user.id == me.id) 'You',
               if (m.role == 'owner') 'Owner',
-              if (m.user.isPlaceholder == true) 'No account yet',
+              if (m.user.isPlaceholder == true) m.inviteEmail == null ? 'No account yet' : 'Invited · ${m.inviteEmail}',
               if (m.placeholderName != null && m.user.isPlaceholder != true) 'Was “${m.placeholderName}”',
             ].join(' · ').ifEmpty('Member'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (m.user.isPlaceholder == true)
+                  SkButton(
+                    'Link',
+                    variant: SkButtonVariant.secondary,
+                    size: SkButtonSize.small,
+                    onPressed: () => linkGroupMember(context, group, m),
+                  ),
+                if (owner && m.user.id != me.id)
+                  HeaderIconButton(
+                    glyph: 'close',
+                    label: 'Remove ${m.user.name}',
+                    color: SkColors.ink3,
+                    onPressed: () => removeGroupMember(context, ref, group, m),
+                  ),
+              ],
+            ),
           ),
           const SizedBox(height: 8),
         ],
@@ -546,21 +694,123 @@ class _MembersTab extends ConsumerWidget {
 }
 
 Future<void> addGroupMember(BuildContext context, GroupOut group) async {
-  final added = await showAppBottomSheet<bool>(
+  final added = await showAppBottomSheet<String>(
     context,
     title: 'Add someone',
-    child: _AddMemberForm(groupId: group.id),
+    child: _AddMemberForm(group: group),
   );
-  if (added == true && context.mounted) showMessage(context, 'Added to ${group.name}');
+  if (added != null && context.mounted) showMessage(context, 'Added $added to ${group.name}');
 }
 
 extension on String {
   String ifEmpty(String fallback) => isEmpty ? fallback : this;
 }
 
-class _AddMemberForm extends ConsumerStatefulWidget {
-  const _AddMemberForm({required this.groupId});
+/// Links a placeholder member to an account (groups/linking.py on the server).
+Future<void> linkGroupMember(BuildContext context, GroupOut group, MemberOut member) async {
+  final message = await showAppBottomSheet<String>(
+    context,
+    title: 'Link ${member.user.name} to an account',
+    child: _LinkMemberForm(groupId: group.id, member: member),
+  );
+  if (message != null && context.mounted) showMessage(context, message);
+}
+
+class _LinkMemberForm extends ConsumerStatefulWidget {
+  const _LinkMemberForm({required this.groupId, required this.member});
   final String groupId;
+  final MemberOut member;
+
+  @override
+  ConsumerState<_LinkMemberForm> createState() => _LinkMemberFormState();
+}
+
+class _LinkMemberFormState extends ConsumerState<_LinkMemberForm> {
+  late final _email = TextEditingController(text: widget.member.inviteEmail);
+  String? _error;
+  bool _busy = false;
+
+  String get _name => widget.member.user.name;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = 'Enter their email');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final group = await ref
+          .read(apiProvider)
+          .groups
+          .linkMember(widget.groupId, widget.member.user.id, LinkMemberIn(email: email));
+      refreshLedger(ref.invalidate);
+      // Still here as a placeholder: no account had that email, so it was saved as an invite.
+      final invited = group?.members.any((x) => x.user.id == widget.member.user.id) ?? false;
+      if (mounted) {
+        Navigator.of(
+          context,
+        ).pop(invited ? 'Invite saved. Signing up with $email takes $_name’s place.' : '$_name is linked to $email');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = apiErrorMessage(e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SkTextField(
+            label: 'Their email',
+            controller: _email,
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            errorText: _error,
+            onChanged: (_) {
+              if (_error != null) setState(() => _error = null);
+            },
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'If they have a ${AppConfig.appName} account, $_name’s expenses and payments move to it now. '
+            'If not, they take $_name’s place when they sign up with this email. '
+            'Nobody’s balance changes.',
+            style: SkText.body(13, 400, color: SkColors.ink2),
+          ),
+          const SizedBox(height: 18),
+          SkButton(
+            _busy ? 'Linking…' : 'Link account',
+            onPressed: _busy ? null : _submit,
+            size: SkButtonSize.large,
+            expand: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pops with the first name of whoever was added.
+class _AddMemberForm extends ConsumerStatefulWidget {
+  const _AddMemberForm({required this.group});
+  final GroupOut group;
 
   @override
   ConsumerState<_AddMemberForm> createState() => _AddMemberFormState();
@@ -568,13 +818,19 @@ class _AddMemberForm extends ConsumerStatefulWidget {
 
 class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
   final _text = TextEditingController();
+  final _name = TextEditingController();
   bool _byEmail = true;
+
+  /// The email has no account yet: ask for a name and invite them instead.
+  bool _invite = false;
   String? _error;
+  String? _nameError;
   bool _busy = false;
 
   @override
   void dispose() {
     _text.dispose();
+    _name.dispose();
     super.dispose();
   }
 
@@ -584,19 +840,38 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
       setState(() => _error = _byEmail ? 'Enter their email' : 'Enter their name');
       return;
     }
+    final name = _name.text.trim();
+    if (_byEmail && _invite && name.isEmpty) {
+      setState(() => _nameError = 'Enter their name');
+      return;
+    }
     setState(() => _busy = true);
     try {
-      await ref
+      final group = await ref
           .read(apiProvider)
           .groups
-          .addMember(widget.groupId, _byEmail ? AddMemberIn(email: value) : AddMemberIn(name: value));
+          .addMember(
+            widget.group.id,
+            !_byEmail
+                ? AddMemberIn(name: value)
+                : _invite
+                ? AddMemberIn(email: value, name: name)
+                : AddMemberIn(email: value),
+          );
       refreshLedger(ref.invalidate);
-      if (mounted) Navigator.of(context).pop(true);
+      final before = {for (final m in widget.group.members) m.user.id};
+      final added = group?.members.where((m) => !before.contains(m.user.id)).firstOrNull;
+      final fallback = !_byEmail ? firstName(value) : (_invite ? firstName(name) : value);
+      if (mounted) Navigator.of(context).pop(added == null ? fallback : firstName(added.user.name));
     } catch (e) {
       if (mounted) {
         setState(() {
           _busy = false;
-          _error = apiErrorMessage(e);
+          if (_byEmail && !_invite && apiErrorCode(e) == 'no_account') {
+            _invite = true; // ask who they are, then invite the email
+          } else {
+            _error = apiErrorMessage(e);
+          }
         });
       }
     }
@@ -624,18 +899,51 @@ class _AddMemberFormState extends ConsumerState<_AddMemberForm> {
             autofocus: true,
             keyboardType: _byEmail ? TextInputType.emailAddress : TextInputType.name,
             errorText: _error,
+            onChanged: (_) {
+              if (_error != null || _invite) {
+                setState(() {
+                  _error = null;
+                  _invite = false; // a different email may have an account
+                });
+              }
+            },
             onSubmitted: (_) => _submit(),
           ),
-          const SizedBox(height: 8),
-          Text(
-            _byEmail
-                ? 'They see the group next time they open Splitkit.'
-                : 'They can be part of splits now and link an account later.',
-            style: SkText.body(13, 400, color: SkColors.ink2),
-          ),
+          if (_byEmail && _invite) ...[
+            const SizedBox(height: 10),
+            Text(
+              "There's no ${AppConfig.appName} account with that email yet. Add their name: they can be part of "
+              'splits now, and join the group when they sign up with this email.',
+              style: SkText.body(13, 400, color: SkColors.ink2, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            SkTextField(
+              label: 'Their name',
+              controller: _name,
+              autofocus: true,
+              keyboardType: TextInputType.name,
+              errorText: _nameError,
+              onChanged: (_) {
+                if (_nameError != null) setState(() => _nameError = null);
+              },
+              onSubmitted: (_) => _submit(),
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            Text(
+              _byEmail
+                  ? 'They see the group next time they open ${AppConfig.appName}.'
+                  : 'They can be part of splits now and link an account later.',
+              style: SkText.body(13, 400, color: SkColors.ink2),
+            ),
+          ],
           const SizedBox(height: 18),
           SkButton(
-            _busy ? 'Adding…' : 'Add to group',
+            _busy
+                ? 'Adding…'
+                : _byEmail && _invite
+                ? 'Add and invite'
+                : 'Add to group',
             onPressed: _busy ? null : _submit,
             size: SkButtonSize.large,
             expand: true,

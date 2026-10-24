@@ -33,25 +33,48 @@ def test_balances_are_seen_from_each_viewer(client, seeded):
 
 def test_overall_balances_for_home(client, seeded):
     b = client.get(f"{API}/balances", headers=login(client, "john")).json()
+    # Each group's fewest payments, added up: in both groups the plan has Vivek paying John.
     assert b["totals"] == [
         {
             "currency": "INR",
             "net_minor": 147000,
-            "you_owe_minor": 125000,
-            "you_are_owed_minor": 272000,
+            "you_owe_minor": 0,
+            "you_are_owed_minor": 147000,
         }
     ]
     assert [(f["user"]["name"], f["net_minor"]) for f in b["friends"]] == [
-        ("Kabir Mehta", -75000),
-        ("Rahul Sharma", -50000),
-        ("Priya Nair", 155000),
-        ("Aman Verma", 117000),
-        ("Vivek Iyer", 0),
+        ("Vivek Iyer", 147000),
+        ("Aman Verma", 0),
+        ("Kabir Mehta", 0),
+        ("Priya Nair", 0),
+        ("Rahul Sharma", 0),
     ]
     assert {g["name"]: g["net_minor"] for g in b["groups"]} == {
         "Goa Trip": 115000,
         "Flatmates": 32000,
     }
+
+
+def test_home_says_what_each_groups_plan_says(client, seeded):
+    for who in ("john", "rahul", "vivek"):
+        headers = login(client, who)
+        me = uid(who)
+        planned: dict[str, int] = {}
+        for g in client.get(f"{API}/groups", headers=headers).json():
+            b = client.get(f"{API}/groups/{g['id']}/balances", headers=headers).json()
+            for p in b["suggested"]:
+                if p["to_user"]["id"] == me:
+                    planned[p["from_user"]["id"]] = (
+                        planned.get(p["from_user"]["id"], 0) + p["amount_minor"]
+                    )
+                if p["from_user"]["id"] == me:
+                    planned[p["to_user"]["id"]] = (
+                        planned.get(p["to_user"]["id"], 0) - p["amount_minor"]
+                    )
+        friends = client.get(f"{API}/balances", headers=headers).json()["friends"]
+        assert {f["user"]["id"]: f["net_minor"] for f in friends if f["net_minor"]} == {
+            k: v for k, v in planned.items() if v
+        }
 
 
 def test_new_user_has_empty_balances(client):
@@ -127,10 +150,12 @@ def test_feed_unsettled_only_keeps_open_expenses(client, seeded):
     headers = login(client, "john")
     items = client.get(f"{API}/feed?limit=100&unsettled=true", headers=headers).json()
     titles = [i["title"] for i in items]
-    assert titles[:2] == ["Dinner at Thalassa", "Groceries"]  # you owe Rahul; flatmates owe you
-    assert "Beach shack lunch" not in titles  # you are square with Aman in Goa
-    assert "Uber to airport" not in titles  # you paid, but on balance you owe Rahul
-    assert all(i["kind"] == "expense" and not i["settled"] for i in items)
+    # Both groups' fewest payments have someone paying John and John paying nobody: what he
+    # paid for others is open, his shares of others' bills aren't.
+    assert titles[:2] == ["Groceries", "Uber to airport"]
+    assert "Dinner at Thalassa" not in titles  # Rahul paid
+    assert all(i["kind"] == "expense" and i["payer"]["name"] == "John Doe" for i in items)
+    assert all(not i["settled"] for i in items)
     page = client.get(f"{API}/feed?limit=3&offset=2&unsettled=true", headers=headers).json()
     assert [i["title"] for i in page] == titles[2:5]
 
@@ -142,7 +167,7 @@ def test_admin_edits_are_flagged_in_the_feed(client, seeded):
     assert [i["title"] for i in goa if i["by_admin"]] == ["Scooter rentals"]
 
 
-def test_left_members_still_count_in_friend_balances(client, seeded):
+def test_paying_by_the_plan_clears_it_on_home(client, seeded):
     headers = login(client, "john")
     client.post(
         f"{API}/groups/{gid('goa')}/settlements",
@@ -150,12 +175,13 @@ def test_left_members_still_count_in_friend_balances(client, seeded):
         json={
             "from_user": uid("vivek"),
             "to_user": uid("john"),
-            "amount_minor": 1,
+            "amount_minor": 115000,
             "date": "2026-09-24",
         },
     )
-    friends = {
-        f["user"]["name"]: f["net_minor"]
-        for f in client.get(f"{API}/balances", headers=headers).json()["friends"]
+    b = client.get(f"{API}/balances", headers=headers).json()
+    # Only Flatmates' payment is left; nobody else picks up the Goa one.
+    assert {f["user"]["name"]: f["net_minor"] for f in b["friends"] if f["net_minor"]} == {
+        "Vivek Iyer": 32000
     }
-    assert friends["Vivek Iyer"] == -1
+    assert (b["totals"][0]["you_owe_minor"], b["totals"][0]["you_are_owed_minor"]) == (0, 32000)

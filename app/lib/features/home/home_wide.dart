@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api.dart';
+import '../../core/clock.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
 import '../../core/money/money.dart';
@@ -28,7 +29,7 @@ class HomeGreeting extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(longDateLabel(DateTime.now()), style: SkText.body(13, 400, color: SkColors.ink2)),
+      Text(longDateLabel(appClock.now()), style: SkText.body(13, 400, color: SkColors.ink2)),
       const SizedBox(height: 2),
       Semantics(header: true, child: Text('Hi, ${firstName(name)}', style: SkText.title)),
     ],
@@ -38,7 +39,7 @@ class HomeGreeting extends StatelessWidget {
 /// Settle up with a friend, or say you're square.
 void openFriend(BuildContext context, FriendBalance f) => f.netMinor == 0
     ? showMessage(context, 'You and ${firstName(f.user.name)} are all square')
-    : showFriendSettleUpSheet(context, f.user);
+    : showFriendSettleUpSheet(context, f.user, currency: f.currency);
 
 /// Totals and friends in your main currency (the one on your profile, else the first).
 ({CurrencyTotals? totals, String currency, List<FriendBalance> friends}) homeBalances(
@@ -48,6 +49,29 @@ void openFriend(BuildContext context, FriendBalance f) => f.netMinor == 0
   final totals = b.totals.where((t) => t.currency == me.currency).firstOrNull ?? b.totals.firstOrNull;
   final currency = totals?.currency ?? me.currency;
   return (totals: totals, currency: currency, friends: b.friends.where((f) => f.currency == currency).toList());
+}
+
+/// Balances in your other currencies (from groups in USD or EUR, say), which Home's totals and
+/// friends leave out.
+List<CurrencyTotals> otherCurrencies(UserOut me, OverallBalancesOut b) {
+  final main = homeBalances(me, b).currency;
+  return [for (final t in b.totals) if (t.currency != main && t.netMinor != 0) t];
+}
+
+/// "Also: you are owed $25 in USD groups" under Home's balance, when there's anything.
+class OtherCurrencies extends StatelessWidget {
+  const OtherCurrencies({super.key, required this.totals});
+  final List<CurrencyTotals> totals;
+
+  @override
+  Widget build(BuildContext context) {
+    if (totals.isEmpty) return const SizedBox.shrink();
+    final parts = [
+      for (final t in totals)
+        '${t.netMinor > 0 ? 'you are owed' : 'you owe'} ${money(t.netMinor.abs(), t.currency)} in ${t.currency} groups',
+    ];
+    return Text('Also: ${parts.join(' · ')}', style: SkText.body(13, 500, color: SkColors.ink2));
+  }
 }
 
 /// Group picker sheet for the phone and tablet "All groups" button.
@@ -63,7 +87,7 @@ Future<void> pickActivityGroup(BuildContext context, WidgetRef ref, List<GroupOu
             SkIcon(glyph, size: 20, color: SkColors.brandInk),
             const SizedBox(width: 10),
             Expanded(child: Text(label, style: SkText.body(15, 600))),
-            if (current == id) const SkIcon('check', size: 20, color: SkColors.brand),
+            if (current == id) SkIcon('check', size: 20, color: SkColors.brand),
           ],
         ),
       ),
@@ -119,7 +143,7 @@ class ListCard extends StatelessWidget {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: SkColors.line)),
           ),
           child: Semantics(header: true, child: Text(title, style: SkText.display(titleSize, 700))),
@@ -141,97 +165,124 @@ class HomeTabletBody extends ConsumerWidget {
     final balances = ref.watch(overallBalancesProvider);
     final groups = ref.watch(groupsProvider);
     final groupId = ref.watch(activityFiltersProvider.select((f) => f.groupId));
-    final feed = ref.watch(feedProvider((groupId: groupId, deleted: false)));
+    final feed = ref.watch(feedProvider((groupId: groupId, deleted: false, limit: ref.watch(feedLimitProvider('home')))));
 
+    final balancesColumn = AsyncBody(
+      value: balances,
+      onRetry: () => ref.invalidate(overallBalancesProvider),
+      skeletonRows: 2,
+      builder: (b) {
+        final h = homeBalances(me, b);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            BalanceCard(
+              netMinor: h.totals?.netMinor ?? 0,
+              youOweMinor: h.totals?.youOweMinor ?? 0,
+              youAreOwedMinor: h.totals?.youAreOwedMinor ?? 0,
+              currency: h.currency,
+              layout: BalanceCardLayout.stacked,
+            ),
+            if (otherCurrencies(me, b) case final others when others.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              OtherCurrencies(totals: others),
+            ],
+            if (h.friends.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              ListCard(
+                title: 'Friends',
+                titleSize: 16,
+                children: [
+                  for (final (n, f) in h.friends.indexed)
+                    FriendBalanceRow(
+                      person: SkPerson(id: f.user.id, name: firstName(f.user.name)),
+                      state: friendChipState(f.netMinor, h.currency),
+                      tone: toneFor(f.netMinor),
+                      dense: true,
+                      showDivider: n < h.friends.length - 1,
+                      onTap: () => openFriend(context, f),
+                    ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
+    );
+    final items = AsyncBody.dataOf(feed);
+    // The activity as slivers, so only the cards on screen are built.
+    final activity = SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: Text('Recent activity', style: SkText.display(20, 700)),
+                  ),
+                ),
+                SkPillButton(
+                  groupFilterLabel(groupId, groups.value),
+                  leading: 'filter',
+                  onPressed: () => pickActivityGroup(context, ref, groups.value ?? const []),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (items != null && items.isNotEmpty) ...[
+          SliverFeedList(items: items, onHome: true),
+          SliverToBoxAdapter(child: ShowOlder(list: 'home', shown: items.length)),
+        ] else
+          SliverToBoxAdapter(
+            child: AsyncBody(
+              value: feed,
+              onRetry: () => ref.invalidate(feedProvider),
+              builder: (_) => homeEmpty(context, groups.value ?? const []),
+            ),
+          ),
+      ],
+    );
     return SafeArea(
       left: false,
       bottom: false,
       child: RefreshIndicator(
         color: SkColors.brand,
         onRefresh: onRefresh,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 40),
-          children: [
-            HomeGreeting(name: me.name),
-            const SizedBox(height: 20),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 280,
-                  child: AsyncBody(
-                    value: balances,
-                    onRetry: () => ref.invalidate(overallBalancesProvider),
-                    skeletonRows: 2,
-                    builder: (b) {
-                      final h = homeBalances(me, b);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          BalanceCard(
-                            netMinor: h.totals?.netMinor ?? 0,
-                            youOweMinor: h.totals?.youOweMinor ?? 0,
-                            youAreOwedMinor: h.totals?.youAreOwedMinor ?? 0,
-                            currency: h.currency,
-                            layout: BalanceCardLayout.stacked,
-                          ),
-                          if (h.friends.isNotEmpty) ...[
-                            const SizedBox(height: 14),
-                            ListCard(
-                              title: 'Friends',
-                              titleSize: 16,
-                              children: [
-                                for (final (n, f) in h.friends.indexed)
-                                  FriendBalanceRow(
-                                    person: SkPerson(id: f.user.id, name: firstName(f.user.name)),
-                                    state: friendChipState(f.netMinor, h.currency),
-                                    tone: toneFor(f.netMinor),
-                                    dense: true,
-                                    showDivider: n < h.friends.length - 1,
-                                    onTap: () => openFriend(context, f),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Semantics(
-                              header: true,
-                              child: Text('Recent activity', style: SkText.display(20, 700)),
-                            ),
-                          ),
-                          SkPillButton(
-                            groupFilterLabel(groupId, groups.value),
-                            leading: 'filter',
-                            onPressed: () => pickActivityGroup(context, ref, groups.value ?? const []),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      AsyncBody(
-                        value: feed,
-                        onRetry: () => ref.invalidate(feedProvider),
-                        builder: (items) => items.isEmpty
-                            ? homeEmpty(context, groups.value ?? const [])
-                            : FeedList(items: items, onHome: true),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        child: CustomScrollView(
+          slivers: paddedSlivers(const EdgeInsets.fromLTRB(24, 28, 24, 40), [
+            SliverToBoxAdapter(
+              child: Padding(padding: const EdgeInsets.only(bottom: 20), child: HomeGreeting(name: me.name)),
             ),
-          ],
+            // HomeTablet is an iPad (834px). In a narrower window the activity column would
+            // be too thin to read, so the columns stack.
+            SliverLayoutBuilder(
+              builder: (context, c) => c.crossAxisExtent >= 280 + 20 + 340
+                  ? SliverCrossAxisGroup(
+                      slivers: [
+                        SliverConstrainedCrossAxis(
+                          maxExtent: 280 + 20,
+                          sliver: SliverPadding(
+                            padding: const EdgeInsets.only(right: 20),
+                            sliver: SliverToBoxAdapter(child: balancesColumn),
+                          ),
+                        ),
+                        activity,
+                      ],
+                    )
+                  : SliverMainAxisGroup(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(padding: const EdgeInsets.only(bottom: 24), child: balancesColumn),
+                        ),
+                        activity,
+                      ],
+                    ),
+            ),
+          ]),
         ),
       ),
     );
@@ -264,7 +315,16 @@ class HomeDesktopBody extends ConsumerWidget {
             value: balances,
             onRetry: () => ref.invalidate(overallBalancesProvider),
             skeletonRows: 1,
-            builder: (b) => _SummaryTiles(h: homeBalances(me, b)),
+            builder: (b) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SummaryTiles(h: homeBalances(me, b)),
+                if (otherCurrencies(me, b) case final others when others.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  OtherCurrencies(totals: others),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: 18),
           Expanded(
@@ -320,6 +380,13 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
 
   @override
   Widget build(BuildContext context) {
+    // Cleared from elsewhere ("Nothing matches" → Clear): empty the box too.
+    ref.listen(activityFiltersProvider.select((f) => f.search), (_, search) {
+      if (search.isEmpty && _text.text.trim().isNotEmpty) {
+        _debounce?.cancel();
+        setState(_text.clear);
+      }
+    });
     return Container(
       height: 44,
       padding: const EdgeInsets.only(left: 14, right: 4),
@@ -330,7 +397,7 @@ class _SearchFieldState extends ConsumerState<_SearchField> {
       ),
       child: Row(
         children: [
-          const SkIcon('search', size: 18, color: SkColors.ink2),
+          SkIcon('search', size: 18, color: SkColors.ink2),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -465,7 +532,7 @@ class _ActivityCard extends ConsumerWidget {
     final notifier = ref.read(activityFiltersProvider.notifier);
     final groups = ref.watch(groupsProvider);
     final categories = ref.watch(groupCategoriesProvider);
-    final activity = ref.watch(activityProvider(filters.query(DateTime.now())));
+    final activity = ref.watch(activityProvider(filters.query(appClock.now(), ref.watch(feedLimitProvider('activity')))));
     final categoryLabel = filters.category == null
         ? 'Any category'
         : categories.value?.where((c) => c.key == filters.category).firstOrNull?.label ?? 'Category';
@@ -477,7 +544,7 @@ class _ActivityCard extends ConsumerWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: SkColors.line)),
             ),
             child: Semantics(
@@ -530,13 +597,19 @@ class _ActivityCard extends ConsumerWidget {
               value: activity,
               onRetry: () => ref.invalidate(activityProvider),
               builder: (items) {
-                if (items.isNotEmpty) return ActivityTable(items: items, onHome: true);
+                if (items.isNotEmpty) {
+                  return ActivityTable(
+                    items: items,
+                    onHome: true,
+                    footer: ShowOlder(list: 'activity', shown: items.length),
+                  );
+                }
                 final Widget empty = filters.narrowed || filters.search.trim().isNotEmpty
                     ? EmptyState(
                         glyph: 'search',
                         title: 'Nothing matches',
                         body: 'Try another filter or search.',
-                        actionLabel: 'Clear filters',
+                        actionLabel: filters.narrowed ? 'Clear filters' : 'Clear search',
                         onAction: notifier.clear,
                       )
                     : homeEmpty(context, groups.value ?? const []);
@@ -589,7 +662,7 @@ class _MenuChip<T> extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(child: Text(text, style: SkText.body(14, v == value ? 700 : 500))),
-                      if (v == value) const SkIcon('check', size: 18, color: SkColors.brand),
+                      if (v == value) SkIcon('check', size: 18, color: SkColors.brand),
                     ],
                   ),
                 ),

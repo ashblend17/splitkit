@@ -6,10 +6,14 @@ import 'package:intl/intl.dart';
 import '../../core/api/api.dart';
 import '../../core/copy/copy.dart';
 import '../../core/data/providers.dart';
+import '../../core/integrations.dart';
+import '../../core/local/writes.dart';
 import '../../core/session/session.dart';
 import '../../core/theme/theme.dart';
 import '../../design_system/design_system.dart';
 import '../common/common.dart';
+import '../groups/settle_plan.dart';
+import '../personal/personal_txn_sheet.dart';
 import '../settlements/settlement_sheet.dart';
 
 class ExpenseDetailPage extends ConsumerWidget {
@@ -35,7 +39,7 @@ class ExpenseDetailPage extends ConsumerWidget {
                       onPressed: () => context.canPop() ? context.pop() : context.go('/home'),
                     ),
                     const Spacer(),
-                    if (expense.value?.deletedAt == null) ...[
+                    if (expense.hasValue && expense.value!.deletedAt == null) ...[
                       HeaderIconButton(
                         glyph: 'edit',
                         label: 'Edit expense',
@@ -83,9 +87,9 @@ class ExpenseDetailPage extends ConsumerWidget {
       confirmLabel: 'Delete',
     );
     if (!ok || !context.mounted) return;
-    final api = ref.read(apiProvider);
+    final writes = ref.read(writesProvider);
     try {
-      await api.expenses.deleteExpense(e.id);
+      await writes.deleteExpense(e.id);
       refreshLedger(ref.invalidate);
       if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -98,7 +102,7 @@ class ExpenseDetailPage extends ConsumerWidget {
             label: 'Undo',
             textColor: SkColors.brandSoft,
             onPressed: () async {
-              await api.expenses.restoreExpense(e.id);
+              await writes.restoreExpense(e.id);
               refreshLedger(container.invalidate);
             },
           ),
@@ -167,6 +171,11 @@ class _Body extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _yourPart(context, ref, me, myShare, iPaid),
+        if (ref.watch(integrationsProvider).personalNoteOnSplit)
+          if (ref.watch(personalLinkedToProvider(e.id)).value case final t?) ...[
+            const SizedBox(height: 8),
+            _fromPersonal(context, t),
+          ],
         const SizedBox(height: 16),
         _splitCard(me),
         if ((e.notes ?? '').isNotEmpty) ...[
@@ -192,6 +201,32 @@ class _Body extends ConsumerWidget {
     );
   }
 
+  /// To you only: the personal entry this split was made from (and which account paid).
+  Widget _fromPersonal(BuildContext context, PersonalTxnOut t) => Semantics(
+    button: true,
+    child: InkWell(
+      onTap: () => showPersonalTxnSheet(context, existing: t),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: SkColors.personalSoft, borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            SkIcon('lock', size: 16, color: SkColors.personalInk),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                t.account == null ? 'From your Personal entry' : 'From your ${t.account}',
+                style: SkText.body(13, 600, color: SkColors.personalInk),
+              ),
+            ),
+            Text('Only you', style: SkText.body(12, 600, color: SkColors.personalInk)),
+          ],
+        ),
+      ),
+    ),
+  );
+
   Widget _pill(String text, Color bg, Color fg) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
     decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(SkRadius.chip)),
@@ -203,7 +238,7 @@ class _Body extends ConsumerWidget {
     decoration: BoxDecoration(color: SkColors.sunken, borderRadius: BorderRadius.circular(14)),
     child: Row(
       children: [
-        const SkIcon('trash', size: 18, color: SkColors.ink2),
+        SkIcon('trash', size: 18, color: SkColors.ink2),
         const SizedBox(width: 8),
         Expanded(
           child: Text("Deleted. It doesn't count towards balances.", style: SkText.body(14, 600, color: SkColors.ink2)),
@@ -213,7 +248,7 @@ class _Body extends ConsumerWidget {
           variant: SkButtonVariant.secondary,
           size: SkButtonSize.small,
           onPressed: () async {
-            await ref.read(apiProvider).expenses.restoreExpense(expense.id);
+            await ref.read(writesProvider).restoreExpense(expense.id);
             refreshLedger(ref.invalidate);
           },
         ),
@@ -221,15 +256,17 @@ class _Body extends ConsumerWidget {
     ),
   );
 
-  /// "You owe Rahul ₹450 · Settle up", "You are owed ₹1,350", "You're square with Rahul".
+  /// "You owe Rahul ₹450 · Settle up", "You are owed ₹1,350", "Your share is settled".
   Widget _yourPart(BuildContext context, WidgetRef ref, UserOut me, SplitOut? mine, bool iPaid) {
     final e = expense;
     final c = e.currency;
     final payerName = firstName(e.payer.name);
     final ({String label, String? figure, Color bg, Color labelColor, Color figureColor, bool settle}) part;
+    // A deleted expense says what it was, in grey: it doesn't count towards balances.
+    final deleted = e.deletedAt != null;
     if (iPaid && e.myNetMinor > 0) {
       part = (
-        label: 'You are owed',
+        label: deleted ? 'You were owed' : 'You are owed',
         figure: money(e.myNetMinor, c),
         bg: SkColors.owedSoft,
         labelColor: SkColors.owedInk,
@@ -254,9 +291,10 @@ class _Body extends ConsumerWidget {
         figureColor: SkColors.ink2,
         settle: false,
       );
-    } else if (mine.status == SplitOutStatusEnum.settled) {
+    } else if (mine.status == SplitOutStatusEnum.settled && !deleted) {
+      // The group's fewest payments have you paying nobody, so your share is covered.
       part = (
-        label: "You're square with $payerName",
+        label: 'Your share is settled',
         figure: money(mine.shareMinor, c),
         bg: SkColors.settledSoft,
         labelColor: SkColors.ink2,
@@ -265,15 +303,16 @@ class _Body extends ConsumerWidget {
       );
     } else {
       part = (
-        label: 'You owe $payerName',
+        label: deleted ? 'You owed $payerName' : 'You owe $payerName',
         figure: money(mine.shareMinor, c),
         bg: SkColors.oweSoft,
         labelColor: SkColors.oweInk,
         figureColor: SkColors.owe,
-        settle: e.deletedAt == null,
+        settle: !deleted,
       );
     }
-    final (:label, :figure, :bg, :labelColor, :figureColor, :settle) = part;
+    var (:label, :figure, :bg, :labelColor, :figureColor, :settle) = part;
+    if (deleted) (bg, labelColor, figureColor) = (SkColors.settledSoft, SkColors.ink2, SkColors.ink2);
     return Semantics(
       label: 'Your part: $label ${figure ?? ''}',
       container: true,
@@ -307,23 +346,16 @@ class _Body extends ConsumerWidget {
     );
   }
 
+  /// Settles up as the group's own Settle up does: your payment to the payer in the group's
+  /// fewest payments if there is one, else your largest.
   Future<void> _settle(BuildContext context, WidgetRef ref, UserOut me) async {
     final e = expense;
     final group = await ref.read(groupProvider(e.groupId).future);
-    final balances = await ref.read(groupBalancesProvider(e.groupId).future);
-    final withPayer = balances.people.where((p) => p.user.id == e.payer.id).firstOrNull?.netMinor ?? 0;
+    final plan = SettlePlan(await ref.read(groupBalancesProvider(e.groupId).future), me.id);
     if (!context.mounted) return;
-    showGroupPaymentSheet(
-      context,
-      GroupPaymentTarget(
-        group: group,
-        members: balances.people,
-        from: UserBrief(id: me.id, name: me.name, avatarUrl: me.avatarUrl),
-        to: e.payer,
-        // What you owe the payer across the whole group, not just this expense.
-        balanceMinor: withPayer < 0 ? -withPayer : 0,
-      ),
-    );
+    if (plan.mine.isEmpty) return showMessage(context, "You're all square in ${group.name}");
+    final toPayer = plan.mine.where((p) => p.fromUser.id == me.id && p.toUser.id == e.payer.id).firstOrNull;
+    showGroupPaymentSheet(context, plan.target(group, toPayer ?? plan.mine.first));
   }
 
   Widget _splitCard(UserOut me) {
@@ -345,7 +377,7 @@ class _Body extends ConsumerWidget {
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: SkColors.line)),
             ),
             child: Row(
@@ -388,7 +420,7 @@ class _Body extends ConsumerWidget {
                     Expanded(
                       child: Text(s.user.id == me.id ? 'You' : firstName(s.user.name), style: SkText.body(15, 600)),
                     ),
-                    _status(s.status),
+                    if (e.deletedAt == null) _status(s.status), // a deleted one has nothing to settle
                     SizedBox(
                       width: 72,
                       child: Text(money(s.shareMinor, c), textAlign: TextAlign.right, style: SkText.display(16, 700)),
@@ -428,7 +460,8 @@ class _Body extends ConsumerWidget {
           : 'Added by ${e.createdBy.id == me.id ? 'you' : firstName(e.createdBy.name)} · ${at(e.createdAt)}',
       for (final h in history)
         if (h.action != 'expense.create')
-          '${_verb(h.action)} by ${who(h.person)}${h.admin != null ? ' (admin: ${h.admin!.name})' : ''}'
+          '${_verb(h.action)} ${h.diff['via'] == 'tricount' ? 'in Tricount' : 'by ${who(h.person)}'}'
+              '${h.admin != null ? ' (admin: ${h.admin!.name})' : ''}'
               '${_changes(h.diff, e.currency)} · ${at(h.at)}',
     ];
     return Padding(
@@ -452,25 +485,32 @@ class _Body extends ConsumerWidget {
     _ => 'Changed',
   };
 
-  /// " · amount ₹1,650 → ₹1,800", " · category, split".
+  /// " · amount ₹1,650 → ₹1,800", " · category, split". Keys it doesn't know (like "via")
+  /// are left out rather than shown raw, and so is "split" when the same people share the new
+  /// amount the same way (that's just the amount changing).
   String _changes(Map<String, Object> diff, String currency) {
-    if (diff.isEmpty) return '';
-    final parts = <String>[];
-    for (final MapEntry(:key, :value) in diff.entries) {
-      if (key == 'amount_minor' && value is Map) {
-        parts.add('amount ${money(value['from'] as int, currency)} → ${money(value['to'] as int, currency)}');
-      } else {
-        parts.add(switch (key) {
-          'category_id' || 'category' => 'category',
-          'payer_id' => 'payer',
-          'splits' || 'split_method' => 'split',
-          'description' => 'description',
-          'date' => 'date',
-          'notes' => 'notes',
-          _ => key,
-        });
-      }
-    }
-    return ' · ${parts.toSet().join(', ')}';
+    final amount = diff['amount_minor'];
+    final parts = <String>[
+      if (amount is Map) 'amount ${money(amount['from'] as int, currency)} → ${money(amount['to'] as int, currency)}',
+      if (amount != null && amount is! Map) 'amount',
+      if (diff.containsKey('description')) 'description',
+      if (diff.containsKey('payer_id')) 'payer',
+      if (diff.containsKey('split_method') || (diff.containsKey('splits') && !_onlyScaled(diff))) 'split',
+      if (diff.containsKey('category_id') || diff.containsKey('category')) 'category',
+      if (diff.containsKey('date')) 'date',
+      if (diff.containsKey('notes')) 'notes',
+    ];
+    return parts.isEmpty ? '' : ' · ${parts.join(', ')}';
+  }
+
+  /// The shares changed only because the amount did: same people, same proportions (to the paisa).
+  bool _onlyScaled(Map<String, Object> diff) {
+    final amount = diff['amount_minor'], splits = diff['splits'];
+    if (amount is! Map || splits is! Map) return false;
+    final from = Map<String, Object?>.from(splits['from'] as Map), to = Map<String, Object?>.from(splits['to'] as Map);
+    final before = amount['from'] as int, after = amount['to'] as int;
+    final samePeople = from.keys.toSet().containsAll(to.keys) && to.keys.toSet().containsAll(from.keys);
+    if (before == 0 || !samePeople) return false;
+    return from.keys.every((k) => ((to[k] as int) - (from[k] as int) * after / before).abs() <= 1);
   }
 }

@@ -101,3 +101,22 @@ def test_archive_moves_group_out_of_default_list(client, seeded):
     assert [
         g["name"] for g in client.get(f"{API}/groups?archived=true", headers=headers).json()
     ] == ["Flatmates"]
+
+
+def test_when_the_owner_leaves_the_longest_standing_member_takes_over(client, seeded):
+    h = login(client, "john")
+    g = client.post(f"{API}/groups", headers=h, json={"name": "Hand over"}).json()
+    url = f"{API}/groups/{g['id']}/members"
+    client.post(url, headers=h, json={"name": "Placeholder first"})
+    client.post(url, headers=h, json={"email": "aman.v@example.com"})
+    client.post(url, headers=h, json={"email": "rahul.sharma@example.com"})
+    assert client.delete(f"{url}/{uid('john')}", headers=h).status_code == 204
+
+    aman = login(client, "aman")
+    members = client.get(f"{API}/groups/{g['id']}", headers=aman).json()["members"]
+    roles = {m["user"]["name"]: m["role"] for m in members}
+    # The placeholder joined first but can't own a group; Aman joined before Rahul.
+    assert roles == {"Placeholder first": "member", "Aman Verma": "owner", "Rahul Sharma": "member"}
+    # The new owner can remove people.
+    placeholder = next(m["user"]["id"] for m in members if m["user"]["name"] == "Placeholder first")
+    assert client.delete(f"{url}/{placeholder}", headers=aman).status_code == 204

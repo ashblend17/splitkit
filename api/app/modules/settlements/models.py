@@ -27,6 +27,10 @@ class Settlement(Base):
     date: Mapped[date]
     method: Mapped[str]
     note: Mapped[str | None]
+    # Plain FK column with no ORM relationship so the import module stays removable.
+    import_batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("import_batches.id"), index=True
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     acting_admin_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = now_default()

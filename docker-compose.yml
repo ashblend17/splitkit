@@ -1,18 +1,18 @@
-name: splitkit
-
+# The local stack. Everything it needs is in .env (copy .env.example): the project's name
+# (COMPOSE_PROJECT_NAME: its containers, volume and images), the database and the secrets.
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: splitkit
-      POSTGRES_USER: splitkit
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-splitkit}
+      POSTGRES_DB: ${DB_NAME:?set DB_NAME in .env}
+      POSTGRES_USER: ${DB_USER:?set DB_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
       - "${DB_PORT:-5433}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U splitkit -d splitkit"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -21,8 +21,11 @@ services:
     build: ./api
     environment:
       ENV: ${ENV:-dev}
-      DATABASE_URL: postgresql+psycopg://splitkit:${POSTGRES_PASSWORD:-splitkit}@db:5432/splitkit
-      JWT_SECRET: ${JWT_SECRET:-dev-only-insecure-secret-change-me-please}
+      APP_NAME: ${APP_NAME:-App}
+      DATABASE_URL: postgresql+psycopg://${DB_USER}:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+      TRICOUNT_TIME_ZONE: ${TRICOUNT_TIME_ZONE:-Asia/Kolkata}
     depends_on:
       db:
         condition: service_healthy
@@ -34,8 +37,28 @@ services:
       timeout: 3s
       retries: 20
 
+  # Keeps linked groups in sync with Tricount (api/app/modules/tricount_sync). Remove this
+  # service to turn the sync off; links then just stop updating.
+  tricount:
+    build: ./api
+    command: ["python", "-m", "app.modules.tricount_sync"]
+    environment:
+      ENV: ${ENV:-dev}
+      APP_NAME: ${APP_NAME:-App}
+      DATABASE_URL: postgresql+psycopg://${DB_USER}:${POSTGRES_PASSWORD}@db:5432/${DB_NAME}
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+      TRICOUNT_TIME_ZONE: ${TRICOUNT_TIME_ZONE:-Asia/Kolkata}
+    depends_on:
+      api:
+        condition: service_healthy  # its start-up runs the migrations
+    restart: unless-stopped
+
   web:
-    build: ./app
+    build:
+      context: ./app
+      args:
+        APP_NAME: ${APP_NAME:-App}
     depends_on:
       - api
     ports:

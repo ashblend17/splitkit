@@ -20,6 +20,9 @@ def main() -> int:
     if get_settings().env == "prod":
         print("Refusing to seed a production database.", file=sys.stderr)
         return 1
+    if not get_settings().seed_password:
+        print("Set SEED_PASSWORD in .env: every seeded account signs in with it.", file=sys.stderr)
+        return 1
 
     with SessionLocal.begin() as session:
         if args.reset:
@@ -30,10 +33,7 @@ def main() -> int:
         counts = load(session)
 
     print("Seeded: " + ", ".join(f"{n} {k.replace('_', ' ')}" for k, n in counts.items()))
-    print(
-        f"Log in as any seeded user with password '{data.DEV_PASSWORD}', "
-        f"e.g. {data.USERS[0].email} (admin)."
-    )
+    print(f"Log in as any seeded user with SEED_PASSWORD, e.g. {data.USERS[0].email} (admin).")
     return 0
 
 

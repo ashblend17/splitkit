@@ -59,6 +59,7 @@ class _ComponentsGalleryPageState extends State<ComponentsGalleryPage> {
   String _category = 'food';
   String _payer = 'rahul';
   String _nav = 'home';
+  bool _personalNav = false;
   bool _unsettledOnly = true;
   DateTime _day = DateTime(2026, 9, 23);
   SkPerson? _viewAs = _rahul;
@@ -102,7 +103,7 @@ class _ComponentsGalleryPageState extends State<ComponentsGalleryPage> {
                   columns: 4,
                   gap: 24,
                   minColumnWidth: 280,
-                  children: [_analytics(), _empty(), _loading(), _error()],
+                  children: [_analytics(), _progress(), _empty(), _loading(), _error()],
                 ),
                 const SizedBox(height: 32),
                 _Grid(columns: 3, gap: 24, minColumnWidth: 400, children: [_dialog(), _sheet(), _admin()]),
@@ -524,6 +525,28 @@ class _ComponentsGalleryPageState extends State<ComponentsGalleryPage> {
     ),
   );
 
+  Widget _progress() => _Titled(
+    'ActualPlannedBar',
+    SkCard(
+      radius: 20,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Ladakh trip', style: SkText.body(15, 700)),
+          const SizedBox(height: 10),
+          const ActualPlannedBar(actual: 0.28, actualLabel: '₹17,000'),
+          const SizedBox(height: 6),
+          Text('₹17,000 of ₹60,000 · 28%', style: SkText.body(13, 400, color: SkColors.ink2)),
+          const SizedBox(height: 16),
+          const ActualPlannedBar(actual: 0.2, planned: 0.45, actualLabel: '₹2,000', plannedLabel: '₹6,500'),
+          const SizedBox(height: 6),
+          Text('Planned ₹6,500', style: SkText.body(13, 500, color: SkColors.ink2)),
+        ],
+      ),
+    ),
+  );
+
   Widget _empty() => _Titled(
     'Empty',
     EmptyState(
@@ -706,53 +729,74 @@ class _ComponentsGalleryPageState extends State<ComponentsGalleryPage> {
     ],
   );
 
-  Widget _navigation() => _Panel(
-    title: 'Navigation · BottomNav, NavRail, WebSidebar',
-    children: [
-      Text(
-        'Under 600px a bottom bar, 600–1279px a rail, 1280px and up a sidebar.',
-        style: SkText.body(13, 400, color: SkColors.ink2),
-      ),
-      Wrap(
-        spacing: 24,
-        runSpacing: 24,
-        crossAxisAlignment: WrapCrossAlignment.start,
-        children: [
-          _framed(
-            width: 390,
-            height: 84,
-            child: BottomNav(
-              destinations: NavDestination.primary(),
-              current: _nav,
-              onSelected: (k) => setState(() => _nav = k),
+  Widget _navigation() {
+    final destinations = _personalNav ? NavDestination.personal(admin: true) : NavDestination.split(admin: true);
+    final accent = _personalNav ? NavAccent.personal : NavAccent.brand;
+    final addLabel = _personalNav ? 'Add entry' : 'Add split';
+    void mode(bool personal) => setState(() {
+      _personalNav = personal;
+      _nav = personal ? 'overview' : 'home';
+    });
+    return _Panel(
+      title: 'Navigation · ModeSwitch, BottomNav, NavRail, WebSidebar',
+      children: [
+        Text(
+          'Split and Personal each have their own tabs and accent. Under 600px a bottom bar, '
+          '600–1279px a rail, 1280px and up a sidebar.',
+          style: SkText.body(13, 400, color: SkColors.ink2),
+        ),
+        Align(alignment: Alignment.centerLeft, child: ModeSwitch(personal: _personalNav, onChanged: mode)),
+        Wrap(
+          spacing: 24,
+          runSpacing: 24,
+          crossAxisAlignment: WrapCrossAlignment.start,
+          children: [
+            _framed(
+              width: 390,
+              height: 84,
+              child: BottomNav(
+                destinations: destinations,
+                current: _nav,
+                onSelected: (k) => setState(() => _nav = k),
+                accent: accent,
+              ),
             ),
-          ),
-          _framed(
-            width: 88,
-            height: 520,
-            child: NavRail(
-              destinations: NavDestination.primary(),
-              current: _nav,
-              onSelected: (k) => setState(() => _nav = k),
-              onAdd: () => _toast('Add split'),
+            _framed(
+              width: 88,
+              height: 680,
+              child: NavRail(
+                destinations: destinations,
+                current: _nav,
+                onSelected: (k) => setState(() => _nav = k),
+                onAdd: () => _toast(addLabel),
+                addLabel: addLabel,
+                accent: accent,
+                modeSwitch: SizedBox(
+                  width: 72,
+                  child: ModeSwitch(personal: _personalNav, onChanged: mode, direction: Axis.vertical),
+                ),
+              ),
             ),
-          ),
-          _framed(
-            width: 248,
-            height: 520,
-            child: WebSidebar(
-              destinations: NavDestination.primary(admin: true),
-              current: _nav,
-              onSelected: (k) => setState(() => _nav = k),
-              onAdd: () => _toast('Add split'),
-              user: const SkPerson(id: 'you', name: 'John Doe', colors: (Color(0xFFE4E0FB), Color(0xFF3326A8))),
-              role: 'Administrator',
+            _framed(
+              width: 248,
+              height: 600,
+              child: WebSidebar(
+                destinations: destinations,
+                current: _nav,
+                onSelected: (k) => setState(() => _nav = k),
+                onAdd: () => _toast(addLabel),
+                addLabel: addLabel,
+                accent: accent,
+                modeSwitch: ModeSwitch(personal: _personalNav, onChanged: mode, expand: true),
+                user: const SkPerson(id: 'you', name: 'John Doe', colors: (Color(0xFFE4E0FB), Color(0xFF3326A8))),
+                role: 'Administrator',
+              ),
             ),
-          ),
-        ],
-      ),
-    ],
-  );
+          ],
+        ),
+      ],
+    );
+  }
 
   Widget _framed({required double width, required double height, required Widget child}) => Container(
     width: width,

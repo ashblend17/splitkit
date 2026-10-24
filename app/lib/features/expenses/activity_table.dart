@@ -17,9 +17,12 @@ enum _Col { date, expense, paidBy, total, split, share, balance, when }
 /// expense or payment, scrolling inside its card. Narrow windows drop the least useful
 /// columns first, so the expense name always keeps room.
 class ActivityTable extends ConsumerWidget {
-  const ActivityTable({super.key, required this.items, required this.onHome});
+  const ActivityTable({super.key, required this.items, required this.onHome, this.footer});
 
   final List<FeedItem> items;
+
+  /// Under the last row ("Show older").
+  final Widget? footer;
 
   /// Home: group under each title, share and "when" columns. Group: a date column instead.
   final bool onHome;
@@ -84,7 +87,7 @@ class ActivityTable extends ConsumerWidget {
             ExcludeSemantics(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: _pad, vertical: 10),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: SkPalette.tableHead,
                   border: Border(bottom: BorderSide(color: SkColors.line)),
                 ),
@@ -101,8 +104,8 @@ class ActivityTable extends ConsumerWidget {
             ),
             Expanded(
               child: ListView.builder(
-                itemCount: items.length,
-                itemBuilder: (context, n) => _row(context, ref, items[n], meId, cols),
+                itemCount: items.length + (footer == null ? 0 : 1),
+                itemBuilder: (context, n) => n == items.length ? footer! : _row(context, ref, items[n], meId, cols),
               ),
             ),
           ],
@@ -199,7 +202,7 @@ class ActivityTable extends ConsumerWidget {
             child: Container(
               constraints: BoxConstraints(minHeight: onHome ? 60 : 56),
               padding: EdgeInsets.symmetric(horizontal: _pad, vertical: onHome ? 4 : 2),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: SkPalette.divider)),
               ),
               child: Center(child: _cells(cols, cell)),
